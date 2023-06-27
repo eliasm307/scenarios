@@ -1,5 +1,13 @@
 import "./globals.css";
+import {
+  createClientComponentClient,
+  createServerComponentClient,
+} from "@supabase/auth-helpers-nextjs";
+// import { ThemeSupa } from "@supabase/auth-ui-shared";
+// import { useState, useEffect } from "react";
+import { cookies } from "next/headers";
 import { Providers } from "./providers";
+import AuthForm from "../components/AuthForm";
 
 export const metadata = {
   title: "Create Next App",
@@ -7,6 +15,38 @@ export const metadata = {
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  // const supabase = createClientComponentClient();
+
+  // const [session, setSession] = useState<any>(null);
+
+  // useEffect(() => {
+  //   supabase.auth.getSession().then(({ data: { session } }) => {
+  //     setSession(session);
+  //   });
+
+  //   const {
+  //     data: { subscription },
+  //   } = supabase.auth.onAuthStateChange((_event, session) => {
+  //     setSession(session);
+  //   });
+
+  //   return () => subscription.unsubscribe();
+  // }, [supabase.auth]);
+
+  // if (!session) {
+  //   return <AuthForm />;
+  // }
+
+  // const supabase = createServerComponentClient({ cookies });
+
+  // const {
+  //   data: { user },
+  // } = await supabase.auth.getUser();
+
+  // if (!user) {
+  //   return <AuthForm />;
+  // }
+
   return (
     <html lang='en' suppressHydrationWarning>
       <body suppressHydrationWarning>

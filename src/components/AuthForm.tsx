@@ -16,7 +16,6 @@ const getURL = () => {
   // Make sure to including trailing `/`.
   url = url.charAt(url.length - 1) === "/" ? url : `${url}/`;
 
-  console.log("getURL", url);
   return url;
 };
 
@@ -33,7 +32,7 @@ export default function AuthForm() {
       showLinks={false}
       // see https://supabase.com/docs/guides/auth#providers
       providers={[]}
-      redirectTo='http://localhost:3000/auth/callback'
+      redirectTo={new URL("/auth/callback", getURL()).href}
     />
   );
 }

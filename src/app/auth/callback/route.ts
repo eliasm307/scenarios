@@ -11,15 +11,10 @@ export async function GET(req: NextRequest) {
   const code = searchParams.get("code");
 
   if (code) {
-    console.log("callback.ts: GET(s) code", code);
     const supabase = createRouteHandlerClient({ cookies });
-    const response = await supabase.auth.exchangeCodeForSession(code);
-    console.log("callback.ts: GET(s) response", response);
-  } else {
-    console.log("callback.ts: GET(s) no code");
+    await supabase.auth.exchangeCodeForSession(code);
   }
 
-  console.log("callback.ts: GET(s) redirect to origin", origin);
   // URL to redirect to after sign in process completes
   return NextResponse.redirect(origin);
 }

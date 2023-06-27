@@ -6,13 +6,18 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "supabase:gen-types": "npx supabase gen types typescript --project-id 'dmjwwnpltjvsevmfujec' --schema public > src/supabase.ts"
   },
   "dependencies": {
     "@chakra-ui/next-js": "^2.1.4",
     "@chakra-ui/react": "^2.7.1",
     "@emotion/react": "^11.11.1",
     "@emotion/styled": "^11.11.0",
+    "@supabase/auth-helpers-nextjs": "^0.7.2",
+    "@supabase/auth-ui-react": "^0.4.2",
+    "@supabase/auth-ui-shared": "^0.1.6",
+    "@supabase/supabase-js": "^2.26.0",
     "@types/node": "20.3.2",
     "@types/react": "18.2.14",
     "@types/react-dom": "18.2.6",
@@ -27,6 +32,7 @@
   "devDependencies": {
     "@eliasm307/config": "^0.25.0",
     "@typescript-eslint/eslint-plugin": "^5.60.1",
-    "@typescript-eslint/parser": "^5.60.1"
+    "@typescript-eslint/parser": "^5.60.1",
+    "supabase": "^1.68.6"
   }
 }

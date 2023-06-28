@@ -1,8 +1,8 @@
 import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
 import { cookies } from "next/headers";
-import styles from "./page.module.css";
 import SignInButton from "../components/SignInButton";
 import SignOutButton from "../components/SignOutButton";
+import Session from "../components/Session.client";
 
 export default async function Home() {
   const supabase = createServerComponentClient({ cookies });
@@ -11,5 +11,18 @@ export default async function Home() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  return <main className={styles.main}>{user ? <SignOutButton /> : <SignInButton />}</main>;
+  if (!user) {
+    return (
+      <main>
+        <SignInButton />
+      </main>
+    );
+  }
+
+  return (
+    <main>
+      <SignOutButton />
+      <Session sessionId='1' />
+    </main>
+  );
 }

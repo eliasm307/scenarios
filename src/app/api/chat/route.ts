@@ -1,13 +1,6 @@
-// ./app/api/chat/route.ts
-import type { ChatCompletionRequestMessage } from "openai-edge";
-import { Configuration, OpenAIApi } from "openai-edge";
 import { OpenAIStream, StreamingTextResponse } from "ai";
-
-// Create an OpenAI API client (that's edge friendly!)
-const config = new Configuration({
-  apiKey: process.env.OPENAI_API_KEY,
-});
-const openai = new OpenAIApi(config);
+import type { ChatCompletionRequestMessage } from "openai-edge";
+import { openai } from "../../../utils/server/openai";
 
 // IMPORTANT! Set the runtime to edge
 export const runtime = "edge";

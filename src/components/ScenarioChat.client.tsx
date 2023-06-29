@@ -4,7 +4,7 @@ import { Box, Button, Divider, Flex, Grid, Heading, Spinner, Textarea } from "@c
 import type { Message } from "ai";
 import type { UseChatHelpers } from "ai/react";
 import { useChat } from "ai/react";
-import { useCallback, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import ChatMessage from "./ChatMessage";
 
 type Props = {
@@ -51,8 +51,38 @@ export default function ScenarioChat({ scenario, existing }: Props) {
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
 
+  useAutoScrolling({
+    messages: chat.messages,
+    messagesListEl: messagesListRef.current,
+  });
+
+  const messagesListRefNotifier = useCallback(
+    (node: HTMLDivElement | null) => {
+      if (node) {
+        // @ts-expect-error [setting to readonly allowed]
+        messagesListRef.current = node;
+        // this is to force a re-render when the ref changes
+        chat.setMessages([...chat.messages]);
+      }
+    },
+    [chat],
+  );
+
+  // focus on input when chat is ready
+  useEffect(() => {
+    if (!chat.isLoading) {
+      textAreaRef.current?.focus();
+    }
+  }, [chat]);
+
   const messagesList = (
-    <Flex width='100%' ref={messagesListRef} direction='column' overflow='auto' tabIndex={0}>
+    <Flex
+      width='100%'
+      ref={messagesListRefNotifier}
+      direction='column'
+      overflow='auto'
+      tabIndex={0}
+    >
       {chat.messages.map((message, i) => {
         const isLastEntry = !chat.messages[i + 1];
         return (
@@ -101,8 +131,8 @@ export default function ScenarioChat({ scenario, existing }: Props) {
             isInvalid={!!chat.error}
             // minHeight='unset'
             // maxHeight='10rem'
-            placeholder={getPlaceholderText(chat)}
             value={chat.input}
+            placeholder={getPlaceholderText(chat)}
             onChange={chat.handleInputChange}
             onKeyDown={handleInputKeyDown}
             spellCheck={false}
@@ -178,6 +208,60 @@ export default function ScenarioChat({ scenario, existing }: Props) {
       </Grid>
     </Box>
   );
+}
+
+function useAutoScrolling({
+  messages,
+  messagesListEl,
+}: {
+  messages: readonly Message[];
+  messagesListEl: HTMLElement | null;
+}) {
+  // scroll to bottom on load
+  useEffect(() => {
+    if (!messagesListEl) {
+      return;
+    }
+    scrollToBottom(messagesListEl);
+  }, [messagesListEl]);
+
+  // setup auto scroll
+  const shouldAutoScroll = useRef(true);
+  useEffect(() => {
+    if (!messagesListEl) {
+      return;
+    }
+
+    const scrollableEl = messagesListEl;
+    const handleScroll = () => {
+      const { scrollHeight, scrollTop, clientHeight } = scrollableEl;
+      const scrollDistanceFromBottom = Math.abs(scrollHeight - scrollTop - clientHeight);
+      // not checking for exact 0 because of floating point errors
+      const isAtBottom = scrollDistanceFromBottom < 10;
+      // only maintain bottom scroll if user is already at bottom
+      shouldAutoScroll.current = isAtBottom;
+    };
+
+    scrollableEl.addEventListener("scroll", handleScroll);
+    return () => scrollableEl.removeEventListener("scroll", handleScroll);
+  }, [messagesListEl]);
+
+  // auto scroll chat to bottom on new message
+  useEffect(() => {
+    if (!messagesListEl) {
+      return;
+    }
+
+    const lastMessageSentByUser = messages.at(-1)?.role === "user";
+    if (lastMessageSentByUser || shouldAutoScroll.current) {
+      scrollToBottom(messagesListEl);
+    }
+  }, [messagesListEl, messages]);
+}
+
+function scrollToBottom(scrollableEl: HTMLElement) {
+  // eslint-disable-next-line no-param-reassign
+  scrollableEl.scrollTop = scrollableEl.scrollHeight;
 }
 
 function getPlaceholderText(chat: UseChatHelpers): string {

@@ -69,7 +69,7 @@ export default function ScenarioSelector({ onScenarioSelected }: Props) {
 function ChoiceCard({ text, onSelect }: { text: string; onSelect: () => void }) {
   return (
     <Card
-      minHeight='20rem'
+      minHeight='10rem'
       onClick={onSelect}
       _hover={{ outline: "5px solid green", cursor: "pointer" }}
     >

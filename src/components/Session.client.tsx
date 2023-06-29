@@ -15,7 +15,8 @@ type Props = {
 
 export default function Session({ sessionId, existing }: Props) {
   const [scenario, setScenario] = useState(
-    existing?.scenario ||
+    existing?.scenario ??
+      "" ??
       "You're a struggling artist and a wealthy collector offers to buy all your work for a sum that would solve all your financial problems. But he intends to destroy all the art after purchase. Do you sell your art to him?",
   );
 

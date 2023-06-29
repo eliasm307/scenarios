@@ -2,7 +2,7 @@ import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
 import { cookies } from "next/headers";
 import { type NextRequest, NextResponse } from "next/server";
 
-export async function POST(req: NextRequest) {
+async function signOut(req: NextRequest) {
   const supabase = createRouteHandlerClient({ cookies });
 
   // Check if we have a session
@@ -18,3 +18,6 @@ export async function POST(req: NextRequest) {
     status: 302,
   });
 }
+
+export const GET = signOut;
+export const POST = signOut;

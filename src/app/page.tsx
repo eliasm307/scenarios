@@ -1,6 +1,6 @@
 import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
 import { cookies } from "next/headers";
-import { Grid } from "../components/ChakraUI.client";
+import { Box, Grid } from "../components/ChakraUI.client";
 import SignInButton from "../components/SignInButton";
 import Session from "../components/Session.client";
 import NavBar from "../components/NavBar.client";
@@ -23,7 +23,9 @@ export default async function Home() {
   return (
     <Grid minHeight='100dvh' overflow='hidden' templateRows='auto 1fr' position='fixed' inset={0}>
       <NavBar zIndex={2} />
-      <Session sessionId='1' />
+      <Box zIndex={1}>
+        <Session sessionId='1' />
+      </Box>
     </Grid>
   );
 }

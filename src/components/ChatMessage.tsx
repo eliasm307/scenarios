@@ -44,7 +44,12 @@ function ChatMessage(props: Props) {
           "linear-gradient(to bottom, var(--chakra-colors-chakra-body-bg), transparent 90%)",
       }}
     >
-      <Avatar size='sm' name={senderFriendlyName} src={senderAvatarSrc} />
+      <Avatar
+        size='sm'
+        name={senderFriendlyName}
+        src={senderAvatarSrc}
+        background={isUser ? "blue.800" : undefined}
+      />
       <Text as='span' fontWeight='bold' fontSize='xl' textAlign={isUser ? "right" : "left"}>
         {senderFriendlyName}
       </Text>
@@ -63,7 +68,12 @@ function ChatMessage(props: Props) {
       textAlign={isUser ? "right" : "left"}
     >
       <Flex flexDirection='column' width='inherit' gap={2} position='relative'>
-        <Text>{message.content}</Text>
+        {message.content
+          .split(".")
+          .filter((sentence) => sentence.trim())
+          .map((sentence) => (
+            <Text key={sentence}>{sentence}.</Text>
+          ))}
       </Flex>
       {/* <Divider /> */}
     </VStack>

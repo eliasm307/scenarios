@@ -65,9 +65,9 @@ function MobileNavBarItems({}: NavBarItemsProps) {
   );
 }
 
-export default function NavBar(flexProps: FlexProps) {
+export default function NavBar() {
   return (
-    <Flex alignItems='center' px={3} py={2} m={0} gap={3} boxShadow='md' {...flexProps}>
+    <Flex alignItems='center' px={3} py={2} m={0} gap={3} boxShadow='md' >
       <Heading as='h1' flex={1} fontSize='2xl'>
         Electric Sheep
       </Heading>

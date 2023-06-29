@@ -21,7 +21,7 @@ export default async function Home() {
   }
 
   return (
-    <Grid height='100dvh' overflow='hidden' templateRows='auto 1fr' position='fixed' inset={0}>
+    <Grid minHeight='100dvh' overflow='hidden' templateRows='auto 1fr' position='fixed' inset={0}>
       <NavBar zIndex={2} />
       <Session sessionId='1' />
     </Grid>

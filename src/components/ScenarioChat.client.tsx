@@ -1,17 +1,6 @@
 "use client";
 
-import {
-  Box,
-  Button,
-  Center,
-  Divider,
-  Flex,
-  Grid,
-  HStack,
-  Heading,
-  Spinner,
-  Textarea,
-} from "@chakra-ui/react";
+import { Box, Button, Divider, Flex, Grid, Heading, Spinner, Textarea } from "@chakra-ui/react";
 import type { Message } from "ai";
 import type { UseChatHelpers } from "ai/react";
 import { useChat } from "ai/react";
@@ -66,83 +55,108 @@ export default function ScenarioChat({ scenario, existing }: Props) {
       {chat.messages.map((message, i) => {
         const isLastEntry = !chat.messages[i + 1];
         return (
-          <>
+          <Box key={message.id}>
             <ChatMessage key={message.id} message={message} />
             {isLastEntry ? null : (
               <Box width='100%' pl={2}>
                 <Divider my={3} />
               </Box>
             )}
-          </>
+          </Box>
         );
       })}
     </Flex>
   );
 
   const controls = (
-    <form onSubmit={chat.handleSubmit}>
-      <Flex width='100%' gap={2} p={3} pt={1} flexDirection='column'>
-        <Flex gap={2} alignItems='center' flexDirection={{ base: "column", md: "row" }}>
-          <Textarea
-            width='100%'
-            flex={1}
-            variant='outline'
-            ref={textAreaRef}
-            resize='none'
-            disabled={chat.isLoading}
-            isInvalid={!!chat.error}
-            minHeight='unset'
-            maxHeight='10rem'
-            placeholder={getPlaceholderText(chat)}
-            value={chat.input}
-            onChange={chat.handleInputChange}
-            spellCheck={false}
-            // make sure inline grammarly popup is off, its annoying and not really needed here
-            data-gramm='false'
-            data-gramm_editor='false'
-            data-enable-grammarly='false'
-          />
-          <Flex gap='inherit' width={{ base: "100%", md: "unset" }} justifyContent='space-evenly'>
-            {chat.isLoading ? (
-              <Button
-                variant='ghost'
-                colorScheme='orange'
-                leftIcon={<Spinner />}
-                onClick={chat.stop}
-              >
-                Stop
-              </Button>
-            ) : (
-              <Button type='submit' variant='ghost' colorScheme='green' isDisabled={!chat.input}>
-                Send
-              </Button>
-            )}
-          </Flex>
+    <Flex width='100%' gap={2} p={3} pt={1} flexDirection='column'>
+      {/* <form onSubmit={chat.handleSubmit}> */}
+      <Flex gap={2} alignItems='center' flexDirection={{ base: "column", md: "row" }}>
+        <Textarea
+          width='100%'
+          flex={1}
+          variant='outline'
+          ref={textAreaRef}
+          resize='none'
+          disabled={chat.isLoading}
+          isInvalid={!!chat.error}
+          // minHeight='unset'
+          // maxHeight='10rem'
+          placeholder={getPlaceholderText(chat)}
+          value={chat.input}
+          onChange={chat.handleInputChange}
+          spellCheck={false}
+          // make sure inline grammarly popup is off, its annoying and not really needed here
+          data-gramm='false'
+          data-gramm_editor='false'
+          data-enable-grammarly='false'
+        />
+        <Flex gap='inherit' width={{ base: "100%", md: "unset" }} justifyContent='space-evenly'>
+          {chat.isLoading ? (
+            <Button
+              key='stop'
+              variant='ghost'
+              colorScheme='orange'
+              leftIcon={<Spinner />}
+              onClick={chat.stop}
+            >
+              Stop
+            </Button>
+          ) : (
+            <Button
+              key='send'
+              type='submit'
+              variant='ghost'
+              colorScheme='green'
+              isDisabled={!chat.input}
+            >
+              Send
+            </Button>
+          )}
         </Flex>
       </Flex>
-    </form>
+      {/* </form> */}
+    </Flex>
   );
 
   return (
-    <HStack as='section' height='100%' width='100%'>
-      <Center m={3}>
-        <Heading>{scenario}</Heading>
-      </Center>
+    <Box height='100%' position='relative' padding={2}>
       <Grid
-        overflow='hidden'
-        gap={1}
-        templateRows='1fr auto'
-        pt={0}
+        as='section'
+        // height='100dvh'
         width='100%'
-        // minWidth='330px'
-        maxWidth='800px'
-        margin='auto'
-        height='inherit'
+        // templateRows='100%'
+        templateColumns='1fr 1fr'
+        position='absolute'
+        inset={0}
+        padding={2}
+        gap={2}
       >
-        {messagesList}
-        {controls}
+        <Box m={3} overflow='auto'>
+          {scenario.split(".").map((sentence) => {
+            return (
+              <Heading key={sentence} as='p' mb={5}>
+                {sentence}.
+              </Heading>
+            );
+          })}
+        </Box>
+        <Grid
+          overflow='hidden'
+          gap={1}
+          templateRows='1fr auto'
+          pt={0}
+          // width='100%'
+          // minWidth='330px'
+          // maxWidth='800px'
+          // margin='auto'
+          // height='inherit'
+        >
+          {messagesList}
+          {controls}
+        </Grid>
       </Grid>
-    </HStack>
+    </Box>
   );
 }
 

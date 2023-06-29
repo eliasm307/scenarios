@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   experimental: {
-    serverActions: true,
+    // serverActions: true,
   },
   webpack: (config) => {
     // see https://github.com/vercel/next.js/discussions/49432#discussioncomment-5884572

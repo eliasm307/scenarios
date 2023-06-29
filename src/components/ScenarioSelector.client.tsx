@@ -35,7 +35,7 @@ export default function ScenarioSelector({ onScenarioSelected }: Props) {
 
   if (state === "loading") {
     return (
-      <Center>
+      <Center as='section'>
         <Spinner />
       </Center>
     );
@@ -43,14 +43,14 @@ export default function ScenarioSelector({ onScenarioSelected }: Props) {
 
   if (!scenarios.length) {
     return (
-      <VStack mx={3}>
+      <VStack as='section' mx={3}>
         <Button onClick={() => generateScenarios()}>Generate New Scenarios</Button>
       </VStack>
     );
   }
 
   return (
-    <VStack mx={3}>
+    <VStack as='section' mx={3}>
       <Heading>Vote for a Scenario to Play!</Heading>
       <Grid fontSize='2xl' templateColumns={{ base: "1fr", md: "1fr 1fr" }} gap={3} p={3}>
         {scenarios.map((scenarioText) => (

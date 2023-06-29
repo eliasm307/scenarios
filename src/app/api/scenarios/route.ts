@@ -4,6 +4,9 @@ import { NextResponse } from "next/server";
 import type { CreateChatCompletionResponse } from "openai-edge";
 import { openai } from "../../../utils/server/openai";
 
+// IMPORTANT! Set the runtime to edge
+export const runtime = "edge";
+
 export type GetScenariosResponseBody = {
   scenarios: string[];
 };

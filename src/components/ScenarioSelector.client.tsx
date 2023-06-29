@@ -18,6 +18,7 @@ type Props = {
   onScenarioSelected: (scenario: string) => void;
 };
 
+// todo rename to scenario generator
 export default function ScenarioSelector({ onScenarioSelected }: Props) {
   const [scenarios, setScenarios] = useState<string[]>([
     "You discover a magical book that can grant any wish, but each wish shortens your life by five years. Would you use the book?",
@@ -35,7 +36,7 @@ export default function ScenarioSelector({ onScenarioSelected }: Props) {
 
   if (state === "loading") {
     return (
-      <Center as='section'>
+      <Center as='section' height='100%'>
         <Spinner />
       </Center>
     );

@@ -4,7 +4,7 @@ import { Box, Button, Divider, Flex, Grid, Heading, Spinner, Textarea } from "@c
 import type { Message } from "ai";
 import type { UseChatHelpers } from "ai/react";
 import { useChat } from "ai/react";
-import { useRef } from "react";
+import { useCallback, useRef } from "react";
 import ChatMessage from "./ChatMessage";
 
 type Props = {
@@ -49,6 +49,7 @@ export default function ScenarioChat({ scenario, existing }: Props) {
   });
   const messagesListRef = useRef<HTMLDivElement>(null);
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
+  const formRef = useRef<HTMLFormElement>(null);
 
   const messagesList = (
     <Flex width='100%' ref={messagesListRef} direction='column' overflow='auto' tabIndex={0}>
@@ -68,54 +69,73 @@ export default function ScenarioChat({ scenario, existing }: Props) {
     </Flex>
   );
 
+  const handleInputKeyDown = useCallback(async (e: React.KeyboardEvent) => {
+    if (e.key !== "Enter") {
+      return;
+    }
+    const hasUserInput = !!textAreaRef.current?.value;
+    // allow for multiline input, ie shift enter which is not for confirming
+    const isConfirmEnter = !e.shiftKey;
+    if (isConfirmEnter) {
+      if (hasUserInput && formRef.current) {
+        // submit user message only if there is input
+        formRef.current.requestSubmit();
+      } else {
+        // prevent new line on empty input
+        e.preventDefault();
+      }
+    }
+  }, []);
+
   const controls = (
     <Flex width='100%' gap={2} p={3} pt={1} flexDirection='column'>
-      {/* <form onSubmit={chat.handleSubmit}> */}
-      <Flex gap={2} alignItems='center' flexDirection={{ base: "column", md: "row" }}>
-        <Textarea
-          width='100%'
-          flex={1}
-          variant='outline'
-          ref={textAreaRef}
-          resize='none'
-          disabled={chat.isLoading}
-          isInvalid={!!chat.error}
-          // minHeight='unset'
-          // maxHeight='10rem'
-          placeholder={getPlaceholderText(chat)}
-          value={chat.input}
-          onChange={chat.handleInputChange}
-          spellCheck={false}
-          // make sure inline grammarly popup is off, its annoying and not really needed here
-          data-gramm='false'
-          data-gramm_editor='false'
-          data-enable-grammarly='false'
-        />
-        <Flex gap='inherit' width={{ base: "100%", md: "unset" }} justifyContent='space-evenly'>
-          {chat.isLoading ? (
-            <Button
-              key='stop'
-              variant='ghost'
-              colorScheme='orange'
-              leftIcon={<Spinner />}
-              onClick={chat.stop}
-            >
-              Stop
-            </Button>
-          ) : (
-            <Button
-              key='send'
-              type='submit'
-              variant='ghost'
-              colorScheme='green'
-              isDisabled={!chat.input}
-            >
-              Send
-            </Button>
-          )}
+      <form ref={formRef} onSubmit={chat.handleSubmit}>
+        <Flex gap={2} alignItems='center' flexDirection={{ base: "column", md: "row" }}>
+          <Textarea
+            width='100%'
+            flex={1}
+            variant='outline'
+            ref={textAreaRef}
+            resize='none'
+            disabled={chat.isLoading}
+            isInvalid={!!chat.error}
+            // minHeight='unset'
+            // maxHeight='10rem'
+            placeholder={getPlaceholderText(chat)}
+            value={chat.input}
+            onChange={chat.handleInputChange}
+            onKeyDown={handleInputKeyDown}
+            spellCheck={false}
+            // make sure inline grammarly popup is off, its annoying and not really needed here
+            data-gramm='false'
+            data-gramm_editor='false'
+            data-enable-grammarly='false'
+          />
+          <Flex gap='inherit' width={{ base: "100%", md: "unset" }} justifyContent='space-evenly'>
+            {chat.isLoading ? (
+              <Button
+                key='stop'
+                variant='ghost'
+                colorScheme='orange'
+                leftIcon={<Spinner />}
+                onClick={chat.stop}
+              >
+                Stop
+              </Button>
+            ) : (
+              <Button
+                key='send'
+                type='submit'
+                variant='ghost'
+                colorScheme='green'
+                isDisabled={!chat.input}
+              >
+                Send
+              </Button>
+            )}
+          </Flex>
         </Flex>
-      </Flex>
-      {/* </form> */}
+      </form>
     </Flex>
   );
 

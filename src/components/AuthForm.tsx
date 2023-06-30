@@ -8,7 +8,7 @@ import { Button, Center, Flex, Grid, Heading, Spinner, VStack } from "@chakra-ui
 import { useEffect, useState } from "react";
 import { css } from "@emotion/react";
 import { useRouter } from "next/navigation";
-import type { Database } from "../supabase";
+import type { Database } from "../types/supabase";
 
 // see https://supabase.com/docs/guides/auth#redirect-urls-and-wildcards
 // const getURL = () => {

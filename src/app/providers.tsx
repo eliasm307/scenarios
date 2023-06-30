@@ -6,22 +6,10 @@ import type { User } from "@supabase/auth-helpers-nextjs";
 import { createContext, useContext, useMemo, useState } from "react";
 import { getSupabaseClient } from "../utils/client/supabase";
 
-export function Providers({
-  user,
-  profile,
-  children,
-}: {
-  user: User;
-  profile: UserProfile;
-  children: React.ReactNode;
-}) {
+export function CommonProviders({ children }: { children: React.ReactNode }) {
   return (
     <CacheProvider>
-      <ChakraProvider>
-        <UserProvider user={user} initialProfile={profile}>
-          {children}
-        </UserProvider>
-      </ChakraProvider>
+      <ChakraProvider>{children}</ChakraProvider>
     </CacheProvider>
   );
 }
@@ -38,7 +26,7 @@ export type UserContext = {
 
 const userContext = createContext<UserContext | null>(null);
 
-function UserProvider({
+export function UserProvider({
   children,
   user,
   initialProfile,

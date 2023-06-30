@@ -1,8 +1,7 @@
 /* eslint-disable no-console */
 import "./globals.css";
 import type { Metadata } from "next";
-import { redirect } from "next/navigation";
-import { Providers } from "./providers";
+import { CommonProviders, UserProvider } from "./providers";
 import { getSupabaseServer } from "../utils/server/supabase";
 
 export const metadata: Metadata = {
@@ -20,38 +19,45 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) {
-    redirect("/auth");
-    return;
+  if (user) {
+    let { data: profile } = await supabase
+      .from("user_profiles")
+      .select("user_name")
+      .eq("user_id", user.id)
+      .single();
+
+    if (!profile) {
+      profile = {
+        user_name: user.email || "Anon User 🥷🏾",
+      };
+
+      console.log("creating a user profile for the user because none exists...");
+      await supabase.from("user_profiles").upsert({
+        ...profile,
+        user_id: user.id,
+      });
+      console.log("user profile created!");
+    } else {
+      console.log("user profile already exists");
+    }
+
+    return (
+      <CommonWrapper>
+        <UserProvider user={user} initialProfile={profile}>
+          {children}
+        </UserProvider>
+      </CommonWrapper>
+    );
   }
 
-  let { data: profile } = await supabase
-    .from("user_profiles")
-    .select("user_name")
-    .eq("user_id", user.id)
-    .single();
+  return <CommonWrapper>{children}</CommonWrapper>;
+}
 
-  if (!profile) {
-    profile = {
-      user_name: user.email || "Anon User 🥷🏾",
-    };
-
-    console.log("creating a user profile for the user because none exists...");
-    await supabase.from("user_profiles").upsert({
-      ...profile,
-      user_id: user.id,
-    });
-    console.log("user profile created!");
-  } else {
-    console.log("user profile already exists");
-  }
-
+function CommonWrapper({ children }: { children: React.ReactNode }) {
   return (
     <html lang='en' suppressHydrationWarning>
       <body suppressHydrationWarning>
-        <Providers user={user} profile={profile}>
-          {children}
-        </Providers>
+        <CommonProviders>{children}</CommonProviders>
       </body>
     </html>
   );

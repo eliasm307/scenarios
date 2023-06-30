@@ -13,7 +13,7 @@ type Props = {
   };
 };
 
-export default function Session({ sessionId, existing }: Props) {
+export default function GameSession({ sessionId, existing }: Props): React.ReactElement {
   const [scenario, setScenario] = useState(
     existing?.scenario ??
       "" ??

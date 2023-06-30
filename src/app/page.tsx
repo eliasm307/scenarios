@@ -1,7 +1,7 @@
 import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
 import { cookies } from "next/headers";
 import { Box, Grid } from "../components/ChakraUI.client";
-import SignInButton from "../components/SignInButton";
+import { SignInButton } from "../components/Buttons";
 import Session from "../components/Session.client";
 import NavBar from "../components/NavBar.client";
 

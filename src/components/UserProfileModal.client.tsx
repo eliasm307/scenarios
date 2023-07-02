@@ -29,7 +29,7 @@ export default function UserProfileModal({ disclosure: { isOpen, onClose } }: Pr
   const toast = useToast();
   const [userNameValidationMessage, setUserNameValidationMessage] = useState("");
   const userContext = useUserContext();
-  const [userName, setUserName] = useState(userContext.profile.user_name);
+  const [userName, setUserName] = useState(userContext.userProfile.user_name);
 
   useEffect(() => {
     if (!isOpen) {

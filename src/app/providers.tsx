@@ -20,7 +20,7 @@ type UserProfile = {
 
 export type UserContext = {
   user: User;
-  profile: UserProfile;
+  userProfile: UserProfile;
   setUserName: (userName: string) => Promise<{ errorMessage?: string }>;
 };
 

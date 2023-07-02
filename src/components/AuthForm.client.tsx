@@ -11,18 +11,20 @@ import { useRouter } from "next/navigation";
 import type { Database } from "../types/supabase";
 
 // see https://supabase.com/docs/guides/auth#redirect-urls-and-wildcards
-// const getURL = () => {
-//   let url =
-//     process?.env?.NEXT_PUBLIC_SITE_URL ?? // Set this to your site URL in production env.
-//     process?.env?.NEXT_PUBLIC_VERCEL_URL ?? // Automatically set by Vercel.
-//     "http://localhost:3000/";
-//   // Make sure to include `https://` when not localhost.
-//   url = url.includes("http") ? url : `https://${url}`;
-//   // Make sure to including trailing `/`.
-//   url = url.charAt(url.length - 1) === "/" ? url : `${url}/`;
+const getURL = () => {
+  let url =
+    process?.env?.NEXT_PUBLIC_SITE_URL ?? // Set this to your site URL in production env.
+    process?.env?.NEXT_PUBLIC_VERCEL_URL ?? // Automatically set by Vercel.
+    "http://localhost:3000/";
+  console.log("selected base url", url);
+  // Make sure to include `https://` when not localhost.
+  url = url.includes("http") ? url : `https://${url}`;
+  // Make sure to including trailing `/`.
+  url = url.charAt(url.length - 1) === "/" ? url : `${url}/`;
+  console.log("output base url", url);
 
-//   return url;
-// };
+  return url;
+};
 
 const viewTypes: ViewType[] = [
   "sign_in",
@@ -92,6 +94,9 @@ export default function AuthForm() {
     );
   }
 
+  const redirectUrl = new URL("auth/callback", getURL());
+  console.log("redirectUrl", redirectUrl);
+
   return (
     <Grid
       as='main'
@@ -129,7 +134,7 @@ export default function AuthForm() {
           showLinks={false}
           // see https://supabase.com/docs/guides/auth#providers
           providers={[]}
-          redirectTo={new URL("auth/callback", location.origin).href}
+          redirectTo={redirectUrl.href}
         />
         <Heading>Or</Heading>
         <VStack width='inherit'>

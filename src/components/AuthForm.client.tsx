@@ -129,7 +129,7 @@ export default function AuthForm() {
           showLinks={false}
           // see https://supabase.com/docs/guides/auth#providers
           providers={[]}
-          redirectTo='/auth/callback'
+          redirectTo={new URL("auth/callback", location.origin).href}
         />
         <Heading>Or</Heading>
         <VStack width='inherit'>

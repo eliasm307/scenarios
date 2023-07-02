@@ -10,7 +10,7 @@ export default async function SessionPage({ params: { id } }: { params: { id: st
   return (
     <Grid minHeight='100dvh' overflow='hidden' templateRows='auto 1fr' position='fixed' inset={0}>
       <NavBar zIndex={2} />
-      <Box zIndex={1}>
+      <Box zIndex={1} overflowY='auto'>
         <GameSession
           sessionId={id}
           // todo check db for existing scenario and messages and set them here

@@ -56,8 +56,8 @@ export default function ScenarioSelector({
   }
 
   return (
-    <VStack as='section' mx={3}>
-      <Heading>Vote for a Scenario to Play!</Heading>
+    <VStack as='section' m={3}>
+      <Heading textAlign='center'>Vote for a Scenario to Play!</Heading>
       {/* todo this should be a scenario voting component */}
       <ChoiceGrid
         choices={[

@@ -16,12 +16,10 @@ const getURL = () => {
     process?.env?.NEXT_PUBLIC_SITE_URL ?? // Set this to your site URL in production env.
     process?.env?.NEXT_PUBLIC_VERCEL_URL ?? // Automatically set by Vercel.
     "http://localhost:3000/";
-  console.log("selected base url", url);
-  // Make sure to include `https://` when not localhost.
+  // Make sure to include `https://` when not localhost, as vercel urls dont include this.
   url = url.includes("http") ? url : `https://${url}`;
   // Make sure to including trailing `/`.
   url = url.charAt(url.length - 1) === "/" ? url : `${url}/`;
-  console.log("output base url", url);
 
   return url;
 };

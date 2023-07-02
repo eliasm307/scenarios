@@ -13,17 +13,7 @@ export async function middleware(req: NextRequest) {
     error,
   } = await supabase.auth.getSession();
 
-  console.log(
-    "middleware",
-    "request url",
-    req.url,
-    "session user",
-    session,
-    session?.user,
-    "error",
-    error,
-    error?.message,
-  );
+  console.log("middleware", { hasUser: !!session?.user, error });
 
   // if user is signed in and the current path is / redirect the user to /account
   if (session?.user && req.nextUrl.pathname === "/auth") {

@@ -1,4 +1,5 @@
 /* eslint-disable no-console */
+// example https://github.com/supabase/realtime/blob/main/demo/pages/%5B...slug%5D.tsx
 
 "use client";
 
@@ -41,7 +42,9 @@ export default function GameSession({ sessionId, existing, initial }: Props): Re
   const channelRef = React.useRef<RealtimeChannel>();
 
   useEffect(() => {
-    const channelA = getSupabaseClient().channel("room-1", {
+    const prescenceKey = `Session-${sessionId}`;
+    const supabase = getSupabaseClient();
+    const channelA = supabase.channel("room-1", {
       config: {
         broadcast: {
           // wait for server to acknowledge sent messages before resolving send message promise
@@ -50,34 +53,52 @@ export default function GameSession({ sessionId, existing, initial }: Props): Re
           self: false,
         },
         presence: {
-          key: `Session-${sessionId}`,
+          key: prescenceKey,
         },
       },
     });
 
     channelRef.current = channelA;
 
+    // ! prescence state seems to be readonly after being tracked, need to listen to broadcast or DB events to update state
     channelA
       .on("presence", { event: "sync" }, () => {
         const newState = channelA.presenceState<UserPresenceState>();
-        console.log("sync", newState);
+        const prescences = newState[prescenceKey];
+        const userNames = prescences.map((p) => p.userName);
+        console.log("sync", userNames);
+        toast({
+          title: `SYNC: ${userNames.join(", ")} are here`,
+        });
       })
       .on<UserPresenceState>(
         "presence",
         { event: "join" },
-        ({ key, newPresences, currentPresences }) => {
-          console.log("join", key, newPresences, currentPresences);
-          toast({
-            title: `${key} joined`,
+        ({ key: sessionPresenceKey, newPresences, currentPresences }) => {
+          console.log("join", {
+            sessionPresenceKey,
+            newPresences,
+            currentPresences,
+          });
+          newPresences.forEach((presence) => {
+            toast({
+              title: `${presence.userName} joined`,
+            });
           });
         },
       )
-      .on<UserPresenceState>("presence", { event: "leave" }, ({ key, leftPresences }) => {
-        console.log("leave", key, leftPresences);
-        toast({
-          title: `${key} left`,
-        });
-      })
+      .on<UserPresenceState>(
+        "presence",
+        { event: "leave" },
+        ({ key: sessionPresenceKey, leftPresences, currentPresences }) => {
+          console.log("leave", { sessionPresenceKey, leftPresences, currentPresences });
+          leftPresences.forEach((presence) => {
+            toast({
+              title: `${presence.userName} left`,
+            });
+          });
+        },
+      )
       .subscribe(async (status, error) => {
         // ? when do these fire?
         if (status === "SUBSCRIBED") {
@@ -101,7 +122,7 @@ export default function GameSession({ sessionId, existing, initial }: Props): Re
       });
 
     return () => {
-      void channelA.untrack().then(() => channelA.unsubscribe());
+      void supabase.removeChannel(channelA);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- only run once
   }, []);
@@ -110,9 +131,15 @@ export default function GameSession({ sessionId, existing, initial }: Props): Re
     if (channelRef.current) {
       const prescenceState = channelRef.current.presenceState<UserPresenceState>();
 
+      toast({
+        title: `Local name change to ${userProfile.user_name}`,
+      });
+      channelRef.current.presence.state;
+
       // todo implement
       console.log("to handle my username change prescenceState", prescenceState);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only run once
   }, [userProfile.user_name]);
 
   if (!scenario) {

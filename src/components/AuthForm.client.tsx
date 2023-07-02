@@ -65,10 +65,12 @@ export default function AuthForm() {
 
   useEffect(() => {
     supabase.auth.onAuthStateChange((_event, session) => {
+      console.log("onAuthStateChange", session?.user.id);
       setIsSignedIn(!!session?.user);
     });
     void supabase.auth.getSession().then((session) => {
-      if (session) {
+      if (session.data.session?.user) {
+        console.log("getSession", session.data.session.user.id);
         setIsSignedIn(true);
       }
     });
@@ -76,6 +78,7 @@ export default function AuthForm() {
   }, []);
 
   useEffect(() => {
+    console.log("isSignedIn", isSignedIn);
     if (isSignedIn) {
       void router.push("/");
     }

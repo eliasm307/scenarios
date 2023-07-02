@@ -5,7 +5,7 @@ import type { ViewType } from "@supabase/auth-ui-shared";
 import { ThemeSupa } from "@supabase/auth-ui-shared";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { Button, Center, Flex, Grid, Heading, Spinner, VStack } from "@chakra-ui/react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { css } from "@emotion/react";
 import { useRouter } from "next/navigation";
 import type { Database } from "../types/supabase";
@@ -55,16 +55,14 @@ export default function AuthForm() {
   const router = useRouter();
   const [isSignedIn, setIsSignedIn] = useState(false);
 
-  const supabase = createClientComponentClient<Database>();
+  const supabase = useMemo(() => createClientComponentClient<Database>(), []);
 
   useEffect(() => {
     supabase.auth.onAuthStateChange((_event, session) => {
-      console.log("onAuthStateChange", session?.user.id);
       setIsSignedIn(!!session?.user);
     });
     void supabase.auth.getSession().then((session) => {
       if (session.data.session?.user) {
-        console.log("getSession", session.data.session.user.id);
         setIsSignedIn(true);
       }
     });
@@ -72,11 +70,12 @@ export default function AuthForm() {
   }, []);
 
   useEffect(() => {
-    console.log("isSignedIn", isSignedIn);
     if (isSignedIn) {
       void router.push("/");
     }
   }, [isSignedIn, router]);
+
+  const redirectUrl = useMemo(() => new URL("/auth/callback", getURL()).href, []);
 
   if (isSignedIn) {
     return (
@@ -85,9 +84,6 @@ export default function AuthForm() {
       </Center>
     );
   }
-
-  const redirectUrl = new URL("/auth/callback", getURL()).href;
-  console.log("redirectUrl", redirectUrl);
 
   return (
     <Grid

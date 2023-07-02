@@ -135,6 +135,8 @@ export default function AuthForm() {
           // see https://supabase.com/docs/guides/auth#providers
           providers={[]}
           redirectTo={redirectUrl.href}
+          magicLink
+          otpType='magiclink'
         />
         <Heading>Or</Heading>
         <VStack width='inherit'>

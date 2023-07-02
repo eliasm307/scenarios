@@ -6,6 +6,7 @@ const nextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
+  productionBrowserSourceMaps: true,
   webpack: (config) => {
     // see https://github.com/vercel/next.js/discussions/49432#discussioncomment-5884572
     /* On `node-fetch` v2, that `supabase-js` uses,

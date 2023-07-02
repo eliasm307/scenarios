@@ -35,12 +35,12 @@ export function UserProvider({
   user: User;
   initialProfile: UserProfile;
 }) {
-  const [profile, setProfile] = useState<UserProfile>(initialProfile);
+  const [userProfile, setProfile] = useState<UserProfile>(initialProfile);
 
   const value = useMemo(
     () => ({
       user,
-      profile,
+      userProfile,
       setUserName: async (user_name: string) => {
         const result = await getSupabaseClient()
           .from("user_profiles")
@@ -52,7 +52,7 @@ export function UserProvider({
         };
       },
     }),
-    [user, profile],
+    [user, userProfile],
   );
 
   return <userContext.Provider value={value}>{children}</userContext.Provider>;

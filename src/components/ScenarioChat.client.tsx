@@ -50,7 +50,6 @@ export default function ScenarioChat({ scenario, existing }: Props) {
   const messagesListRef = useRef<HTMLDivElement>(null);
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
-
   useAutoScrolling({
     messages: chat.messages,
     messagesListEl: messagesListRef.current,

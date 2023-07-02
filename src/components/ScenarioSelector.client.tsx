@@ -8,21 +8,34 @@ import ChoiceGrid from "./ChoiceCard.client";
 
 type Props = {
   onScenarioSelected: (scenario: string) => void;
+  initialScenarioOptions: string[];
 };
 
-// todo rename to scenario generator
-export default function ScenarioSelector({ onScenarioSelected }: Props): React.ReactElement {
-  const [scenarios, setScenarios] = useState<string[]>([
-    "You discover a magical book that can grant any wish, but each wish shortens your life by five years. Would you use the book?",
-    "You're a scientist who has discovered a cure for a rare, deadly disease. However, the cure involves a procedure that is considered highly unethical. Do you proceed to save lives?",
-    "You're a struggling artist and a wealthy collector offers to buy all your work for a sum that would solve all your financial problems. But he intends to destroy all the art after purchase. Do you sell your art to him?",
-  ]);
+type ScenarioOption = {
+  text: string;
+  id: string;
+};
+
+function scenarioTextToOption(scenarioText: string, id: number): ScenarioOption {
+  return {
+    id: String(id),
+    text: scenarioText,
+  };
+}
+
+export default function ScenarioSelector({
+  onScenarioSelected,
+  initialScenarioOptions,
+}: Props): React.ReactElement {
+  const [scenarios, setScenarios] = useState<{ text: string; id: string }[]>(() => {
+    return initialScenarioOptions.map(scenarioTextToOption);
+  });
   const [state, setState] = useState<"idle" | "loading">("idle");
 
   const generateScenarios = useCallback(async (abortSignal?: AbortSignal) => {
     setState("loading");
     const response = await APIClient.getScenarios(abortSignal);
-    setScenarios(response.scenarios);
+    setScenarios(response.scenarios.map(scenarioTextToOption));
     setState("idle");
   }, []);
 
@@ -45,15 +58,17 @@ export default function ScenarioSelector({ onScenarioSelected }: Props): React.R
   return (
     <VStack as='section' mx={3}>
       <Heading>Vote for a Scenario to Play!</Heading>
+      {/* todo this should be a scenario voting component */}
       <ChoiceGrid
         choices={[
           ...scenarios.map(
-            (scenarioText): ChoiceConfig => ({
-              text: scenarioText,
-              onSelect: () => onScenarioSelected(scenarioText),
+            (scenario): ChoiceConfig => ({
+              ...scenario,
+              onSelect: () => onScenarioSelected(scenario.text),
             }),
           ),
           {
+            id: "re-generate",
             text: "🆕 Vote to generate new scenarios",
             onSelect: generateScenarios,
           },

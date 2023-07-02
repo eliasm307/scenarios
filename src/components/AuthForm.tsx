@@ -65,9 +65,7 @@ export default function AuthForm() {
   });
 
   useEffect(() => {
-    // eslint-disable-next-line promise/catch-or-return, @typescript-eslint/no-floating-promises
-    supabase.auth.getSession().then((session) => {
-      // eslint-disable-next-line promise/always-return
+    void supabase.auth.getSession().then((session) => {
       if (session) {
         setIsSignedIn(true);
       }

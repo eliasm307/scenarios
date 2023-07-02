@@ -6,6 +6,8 @@ import { Card, CardBody, Grid, Text } from "@chakra-ui/react";
 import type { ReactElement } from "react";
 
 export type ChoiceConfig = {
+  /** Used to refer to this choice */
+  id: string;
   text: string;
   onSelect: () => void;
 };
@@ -28,6 +30,7 @@ function ChoiceCard({ text, onSelect }: { text: string; onSelect: () => void }) 
       _hover={{ outline: "5px solid green", cursor: "pointer" }}
     >
       <CardBody display='grid' placeContent='center'>
+        {/* todo show id in upper case */}
         <Text align='center' marginTop='auto' display='block'>
           {text}
         </Text>

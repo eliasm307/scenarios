@@ -38,11 +38,10 @@ export default function GameSession({ sessionId, existing, initial }: Props): Re
   );
   const { user, userProfile } = useUserContext();
   const toast = useToast();
-
   const channelRef = React.useRef<RealtimeChannel>();
 
   useEffect(() => {
-    const prescenceKey = `Session-${sessionId}`;
+    const presenceKey = `Session-${sessionId}`;
     const supabase = getSupabaseClient();
     const channelA = supabase.channel("room-1", {
       config: {
@@ -53,7 +52,7 @@ export default function GameSession({ sessionId, existing, initial }: Props): Re
           self: false,
         },
         presence: {
-          key: prescenceKey,
+          key: presenceKey,
         },
       },
     });
@@ -64,7 +63,7 @@ export default function GameSession({ sessionId, existing, initial }: Props): Re
     channelA
       .on("presence", { event: "sync" }, () => {
         const newState = channelA.presenceState<UserPresenceState>();
-        const prescences = newState[prescenceKey];
+        const prescences = newState[presenceKey];
         const userNames = prescences.map((p) => p.userName);
         console.log("sync", userNames);
         toast({

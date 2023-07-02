@@ -24,14 +24,6 @@ export default function HomeOptions(): React.ReactElement {
           void router.push("/sessions/1");
         },
       },
-      {
-        id: "join",
-        text: "Join an existing session",
-        onSelect: () => {
-          setState("loading");
-          console.log("join existing session");
-        },
-      },
     ];
   }, [router]);
 

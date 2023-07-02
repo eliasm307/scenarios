@@ -55,22 +55,24 @@ function getViewTypeDescription(viewType: ViewType) {
 }
 
 export default function AuthForm() {
-  const supabase = createClientComponentClient<Database>();
+  console.log("AuthForm");
   const [currentViewType, setCurrentViewType] = useState<ViewType>("magic_link");
   const router = useRouter();
   const [isSignedIn, setIsSignedIn] = useState(false);
 
-  supabase.auth.onAuthStateChange((_event, session) => {
-    setIsSignedIn(!!session?.user);
-  });
+  const supabase = createClientComponentClient<Database>();
 
   useEffect(() => {
+    supabase.auth.onAuthStateChange((_event, session) => {
+      setIsSignedIn(!!session?.user);
+    });
     void supabase.auth.getSession().then((session) => {
       if (session) {
         setIsSignedIn(true);
       }
     });
-  }, [supabase.auth]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (isSignedIn) {

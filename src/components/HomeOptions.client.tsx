@@ -5,15 +5,17 @@
 import { useRouter } from "next/navigation";
 import React, { useMemo, useState } from "react";
 import { Center, Spinner } from "@chakra-ui/react";
+import type { ChoiceConfig } from "./ChoiceCard.client";
 import ChoiceGrid from "./ChoiceCard.client";
 
 export default function HomeOptions(): React.ReactElement {
   const router = useRouter();
   const [state, setState] = useState<"idle" | "loading">("idle");
 
-  const choices = useMemo(() => {
+  const choices = useMemo((): ChoiceConfig[] => {
     return [
       {
+        id: "create",
         text: "Create a new session",
         onSelect: () => {
           console.log("create new session");
@@ -23,6 +25,7 @@ export default function HomeOptions(): React.ReactElement {
         },
       },
       {
+        id: "join",
         text: "Join an existing session",
         onSelect: () => {
           setState("loading");

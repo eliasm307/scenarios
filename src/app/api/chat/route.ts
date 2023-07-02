@@ -12,6 +12,7 @@ export type ChatRequestBody = {
 
 export async function POST(req: Request) {
   const data = (await req.json()) as ChatRequestBody;
+  // eslint-disable-next-line no-console
   console.log("Chat request body", data);
   const { messages, scenario } = data;
 

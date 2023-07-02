@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 import { createMiddlewareClient } from "@supabase/auth-helpers-nextjs";
 import { NextResponse } from "next/server";
 
@@ -8,19 +9,30 @@ export async function middleware(req: NextRequest) {
   const supabase = createMiddlewareClient({ req, res });
 
   const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    data: { session },
+    error,
+  } = await supabase.auth.getSession();
 
-  console.log("middleware", "request url", req.url, "user", user?.id);
+  console.log(
+    "middleware",
+    "request url",
+    req.url,
+    "session user",
+    session,
+    session?.user,
+    "error",
+    error,
+    error?.message,
+  );
 
   // if user is signed in and the current path is / redirect the user to /account
-  if (user && req.nextUrl.pathname === "/auth") {
+  if (session?.user && req.nextUrl.pathname === "/auth") {
     console.log("middleware", "redirecting to /");
     return NextResponse.redirect(new URL("/", req.url));
   }
 
   // if user is not signed in and the current path is not / redirect the user to /
-  if (!user && req.nextUrl.pathname !== "/auth") {
+  if (!session?.user && req.nextUrl.pathname !== "/auth") {
     console.log("middleware", "redirecting to /auth");
     return NextResponse.redirect(new URL("/auth", req.url));
   }

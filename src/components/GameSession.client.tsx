@@ -23,13 +23,13 @@ type Props = {
 };
 
 type UserPresenceState = {
-  user: string;
+  userId: string;
   userName: string;
   online_at: string;
   foo: string;
 };
 
-export default function GameSession({ existing, initial }: Props): React.ReactElement {
+export default function GameSession({ sessionId, existing, initial }: Props): React.ReactElement {
   const [scenario, setScenario] = useState(
     existing?.scenario ??
       "" ??
@@ -50,7 +50,7 @@ export default function GameSession({ existing, initial }: Props): React.ReactEl
           self: false,
         },
         presence: {
-          key: user.id,
+          key: `Session-${sessionId}`,
         },
       },
     });
@@ -62,12 +62,16 @@ export default function GameSession({ existing, initial }: Props): React.ReactEl
         const newState = channelA.presenceState<UserPresenceState>();
         console.log("sync", newState);
       })
-      .on<UserPresenceState>("presence", { event: "join" }, ({ key, newPresences }) => {
-        console.log("join", key, newPresences);
-        toast({
-          title: `${key} joined`,
-        });
-      })
+      .on<UserPresenceState>(
+        "presence",
+        { event: "join" },
+        ({ key, newPresences, currentPresences }) => {
+          console.log("join", key, newPresences, currentPresences);
+          toast({
+            title: `${key} joined`,
+          });
+        },
+      )
       .on<UserPresenceState>("presence", { event: "leave" }, ({ key, leftPresences }) => {
         console.log("leave", key, leftPresences);
         toast({
@@ -78,7 +82,7 @@ export default function GameSession({ existing, initial }: Props): React.ReactEl
         // ? when do these fire?
         if (status === "SUBSCRIBED") {
           const presenceTrackStatus = await channelA.track({
-            user: user.id,
+            userId: user.id,
             userName: userProfile.user_name,
             online_at: new Date().toISOString(),
             foo: "bar",

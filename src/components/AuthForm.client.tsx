@@ -26,13 +26,7 @@ const getURL = () => {
   return url;
 };
 
-const viewTypes: ViewType[] = [
-  "sign_in",
-  "sign_up",
-  "forgotten_password",
-  "magic_link",
-  "update_password",
-];
+const viewTypes: ViewType[] = ["sign_in", "sign_up", "magic_link"];
 
 function getViewTypeDescription(viewType: ViewType) {
   switch (viewType) {
@@ -94,7 +88,7 @@ export default function AuthForm() {
     );
   }
 
-  const redirectUrl = new URL("auth/callback", getURL());
+  const redirectUrl = new URL("/auth/callback", getURL()).href;
   console.log("redirectUrl", redirectUrl);
 
   return (
@@ -134,9 +128,7 @@ export default function AuthForm() {
           showLinks={false}
           // see https://supabase.com/docs/guides/auth#providers
           providers={[]}
-          redirectTo={redirectUrl.href}
-          magicLink
-          otpType='magiclink'
+          redirectTo={redirectUrl}
         />
         <Heading>Or</Heading>
         <VStack width='inherit'>

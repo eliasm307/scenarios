@@ -1,6 +1,7 @@
 /* eslint-disable no-console */
 import "./globals.css";
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 import { CommonProviders, UserProvider } from "./providers";
 import { getSupabaseServer } from "../utils/server/supabase";
 
@@ -14,7 +15,7 @@ export const metadata: Metadata = {
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   console.log("RootLayout");
-  const supabase = getSupabaseServer();
+  const supabase = getSupabaseServer(cookies);
 
   const {
     data: { user },

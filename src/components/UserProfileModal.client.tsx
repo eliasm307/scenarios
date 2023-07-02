@@ -95,9 +95,9 @@ export default function UserProfileModal({ disclosure: { isOpen, onClose } }: Pr
   return (
     <Modal size='lg' onClose={onClose} isOpen={isOpen} isCentered>
       <ModalOverlay />
-      <ModalContent m={3}>
+      <ModalContent as='form' onSubmit={handleSave} m={3}>
         <ModalHeader>Update Profile</ModalHeader>
-        <ModalBody as='form' onSubmit={handleSave}>
+        <ModalBody>
           <FormControl height='100%' isInvalid={!!userNameValidationMessage}>
             <FormLabel>Display Name</FormLabel>
             <Input type='text' onChange={handleUserNameChange} value={userName} />

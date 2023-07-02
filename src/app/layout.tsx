@@ -21,6 +21,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   } = await supabase.auth.getUser();
 
   if (user) {
+    console.log("user found, loading profile...");
     let { data: profile } = await supabase
       .from("user_profiles")
       .select("user_name")
@@ -51,6 +52,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     );
   }
 
+  console.log("no user found");
   return <CommonWrapper>{children}</CommonWrapper>;
 }
 

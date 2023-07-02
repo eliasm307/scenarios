@@ -9,6 +9,9 @@ export async function GET(req: NextRequest) {
   const { searchParams, origin } = new URL(req.url);
   const code = searchParams.get("code");
 
+  // eslint-disable-next-line no-console
+  console.log("auth callback for request from", origin);
+
   if (code) {
     // this updates cookies with the session so server components can access it
     await getSupabaseServer().auth.exchangeCodeForSession(code);

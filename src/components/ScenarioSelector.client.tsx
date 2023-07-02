@@ -3,8 +3,8 @@
 import { Button, Center, Heading, Spinner, VStack } from "@chakra-ui/react";
 import { useCallback, useState } from "react";
 import APIClient from "../utils/client/APIClient";
-import type { ChoiceConfig } from "./ChoiceCard.client";
-import ChoiceGrid from "./ChoiceCard.client";
+import type { ChoiceConfig } from "./ChoiceGrid.client";
+import ChoiceGrid from "./ChoiceGrid.client";
 
 type Props = {
   onScenarioSelected: (scenario: string) => void;

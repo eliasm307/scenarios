@@ -5,8 +5,8 @@
 import { useRouter } from "next/navigation";
 import React, { useMemo, useState } from "react";
 import { Center, Spinner } from "@chakra-ui/react";
-import type { ChoiceConfig } from "./ChoiceCard.client";
-import ChoiceGrid from "./ChoiceCard.client";
+import type { ChoiceConfig } from "./ChoiceGrid.client";
+import ChoiceGrid from "./ChoiceGrid.client";
 
 export default function HomeOptions(): React.ReactElement {
   const router = useRouter();

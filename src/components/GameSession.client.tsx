@@ -1,5 +1,6 @@
 /* eslint-disable no-console */
 // example https://github.com/supabase/realtime/blob/main/demo/pages/%5B...slug%5D.tsx
+// example https://github.com/supabase/supabase/blob/master/examples/slack-clone/nextjs-slack-clone/lib/Store.js
 
 "use client";
 

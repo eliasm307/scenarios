@@ -1,10 +1,39 @@
+import "server-only";
+
+import { cookies } from "next/headers";
 import { Box, Grid } from "../../../components/ChakraUI.client";
 import NavBar from "../../../components/NavBar.client";
 import GameSession from "../../../components/GameSession.client";
+import { getSupabaseServer } from "../../../utils/server/supabase";
 
-export default async function SessionPage({ params: { id } }: { params: { id: string } }) {
-  if (typeof id !== "string") {
-    throw new Error(`Invalid session id type, expected string but got "${typeof id}" instead.`);
+export default async function SessionPage({
+  params: { id: sessionId },
+}: {
+  params: { id: string };
+}) {
+  if (typeof sessionId !== "string") {
+    throw new Error(
+      `Invalid session id type, expected string but got "${typeof sessionId}" instead.`,
+    );
+  }
+
+  const supabase = getSupabaseServer(cookies);
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    throw new Error("No user found");
+  }
+
+  const userProfile = await supabase
+    .from("user_profiles")
+    .select("user_name")
+    .eq("user_id", user.id)
+    .single();
+
+  if (!userProfile.data) {
+    throw new Error("No user profile found");
   }
 
   return (
@@ -12,7 +41,13 @@ export default async function SessionPage({ params: { id } }: { params: { id: st
       <NavBar zIndex={2} />
       <Box zIndex={1} overflowY='auto'>
         <GameSession
-          sessionId={id}
+          currentUser={{
+            id: user.id,
+            name: userProfile.data.user_name,
+            isMain: false,
+            joinedAtMs: 0,
+          }}
+          sessionId={sessionId}
           // todo check db for existing scenario and messages and set them here
           initial={{
             // todo only set this if there is no existing selected scenario

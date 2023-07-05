@@ -17,9 +17,12 @@ import {
 } from "./ChakraUI.client";
 import { HamburgerIcon } from "./Icons";
 import UserProfileModal from "./UserProfileModal.client";
+import type { UserContext } from "../app/providers";
+import { useUserContext } from "../app/providers";
 
 type NavBarItemsProps = {
   onEditProfile?: () => void;
+  userContext: UserContext;
 };
 
 function SignOutMenuItem() {
@@ -30,10 +33,10 @@ function SignOutMenuItem() {
   );
 }
 
-function UpdateProfileButton({ onEditProfile }: NavBarItemsProps) {
+function UpdateProfileButton({ onEditProfile, userContext }: NavBarItemsProps) {
   return (
     <Button onClick={onEditProfile} variant='outline'>
-      Update Profile
+      {userContext.userProfile.user_name}
     </Button>
   );
 }
@@ -82,6 +85,7 @@ function MobileNavBarItems(config: NavBarItemsProps) {
 
 export default function NavBar(flexProps: FlexProps) {
   const userProfileModalDisclosure = useDisclosure();
+  const user = useUserContext();
   return (
     <Flex alignItems='center' px={3} py={2} m={0} gap={3} boxShadow='md' {...flexProps}>
       <Heading as='h1' flex={1} fontSize='2xl'>
@@ -89,10 +93,13 @@ export default function NavBar(flexProps: FlexProps) {
       </Heading>
       <Flex gap='inherit'>
         <Show above='md'>
-          <DesktopNavBarItems onEditProfile={userProfileModalDisclosure.onOpen} />
+          <DesktopNavBarItems
+            userContext={user}
+            onEditProfile={userProfileModalDisclosure.onOpen}
+          />
         </Show>
         <Show below='md'>
-          <MobileNavBarItems onEditProfile={userProfileModalDisclosure.onOpen} />
+          <MobileNavBarItems userContext={user} onEditProfile={userProfileModalDisclosure.onOpen} />
         </Show>
       </Flex>
       <UserProfileModal disclosure={userProfileModalDisclosure} />

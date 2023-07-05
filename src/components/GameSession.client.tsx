@@ -13,12 +13,6 @@ import ScenarioChat from "./ScenarioChat.client";
 import { getSupabaseClient } from "../utils/client/supabase";
 import type { BroadcastEventFrom, SessionUser } from "../types";
 
-type UserPresenceState = {
-  userId: string;
-  initialUserName: string;
-  online_at_ms: number;
-};
-
 type State = {
   users: SessionUser[];
   currentUser: SessionUser;
@@ -26,14 +20,8 @@ type State = {
 
 type Action =
   | {
-      event: "userJoined";
-      data: UserPresenceState;
-    }
-  | {
-      event: "userLeft";
-      data: {
-        userId: string;
-      };
+      event: "usersUpdated";
+      data: SessionUser[];
     }
   | {
       event: BroadcastEventName.UserNameUpdated;
@@ -49,50 +37,25 @@ function reducer(state: State, action: Action): State {
   }
 
   switch (action.event) {
-    case "userJoined": {
-      const userAlreadyExists = state.users.some((user) => user.id === action.data.userId);
-      if (userAlreadyExists) {
-        return state;
-      }
+    case "usersUpdated": {
       const newState: State = {
         ...state,
-        users: [
-          ...state.users,
-          {
-            id: action.data.userId,
-            name: action.data.initialUserName,
-            isMain: false,
-            joinedAtMs: action.data.online_at_ms,
-          },
-        ],
+        users: [...action.data],
       };
-      const maxJoinTime = Math.max(...newState.users.map((user) => user.joinedAtMs));
-      const hasNoMainUser = newState.users.every((user) => !user.isMain);
-      if (hasNoMainUser) {
-        newState.users.at(-1)!.isMain = true;
-      }
       return newState;
     }
-
-    case "userLeft": {
-      const { data } = action;
-      const newUsers = state.users.filter((user) => user.id !== data.userId);
-      const leftUser = state.users.find((user) => user.id === data.userId);
-      if (leftUser?.isMain && newUsers.length) {
-        newUsers[0].isMain = true;
-      }
-
-      return { ...state, users: newUsers };
-    }
-
     case BroadcastEventName.UserNameUpdated: {
-      const { data } = action;
-      return {
+      const { userId, newUserName } = action.data;
+      const newState: State = {
         ...state,
-        users: state.users.map((user) =>
-          user.id === data.userId ? { ...user, userName: data.newUserName } : user,
-        ),
+        users: state.users.map((user) => {
+          if (user.id === userId) {
+            return { ...user, name: newUserName };
+          }
+          return user;
+        }),
       };
+      return newState;
     }
 
     default:
@@ -102,6 +65,7 @@ function reducer(state: State, action: Action): State {
 
 enum BroadcastEventName {
   UserNameUpdated = "UserNameUpdated",
+  RequestLatestSessionState = "RequestLatestSessionState",
 }
 
 type UserNameUpdatedPayload = {
@@ -140,7 +104,23 @@ export default function GameSession({
     () => ({ users: [], currentUser } satisfies State),
   );
 
-  useEffect(() => console.log("GameSession - new sessionState", sessionState), [sessionState]);
+  // need this so the use effect for subscribing to realtime can run once only and also access the latest state
+  const stateRef = useRef(sessionState);
+  useEffect(() => {
+    console.log("GameSession - new sessionState", sessionState);
+    stateRef.current = sessionState;
+  }, [sessionState]);
+
+  // todo use when app state is in one place
+  // const broadcastSessionStateRequest = useCallback(
+  //   (newUserName: string) =>
+  //     supabaseChannelRef.current!.send({
+  //       type: REALTIME_LISTEN_TYPES.BROADCAST,
+  //       event: BroadcastEventName.RequestLatestSessionState,
+  //       data: { newUserName, userId: currentUser.id },
+  //     } satisfies BroadcastEvent),
+  //   [currentUser.id, supabaseChannelRef],
+  // );
 
   useEffect(() => {
     const sessionKey = `Session-${sessionId}`;
@@ -151,7 +131,6 @@ export default function GameSession({
         "channels",
         channels.map((channel) => channel.topic),
       );
-      debugger;
     }
     const channel = supabase.channel(sessionKey, {
       config: {
@@ -169,43 +148,46 @@ export default function GameSession({
     supabaseChannelRef.current = channel;
     // ! prescence state seems to be readonly after being tracked, need to listen to broadcast or DB events to update state
     channel
-      // .on("presence", { event: "sync" }, () => {
-      //   const newState = channel.presenceState<UserPresenceState>();
-      //   const prescences = newState[sessionKey];
-      //   const userNames = prescences.map((p) => p.userName);
-      //   console.log("sync", userNames);
-      //   toast({
-      //     title: `SYNC: ${userNames.join(", ")} are here`,
-      //   });
-      // })
-      .on<UserPresenceState>(
+      .on("presence", { event: "sync" }, () => {
+        const newState = channel.presenceState<SessionUser>();
+        send({ event: "usersUpdated", data: [...newState[sessionKey]] });
+      })
+      .on<SessionUser>(
         REALTIME_LISTEN_TYPES.PRESENCE,
         { event: REALTIME_PRESENCE_LISTEN_EVENTS.JOIN },
         ({ key: sessionPresenceKey, newPresences, currentPresences }) => {
-          debugger;
           console.log("join", {
             sessionPresenceKey,
             newPresences,
             currentPresences,
           });
           newPresences.forEach((presence) => {
-            toast({ title: `${presence.initialUserName} joined` });
-            send({ event: "userJoined", data: presence });
+            toast({ title: `${presence.name} joined` });
           });
+
+          const isSelfJoining = newPresences.some((presence) => presence.id === currentUser.id);
+          if (isSelfJoining) {
+            // todo request latest session state
+          }
         },
       )
-      .on<UserPresenceState>(
+      .on<SessionUser>(
         REALTIME_LISTEN_TYPES.PRESENCE,
         { event: REALTIME_PRESENCE_LISTEN_EVENTS.LEAVE },
         ({ key: sessionPresenceKey, leftPresences, currentPresences }) => {
-          debugger;
-          console.log("leave", { sessionPresenceKey, leftPresences, currentPresences });
-          leftPresences.forEach((presence) => {
-            const leftUser = sessionState.users.find(
-              (existingUsers) => existingUsers.id === presence.userId,
-            )!;
-            toast({ title: `${leftUser?.name || presence.userId} left` });
-            send({ event: "userLeft", data: presence });
+          console.log("leave", {
+            sessionPresenceKey,
+            leftPresences,
+            currentPresences,
+            sessionState,
+            sessionStateRef: stateRef.current,
+          });
+          leftPresences.forEach((leftPresence) => {
+            const leftUser = stateRef.current.users.find(
+              (existingUsers) => existingUsers.id === leftPresence.id,
+            );
+            // todo debug why this doesnt find the user that left in left prescences
+            toast({ title: `${leftUser?.name || leftPresence.id} left` });
           });
         },
       )
@@ -217,16 +199,13 @@ export default function GameSession({
       .subscribe(async (status, error) => {
         // ? when do these fire?
         if (status === "SUBSCRIBED") {
-          const currentUserPresence: UserPresenceState = {
-            userId: currentUser.id,
-            initialUserName: currentUser.name,
-            online_at_ms: Date.now(),
-          };
-          // to prevent rate limiting
+          // delay to prevent rate limiting
           await new Promise((resolve) => setTimeout(resolve, 100));
-          const presenceTrackStatus = await channel.track(currentUserPresence);
-          console.log("after join result", presenceTrackStatus);
-          send({ event: "userJoined", data: currentUserPresence });
+          const presenceTrackStatus = await channel.track(currentUser);
+          if (presenceTrackStatus !== "ok") {
+            console.error("presenceTrackStatus after join", presenceTrackStatus);
+          }
+
           // todo should request state from session
         }
         if (status === "CLOSED") {
@@ -241,7 +220,7 @@ export default function GameSession({
       });
 
     return () => {
-      send({ event: "userLeft", data: { userId: currentUser.id } });
+      // send({ event: "userLeft", data: { userId: currentUser.id } });
       void getSupabaseClient().removeChannel(channel);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- only run once
@@ -261,7 +240,7 @@ export default function GameSession({
     if (!supabaseChannelRef.current) {
       return;
     }
-    const presenceState = supabaseChannelRef.current.presenceState<UserPresenceState>();
+    const presenceState = supabaseChannelRef.current.presenceState<SessionUser>();
 
     void broadcastNameChange(currentUser.name);
 

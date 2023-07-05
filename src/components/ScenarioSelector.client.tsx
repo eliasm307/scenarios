@@ -1,9 +1,11 @@
+/* eslint-disable no-console */
+
 "use client";
 
 import { Badge, Center, HStack, Heading, Spinner, Text, VStack, useToast } from "@chakra-ui/react";
 import type { Reducer } from "react";
 import { useCallback, useEffect, useReducer, useState } from "react";
-import { REALTIME_LISTEN_TYPES, type RealtimeChannel } from "@supabase/supabase-js";
+import { REALTIME_LISTEN_TYPES } from "@supabase/supabase-js";
 import APIClient from "../utils/client/APIClient";
 import type { ChoiceConfig } from "./ChoiceGrid.client";
 import ChoiceGrid from "./ChoiceGrid.client";
@@ -58,6 +60,10 @@ type Action =
   | {
       event: "error";
       data: string;
+    }
+  | {
+      event: BroadcastEventName.RequestLatestSessionState;
+      data: undefined;
     };
 
 type BroadcastEvent = BroadcastEventFrom<Action>;
@@ -68,8 +74,9 @@ const reducer: Reducer<State, Action> = (state, action) => {
     case BroadcastEventName.NewScenarioOptions:
       return {
         ...state,
-        scenarioOptions: action.data,
+        scenarioOptions: [...action.data],
         isLoading: false,
+        resetOptions: false,
         userIdToVotedOptionMap: {}, // restart voting
       };
 
@@ -94,16 +101,19 @@ const reducer: Reducer<State, Action> = (state, action) => {
       const voteIds = Object.values(newState.userIdToVotedOptionMap);
       const votingComplete = voteIds.length === newState.users.length;
       if (votingComplete) {
-        const winningVoteId = getWinningVote(voteIds);
-        if (winningVoteId) {
-          console.log("winningVoteId", winningVoteId);
+        newState.userIdToVotedOptionMap = {}; // dont need this anymore
+        const majorityVoteId = getMajorityVoteId(voteIds);
+        if (majorityVoteId) {
+          console.log("majorityVoteId", majorityVoteId);
           newState.selectedScenario = state.scenarioOptions.find(
-            (option) => option.id === winningVoteId,
+            (option) => option.id === majorityVoteId,
           )!.text;
         } else {
-          // the main user has the responsibility of resetting the options
-          console.log("no winning vote");
-          newState.resetOptions = state.currentUser.isMain;
+          // the oldest session user has the responsibility of regenerating the options
+          const oldestUser = newState.users[0];
+          console.log("no winning vote", oldestUser.name, "will reset options");
+          newState.resetOptions = state.currentUser.id === oldestUser.id;
+          newState.isLoading = true;
         }
       }
 
@@ -124,7 +134,7 @@ const reducer: Reducer<State, Action> = (state, action) => {
   }
 };
 
-function getWinningVote<T>(arr: T[]): T | null {
+function getMajorityVoteId<T>(arr: T[]): T | null {
   const itemToOccurrenceCountMap = arr.reduce((acc, item) => {
     const count = acc.get(item) ?? 0;
     acc.set(item, count + 1);
@@ -150,6 +160,7 @@ function getWinningVote<T>(arr: T[]): T | null {
 enum BroadcastEventName {
   UserVoted = "UserVoted",
   NewScenarioOptions = "NewOptions",
+  RequestLatestSessionState = "RequestLatestSessionState",
 }
 
 type OptionVotePayload = {
@@ -180,7 +191,10 @@ export default function ScenarioSelector({
     const supabase = getSupabaseClient();
     const channels = supabase.getChannels();
     if (channels.length) {
-      debugger;
+      console.log(
+        "ScenarioSelector channels",
+        channels.map((c) => c.topic),
+      );
     }
     return supabase.channel(sessionKey, {
       config: {
@@ -227,22 +241,30 @@ export default function ScenarioSelector({
   );
 
   const broadcastNewOptions = useCallback(
-    (newOptions: ScenarioOption[]) => {
+    async (newOptions: ScenarioOption[]) => {
       const event: BroadcastEvent = {
         type: REALTIME_LISTEN_TYPES.BROADCAST,
         event: BroadcastEventName.NewScenarioOptions,
         data: newOptions,
       };
+      send(event);
       // send(event);
-      void channel.send(event);
+      console.log("broadcastNewOptions", event);
+      try {
+        const result = await channel.send(event);
+        console.log("broadcastNewOptions result", result);
+      } catch (error) {
+        console.error("broadcastNewOptions error", error);
+      }
     },
     [channel],
   );
 
   useEffect(() => {
-    channel
-      .on(REALTIME_LISTEN_TYPES.BROADCAST, { event: BroadcastEventName.UserVoted }, send as any)
-      .subscribe();
+    Object.values(BroadcastEventName).forEach((event) => {
+      channel.on(REALTIME_LISTEN_TYPES.BROADCAST, { event }, send as any);
+    });
+    channel.subscribe();
 
     return () => {
       void getSupabaseClient().removeChannel(channel);
@@ -265,11 +287,13 @@ export default function ScenarioSelector({
       return;
     }
 
+    console.log("regenerating options");
     const abortController = new AbortController();
     send({ event: "loading" });
     // todo handle error
     void APIClient.getScenarios(abortController.signal)
       .then(({ scenarios }) => {
+        console.log("got scenarios", scenarios);
         return broadcastNewOptions(scenarios.map(scenarioTextToOption));
       })
       .catch((error) => {
@@ -299,7 +323,7 @@ export default function ScenarioSelector({
             return hasNotVoted;
           })
           .map((user) => (
-            <Badge key={user.id} colorScheme={user.isMain ? "green" : "gray"}>
+            <Badge key={user.id} colorScheme={user.id === state.currentUser.id ? "green" : "gray"}>
               {user.name}
             </Badge>
           ))}
@@ -322,7 +346,10 @@ export default function ScenarioSelector({
                         return hasVoted;
                       })
                       .map((user) => (
-                        <Badge key={user.id} colorScheme={user.isMain ? "green" : "gray"}>
+                        <Badge
+                          key={user.id}
+                          colorScheme={user.id === state.currentUser.id ? "green" : "gray"}
+                        >
                           {user.name}
                         </Badge>
                       ))}
@@ -346,7 +373,10 @@ export default function ScenarioSelector({
                       return hasVoted;
                     })
                     .map((user) => (
-                      <Badge key={user.id} colorScheme={user.isMain ? "green" : "gray"}>
+                      <Badge
+                        key={user.id}
+                        colorScheme={user.id === state.currentUser.id ? "green" : "gray"}
+                      >
                         {user.name}
                       </Badge>
                     ))}

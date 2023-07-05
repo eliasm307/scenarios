@@ -41,12 +41,7 @@ export default async function SessionPage({
       <NavBar zIndex={2} />
       <Box zIndex={1} overflowY='auto'>
         <GameSession
-          currentUser={{
-            id: user.id,
-            name: userProfile.data.user_name,
-            isMain: false,
-            joinedAtMs: 0,
-          }}
+          currentUser={{ id: user.id, name: userProfile.data.user_name, joinTimeMs: Date.now() }}
           sessionId={sessionId}
           // todo check db for existing scenario and messages and set them here
           initial={{

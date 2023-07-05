@@ -5,8 +5,7 @@ export type ChakraDisclosure = ReturnType<typeof useDisclosure>;
 export type SessionUser = {
   id: string;
   name: string;
-  isMain: boolean;
-  joinedAtMs: number;
+  joinTimeMs: number;
 };
 
 export type BroadcastEventFrom<TAction extends { event: string }> = TAction & {

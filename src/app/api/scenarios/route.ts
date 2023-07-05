@@ -11,6 +11,7 @@ export type GetScenariosResponseBody = {
 };
 
 export async function GET() {
+  console.log("GET /api/scenarios");
   return NextResponse.json({
     scenarios: await generateScenarios(),
   } satisfies GetScenariosResponseBody);

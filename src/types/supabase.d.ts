@@ -48,32 +48,75 @@ export interface Database {
           created_at: string;
           id: number;
           text: string;
+          voted_by_user_ids: string[];
         };
         Insert: {
           created_at?: string;
           id?: number;
           text: string;
+          voted_by_user_ids: string[];
         };
         Update: {
           created_at?: string;
           id?: number;
           text?: string;
+          voted_by_user_ids?: string[];
         };
         Relationships: [];
+      };
+      sessions: {
+        Row: {
+          created_at: string;
+          id: number;
+          scenario_option_votes: Json | null;
+          scenario_options: string[] | null;
+          scenario_outcome_votes: Json | null;
+          selected_scenario_id: number | null;
+          stage: string;
+        };
+        Insert: {
+          created_at?: string;
+          id?: number;
+          scenario_option_votes?: Json | null;
+          scenario_options?: string[] | null;
+          scenario_outcome_votes?: Json | null;
+          selected_scenario_id?: number | null;
+          stage: string;
+        };
+        Update: {
+          created_at?: string;
+          id?: number;
+          scenario_option_votes?: Json | null;
+          scenario_options?: string[] | null;
+          scenario_outcome_votes?: Json | null;
+          selected_scenario_id?: number | null;
+          stage?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "sessions_selected_scenario_id_fkey";
+            columns: ["selected_scenario_id"];
+            referencedRelation: "scenarios";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       user_profiles: {
         Row: {
           created_at: string;
+          id: number;
           user_id: string;
           user_name: string;
         };
         Insert: {
           created_at?: string;
+          id?: number;
           user_id: string;
           user_name: string;
         };
         Update: {
           created_at?: string;
+          id?: number;
           user_id?: string;
           user_name?: string;
         };

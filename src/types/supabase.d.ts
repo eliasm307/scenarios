@@ -68,27 +68,27 @@ export interface Database {
         Row: {
           created_at: string;
           id: number;
-          scenario_option_votes: Json | null;
+          scenario_option_votes: Json;
           scenario_options: string[] | null;
-          scenario_outcome_votes: Json | null;
+          scenario_outcome_votes: Json;
           selected_scenario_id: number | null;
           stage: string;
         };
         Insert: {
           created_at?: string;
           id?: number;
-          scenario_option_votes?: Json | null;
+          scenario_option_votes?: Json;
           scenario_options?: string[] | null;
-          scenario_outcome_votes?: Json | null;
+          scenario_outcome_votes?: Json;
           selected_scenario_id?: number | null;
           stage: string;
         };
         Update: {
           created_at?: string;
           id?: number;
-          scenario_option_votes?: Json | null;
+          scenario_option_votes?: Json;
           scenario_options?: string[] | null;
-          scenario_outcome_votes?: Json | null;
+          scenario_outcome_votes?: Json;
           selected_scenario_id?: number | null;
           stage?: string;
         };
@@ -134,7 +134,28 @@ export interface Database {
       [_ in never]: never;
     };
     Functions: {
-      [_ in never]: never;
+      json_matches_schema: {
+        Args: {
+          schema: Json;
+          instance: Json;
+        };
+        Returns: boolean;
+      };
+      jsonb_matches_schema: {
+        Args: {
+          schema: Json;
+          instance: Json;
+        };
+        Returns: boolean;
+      };
+      vote_for_option: {
+        Args: {
+          user_id: string;
+          session_id: number;
+          option_id: number;
+        };
+        Returns: undefined;
+      };
     };
     Enums: {
       [_ in never]: never;

@@ -12,11 +12,12 @@ import { REALTIME_LISTEN_TYPES, REALTIME_PRESENCE_LISTEN_EVENTS } from "@supabas
 import ScenarioSelector from "./ScenarioSelector.client";
 import ScenarioChat from "./ScenarioChat.client";
 import { getSupabaseClient } from "../utils/client/supabase";
-import type { BroadcastEventFrom, SessionUser } from "../types";
+import type { BroadcastEventFrom, SessionData, SessionUser } from "../types";
 
 type State = {
   users: SessionUser[];
   currentUser: SessionUser;
+  session: SessionData;
   scenario: string | null;
 };
 
@@ -26,20 +27,12 @@ type Action =
       data: SessionUser[];
     }
   | {
-      event: "setScenario";
-      data: string;
+      event: "sessionUpdated";
+      data: SessionData;
     }
   | {
       event: BroadcastEventName.UserNameUpdated;
       data: UserNameUpdatedPayload;
-    }
-  | {
-      event: BroadcastEventName.RequestLatestSessionState;
-      data: { toUserId: string; fromUserId: string };
-    }
-  | {
-      event: BroadcastEventName.LatestSessionState;
-      data: Pick<State, "scenario">;
     };
 
 type BroadcastEvent = BroadcastEventFrom<Action>;
@@ -69,17 +62,8 @@ function reducer(state: State, action: Action): State {
       return newState;
     }
 
-    case "setScenario": {
-      return { ...state, scenario: action.data };
-    }
-
-    // no change as its a request for our state
-    case BroadcastEventName.RequestLatestSessionState: {
-      return state;
-    }
-
-    case BroadcastEventName.LatestSessionState: {
-      return { ...state, ...action.data };
+    case "sessionUpdated": {
+      return { ...state, session: action.data };
     }
 
     default:
@@ -89,8 +73,6 @@ function reducer(state: State, action: Action): State {
 
 enum BroadcastEventName {
   UserNameUpdated = "UserNameUpdated",
-  RequestLatestSessionState = "RequestLatestSessionState",
-  LatestSessionState = "LatestSessionState",
 }
 
 type UserNameUpdatedPayload = {
@@ -99,33 +81,32 @@ type UserNameUpdatedPayload = {
 };
 
 type Props = {
-  sessionId: string;
   existing?: {
     scenario?: string;
     messages?: Message[];
   };
   initial: {
-    scenarioOptions: string[];
+    session: SessionData;
+    scenario: string | null;
   };
   currentUser: SessionUser;
 };
 
-export default function GameSession({
-  sessionId,
-  existing,
-  initial,
-  currentUser,
-}: Props): React.ReactElement {
+export default function GameSession({ existing, initial, currentUser }: Props): React.ReactElement {
   const toast = useToast();
   const supabaseChannelRef = useRef<RealtimeChannel>();
   const [state, send] = useReducer(reducer, null, () => {
     return {
       users: [],
       currentUser,
-      scenario:
-        existing?.scenario ??
-        "" ?? // todo remove this and default scenario below
-        "You're a struggling artist and a wealthy collector offers to buy all your work for a sum that would solve all your financial problems. But he intends to destroy all the art after purchase. Do you sell your art to him?",
+      session: {
+        ...initial.session,
+      },
+      scenario: initial.scenario,
+      // scenario:
+      //   existing?.scenario ??
+      //   "" ?? // todo remove this and default scenario below
+      //   "You're a struggling artist and a wealthy collector offers to buy all your work for a sum that would solve all your financial problems. But he intends to destroy all the art after purchase. Do you sell your art to him?",
     } satisfies State;
   });
 
@@ -148,7 +129,7 @@ export default function GameSession({
   );
 
   useEffect(() => {
-    const sessionKey = `Session-${sessionId}`;
+    const sessionKey = `Session-${state.session.id}`;
     const supabase = getSupabaseClient();
     const channels = supabase.getChannels();
     if (channels.length) {
@@ -171,11 +152,11 @@ export default function GameSession({
       },
     });
     supabaseChannelRef.current = channel;
-    // ! prescence state seems to be readonly after being tracked, need to listen to broadcast or DB events to update state
+    // ! presence state seems to be readonly after being tracked, need to listen to broadcast or DB events to update state
     channel
       .on("presence", { event: "sync" }, () => {
-        const newState = channel.presenceState<SessionUser>()[sessionKey] || [];
-        send({ event: "usersUpdated", data: [...newState] });
+        const newUsers = channel.presenceState<SessionUser>()[sessionKey] || [];
+        send({ event: "usersUpdated", data: [...newUsers] });
       })
       .on<SessionUser>(
         REALTIME_LISTEN_TYPES.PRESENCE,
@@ -189,19 +170,6 @@ export default function GameSession({
           newPresences.forEach((presence) => {
             toast({ title: `${presence.name} joined` });
           });
-
-          const isSelfJoining = newPresences.some((presence) => presence.id === currentUser.id);
-          if (isSelfJoining && currentPresences.length) {
-            broadcast({
-              event: BroadcastEventName.RequestLatestSessionState,
-              data: { toUserId: currentPresences[0].id, fromUserId: currentUser.id },
-            });
-          } else {
-            console.log("not requesting latest state as not self joining or only user in session", {
-              isSelfJoining,
-              existingUserCount: currentPresences.length,
-            });
-          }
         },
       )
       .on<SessionUser>(
@@ -219,7 +187,7 @@ export default function GameSession({
             const leftUser = stateRef.current.users.find(
               (existingUsers) => existingUsers.id === leftPresence.id,
             );
-            // todo debug why this doesnt find the user that left in left prescences
+            // todo debug why this doesn't find the user that left in left presences
             toast({ title: `${leftUser?.name || leftPresence.id} left` });
           });
         },
@@ -228,36 +196,13 @@ export default function GameSession({
     function handleBroadcastMessage(message: BroadcastEvent) {
       console.log("GameSession: received broadcast", message.event, message.data);
       send(message as any);
-
-      if (message.event === BroadcastEventName.RequestLatestSessionState) {
-        if (message.data.toUserId === currentUser.id) {
-          console.log(
-            "GameSession: responding RequestLatestSessionState",
-            message.event,
-            message.data,
-          );
-          return new Promise((resolve) => setTimeout(resolve, 500)).then(() => {
-            return broadcast({
-              event: BroadcastEventName.LatestSessionState,
-              data: {
-                scenario: stateRef.current.scenario,
-              },
-            });
-          });
-        }
-        console.log(
-          "RequestLatestSessionState not intended for me, ignoring",
-          message.event,
-          message.data,
-        );
-      }
     }
 
     Object.values(BroadcastEventName).forEach((event) => {
       channel.on(REALTIME_LISTEN_TYPES.BROADCAST, { event }, handleBroadcastMessage as any);
     });
 
-    channel.subscribe(async (status, error) => {
+    const subscription = channel.subscribe(async (status, error) => {
       // ? when do these fire?
       if (status === "SUBSCRIBED") {
         // delay to prevent rate limiting
@@ -281,8 +226,7 @@ export default function GameSession({
     });
 
     return () => {
-      // send({ event: "userLeft", data: { userId: currentUser.id } });
-      void getSupabaseClient().removeChannel(channel);
+      void getSupabaseClient().removeChannel(subscription);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- only run once
   }, []);
@@ -303,25 +247,27 @@ export default function GameSession({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- only run once
   }, [currentUser.name]);
 
-  const setScenario = useCallback(
-    (scenario: string) => send({ event: "setScenario", data: scenario }),
-    [send],
-  );
-
   if (!state.scenario) {
-    if (!initial.scenarioOptions.length) {
+    if (state.session.stage !== "scenario-outcome-selection") {
+      throw new Error(`Unexpected session stage ${state.session.stage}, expected scenario selection`);
+    }
+    if (!state.session.scenario_options?.length) {
       throw new Error("No initial scenario options provided");
     }
     return (
       <ScenarioSelector
-        onScenarioSelected={setScenario}
-        initialScenarioOptions={initial.scenarioOptions}
+        scenarioOptions={state.session.scenario_options}
         currentUser={state.currentUser}
         users={state.users}
-        sessionId={sessionId}
+        selectedOptionId={state.session.id}
+        voteId={state.session.scenario_option_votes?.[state.currentUser.id] || null}
       />
     );
   }
 
-  return <ScenarioChat scenario={state.scenario} existing={existing} />;
+  if(state.session.stage === "scenario-outcome-selection") {
+    return <ScenarioChat scenario={state.scenario} existing={existing} />;
+  }
+
+  throw new Error(`Unexpected session stage ${state.session.stage}`);
 }

@@ -7,7 +7,7 @@ import type { ReactElement } from "react";
 
 export type ChoiceConfig = {
   /** Used to refer to this choice */
-  id: string;
+  id: number;
   text: string;
   content?: ReactElement;
   onSelect: () => void;

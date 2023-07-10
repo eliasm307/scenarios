@@ -25,19 +25,7 @@ function scenarioTextToOption(scenarioText: string, id: number): ScenarioOption 
 }
 
 type State = {
-  scenarioOptions: ScenarioOption[];
-  selectedScenario?: string;
   isLoading: boolean;
-  /**
-   * Map of user IDs to the option they voted for.
-   * If a user has not voted, their ID will not be in this map.
-   *
-   * @remark A vote for `null` means the user has voted to reset the options.
-   */
-  userIdToVotedOptionMap: Record<string, string | null>;
-  resetOptions: boolean;
-  users: SessionUser[];
-  currentUser: SessionUser;
 };
 
 type Action =
@@ -193,19 +181,23 @@ type OptionVotePayload = {
 };
 
 type Props = {
-  onScenarioSelected: (scenario: string) => void;
-  initialScenarioOptions: string[];
   users: SessionUser[];
   currentUser: SessionUser;
-  sessionId: string;
+  /**
+   * The index of the scenario option voted for by the current user.
+   * If the current user has not voted, this will be `null`.
+   * If the current user has voted to reset the options, this will be `-1`.
+   */
+  voteId: number | null;
+  selectedOptionId: number;
+  scenarioOptions: string[];
 };
 
 export default function ScenarioSelector({
-  onScenarioSelected,
-  initialScenarioOptions,
-  sessionId,
+  selectedOptionId: sessionId,
   users,
   currentUser,
+  scenarioOptions,
 }: Props): React.ReactElement {
   const toast = useToast();
   const [channel] = useState(() => {
@@ -232,144 +224,64 @@ export default function ScenarioSelector({
       },
     });
   });
-
-  const [state, send] = useReducer(
-    reducer,
-    null,
-    () =>
-      ({
-        scenarioOptions: initialScenarioOptions.map(scenarioTextToOption),
-        users,
-        userIdToVotedOptionMap: {},
-        isLoading: !initialScenarioOptions.length,
-        resetOptions: !initialScenarioOptions.length,
-        currentUser,
-      } satisfies State),
-  );
-  const stateRef = useRef(state);
-  useEffect(() => {
-    console.log("ScenarioSelector - new sessionState", state);
-    stateRef.current = state;
-  }, [state]);
-
-  const broadcast = useCallback(
-    async (action: Action) => {
-      console.log("ScenarioSelector:send broadcast", action.event, action.data);
-      if (action.event === BroadcastEventName.NewScenarioOptions) {
-        send(action); // early update
-      }
-      try {
-        const result = await channel.send({
-          ...action,
-          type: REALTIME_LISTEN_TYPES.BROADCAST,
-        } satisfies BroadcastEvent);
-        console.log(action.event, "broadcast result", result);
-      } catch (error) {
-        console.error("broadcastNewOptions error", error);
-      }
-    },
-    [channel],
-  );
+  const [state, send] = useReducer(reducer, null, {} as State);
 
   useEffect(() => {
-    function handleBroadcastMessage(message: BroadcastEvent) {
-      console.log("ScenarioSelector:handleBroadcastMessage", message.event, message.data);
-      if (
-        message.event === BroadcastEventName.RequestLatestSessionState &&
-        message.data.toUserId === stateRef.current.currentUser.id
-      ) {
-        return new Promise((resolve) => setTimeout(resolve, 1000)).then(() => {
-          return broadcast({
-            event: BroadcastEventName.LatestSessionState,
-            data: {
-              toUserId: message.data.fromUserId,
-              sessionData: {
-                isLoading: stateRef.current.isLoading,
-                scenarioOptions: stateRef.current.scenarioOptions,
-                selectedScenario: stateRef.current.selectedScenario,
-                userIdToVotedOptionMap: stateRef.current.userIdToVotedOptionMap,
-              },
-            },
-          });
-        });
-      }
-      console.log(
-        "ScenarioSelector:handleBroadcastMessage - ignoring message",
-        message.event,
-        message.data,
-        {},
-      );
-
-      send(message);
-    }
-    Object.values(BroadcastEventName).forEach((event) => {
-      channel.on(REALTIME_LISTEN_TYPES.BROADCAST, { event }, handleBroadcastMessage as any);
-    });
-    channel.subscribe();
-
-    return () => {
-      void getSupabaseClient().removeChannel(channel);
-    };
-  }, [channel]);
-
-  useEffect(() => {
-    if (state.users.length < 2) {
-      console.log("ScenarioSelector - not enough users to refresh state");
-      return;
-    }
-    void new Promise((resolve) => setTimeout(resolve, 1000)).then(() => {
-      const otherUser = stateRef.current.users.find(
-        (user) => user.id !== stateRef.current.currentUser.id,
-      );
-      if (!otherUser) {
-        console.log("ScenarioSelector - no other user to refresh state");
-        return;
-      }
-      return broadcast({
-        event: BroadcastEventName.RequestLatestSessionState,
-        data: { fromUserId: stateRef.current.currentUser.id, toUserId: otherUser.id },
-      });
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- only run on mount to sync state
-  }, [state.users]);
-
-  useEffect(() => {
-    if (users !== state.users) {
-      send({ event: "usersUpdated", data: users });
-    }
-  }, [users, state.users]);
-
-  useEffect(() => {
-    if (state.selectedScenario) {
-      toast({ title: "The group has voted for a scenario!" });
-      onScenarioSelected(state.selectedScenario);
-    }
-  }, [onScenarioSelected, state.selectedScenario, toast]);
-
-  useEffect(() => {
-    if (!state.resetOptions) {
-      return;
-    }
+    // if (!state.resetOptions) {
+    //   return;
+    // }
 
     console.log("regenerating options");
     const abortController = new AbortController();
-    send({ event: "loading" });
+    // send({ event: "loading" });
     // todo handle error
-    void APIClient.getScenarios(abortController.signal)
-      .then(({ scenarios }) => {
-        console.log("got scenarios", scenarios);
-        return broadcast({
-          event: BroadcastEventName.NewScenarioOptions,
-          data: scenarios.map(scenarioTextToOption),
-        });
-      })
-      .catch((error) => {
-        console.error(error);
-        send({ event: "error", data: error instanceof Error ? error.message : error });
-      });
 
     return () => abortController.abort();
-  }, [state.resetOptions, broadcast]);
+  }, []);
+
+  const handleVote = useCallback(async (optionId: number) => {
+    // todo check if this is the deciding vote and if so perform relevant session updates e.g. regenerating scenario options or moving the session to the next stage
+    const isDecidingVote = false;
+    if (!isDecidingVote) {
+      await getSupabaseClient().rpc("vote_for_option", {
+        user_id: currentUser.id,
+        option_id: optionId,
+        session_id: sessionId,
+      });
+      return;
+    }
+    if (isTie || groupVotedForNewOptions) {
+      void APIClient.getScenarios()
+        .then(({ scenarios }) => {
+          console.log("got scenarios", scenarios);
+          return getSupabaseClient().from("sessions").update({ scenario_options: scenarios });
+        })
+        .catch((error) => {
+          console.error(error);
+          // send({ event: "error", data: error instanceof Error ? error.message : error });
+        });
+      return;
+    }
+    if (winningVoteId) {
+      const userVotesForWinningScenario = [""];
+      const winningScenario = scenarioOptions[winningVoteId];
+      const { data: newScenario } = await getSupabaseClient()
+        .from("scenarios")
+        .insert({ text: winningScenario, voted_by_user_ids: userVotesForWinningScenario })
+        .select("id")
+        .single();
+
+      if (!newScenario) {
+        throw Error("no new scenario");
+      }
+
+      await getSupabaseClient()
+        .from("sessions")
+        .update({ selected_scenario_id: newScenario.id })
+        .eq("id", sessionId);
+      return;
+    }
+  }, []);
 
   if (state.isLoading || !state.users.length) {
     return (
@@ -384,7 +296,7 @@ export default function ScenarioSelector({
       <Heading textAlign='center'>Vote for a Scenario to Play!</Heading>
       <HStack>
         <span>Waiting to vote: </span>
-        {state.users
+        {users
           .filter((user) => {
             const hasNotVoted = typeof state.userIdToVotedOptionMap[user.id] === "undefined";
             return hasNotVoted;
@@ -397,23 +309,19 @@ export default function ScenarioSelector({
       </HStack>
       <ChoiceGrid
         choices={[
-          ...state.scenarioOptions.map(
-            (scenario): ChoiceConfig => ({
-              ...scenario,
-              id: scenario.id,
-              onSelect: () =>
-                broadcast({
-                  event: BroadcastEventName.UserVoted,
-                  data: { userId: currentUser.id, optionId: scenario.id },
-                }),
-              isSelected: state.userIdToVotedOptionMap[currentUser.id] === scenario.id,
+          ...scenarioOptions.map(
+            (text, optionId): ChoiceConfig => ({
+              id: optionId,
+              text,
+              onSelect: () => handleVote(optionId),
+              isSelected: state.userIdToVotedOptionMap[currentUser.id] === optionId,
               // todo make into component
               content: (
                 <VStack>
                   <HStack>
-                    {state.users
+                    {users
                       .filter((user) => {
-                        const hasVoted = state.userIdToVotedOptionMap[user.id] === scenario.id;
+                        const hasVoted = state.userIdToVotedOptionMap[user.id] === optionId;
                         return hasVoted;
                       })
                       .map((user) => (
@@ -426,19 +334,19 @@ export default function ScenarioSelector({
                       ))}
                   </HStack>
                   <Text align='center' marginTop='auto' display='block'>
-                    {scenario.text}
+                    {text}
                   </Text>
                 </VStack>
               ),
             }),
           ),
           {
-            id: "re-generate",
+            id: -1,
             text: "🆕 Vote to generate new scenarios",
             content: (
               <VStack>
                 <HStack>
-                  {state.users
+                  {users
                     .filter((user) => {
                       const hasVoted = state.userIdToVotedOptionMap[user.id] === null;
                       return hasVoted;
@@ -457,11 +365,7 @@ export default function ScenarioSelector({
                 </Text>
               </VStack>
             ),
-            onSelect: () =>
-              broadcast({
-                event: BroadcastEventName.UserVoted,
-                data: { userId: currentUser.id, optionId: null },
-              }),
+            onSelect: () => handleVote(-1),
             isSelected: state.userIdToVotedOptionMap[currentUser.id] === null,
           },
         ]}

@@ -7,15 +7,11 @@ import GameSession from "../../../components/GameSession.client";
 import { getSupabaseServer } from "../../../utils/server/supabase";
 import { SessionData } from "../../../types";
 
-export default async function SessionPage({
-  params: { id: sessionId },
-}: {
-  params: { id: string };
-}) {
-  if (typeof sessionId !== "string") {
-    throw new Error(
-      `Invalid session id type, expected string but got "${typeof sessionId}" instead.`,
-    );
+export default async function SessionPage({ params: { id } }: { params: { id: string } }) {
+  const sessionId = Number(id);
+  if (isNaN(sessionId)) {
+    // ! ID will be used in SQL query, so need to make sure it's a number to prevent SQL injection
+    throw new Error(`Session id not a number, it is "${id}"`);
   }
 
   const supabase = getSupabaseServer(cookies);
@@ -37,26 +33,31 @@ export default async function SessionPage({
     throw new Error("No user profile found");
   }
 
-  const { data: session } = await supabase
-    .from("sessions")
+  let getSessionResult = await supabase
+    .from("sessions_view")
     .select("*")
     .eq("id", sessionId)
     .single();
 
-  if (!session) {
-    throw new Error("No session found");
-  }
-
-  let scenario: string | null = null;
-  if (session.selected_scenario_id) {
-    const { data: scenarioData } = await supabase
-      .from("scenarios")
-      .select("scenario")
-      .eq("id", session.selected_scenario_id)
+  if (!getSessionResult.data) {
+    console.log("Creating session", sessionId);
+    getSessionResult = await supabase
+      .from("sessions")
+      .insert({
+        id: sessionId,
+        stage: "scenario-outcome-selection",
+        // todo generate these from API
+        scenario_options: [
+          "You discover a magical book that can grant any wish, but each wish shortens your life by five years. Would you use the book?",
+          "You're a scientist who has discovered a cure for a rare, deadly disease. However, the cure involves a procedure that is considered highly unethical. Do you proceed to save lives?",
+          "You're a struggling artist and a wealthy collector offers to buy all your work for a sum that would solve all your financial problems. But he intends to destroy all the art after purchase. Do you sell your art to him?",
+        ],
+      })
+      .select()
       .single();
 
-    if (!scenarioData) {
-      throw new Error("No scenario found");
+    if (!getSessionResult.data) {
+      throw new Error("Could not create session");
     }
   }
 
@@ -65,13 +66,13 @@ export default async function SessionPage({
       <NavBar zIndex={2} />
       <Box zIndex={1} overflowY='auto'>
         <GameSession
-          currentUser={{ id: user.id, name: userProfile.data.user_name, joinTimeMs: Date.now() }}
-          // todo check db for existing scenario and messages and set them here
-          // todo only set this if there is no existing selected scenario
-          // todo generate these from API
+          currentUser={{
+            id: user.id,
+            name: userProfile.data.user_name,
+            joinTimeMs: Date.now(),
+          }}
           initial={{
-            session: session as SessionData,
-            scenario,
+            session: getSessionResult.data as SessionData,
           }}
         />
       </Box>

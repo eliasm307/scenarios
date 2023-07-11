@@ -21,8 +21,11 @@ type ExtendTable<
 > = Omit<OriginalTable, keyof NewTable> & NewTable;
 
 export type SessionData = ExtendTable<
-  Database["public"]["Tables"]["sessions"]["Row"],
+  Database["public"]["Views"]["sessions_view"]["Row"],
   {
+    created_at: string;
+    id: number;
+    scenario_options: string[];
     /**
      * @key UserId
      * @key Index (0-based) of the user's vote (where -1 means voting to skip)

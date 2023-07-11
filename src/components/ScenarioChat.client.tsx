@@ -8,7 +8,7 @@ import { useCallback, useEffect, useRef } from "react";
 import ChatMessage from "./ChatMessage";
 
 type Props = {
-  scenario: string;
+  selectedScenarioText: string;
   existing?: {
     messages?: Message[];
   };
@@ -42,7 +42,7 @@ const DUMMY_MESSAGES: Message[] = [
   { id: "7", role: "user", content: "can I convince him not to destroy th art?" },
 ];
 
-export default function ScenarioChat({ scenario, existing }: Props) {
+export default function ScenarioChat({ selectedScenarioText: scenario, existing }: Props) {
   const chat = useChat({
     initialMessages: existing?.messages || DUMMY_MESSAGES,
     body: { scenario },

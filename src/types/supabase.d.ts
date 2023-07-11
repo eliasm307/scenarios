@@ -131,7 +131,26 @@ export interface Database {
       };
     };
     Views: {
-      [_ in never]: never;
+      sessions_view: {
+        Row: {
+          created_at: string | null;
+          id: number | null;
+          scenario_option_votes: Json | null;
+          scenario_options: string[] | null;
+          scenario_outcome_votes: Json | null;
+          scenario_text: string | null;
+          selected_scenario_id: number | null;
+          stage: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "sessions_selected_scenario_id_fkey";
+            columns: ["selected_scenario_id"];
+            referencedRelation: "scenarios";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
     };
     Functions: {
       json_matches_schema: {
@@ -152,7 +171,7 @@ export interface Database {
         Args: {
           user_id: string;
           session_id: number;
-          option_id: number;
+          option_id: Json;
         };
         Returns: undefined;
       };

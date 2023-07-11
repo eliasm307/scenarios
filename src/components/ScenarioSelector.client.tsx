@@ -3,144 +3,12 @@
 "use client";
 
 import { Badge, Center, HStack, Heading, Spinner, Text, VStack, useToast } from "@chakra-ui/react";
-import type { Reducer } from "react";
-import { useCallback, useEffect, useReducer, useRef, useState } from "react";
-import { REALTIME_LISTEN_TYPES } from "@supabase/supabase-js";
+import { useCallback, useState } from "react";
 import APIClient from "../utils/client/APIClient";
 import type { ChoiceConfig } from "./ChoiceGrid.client";
 import ChoiceGrid from "./ChoiceGrid.client";
-import type { BroadcastEventFrom, SessionUser } from "../types";
+import type { SessionData, SessionUser } from "../types";
 import { getSupabaseClient } from "../utils/client/supabase";
-
-type ScenarioOption = {
-  text: string;
-  id: string;
-};
-
-function scenarioTextToOption(scenarioText: string, id: number): ScenarioOption {
-  return {
-    id: String(id),
-    text: scenarioText,
-  };
-}
-
-type State = {
-  isLoading: boolean;
-};
-
-type Action =
-  | {
-      event: BroadcastEventName.NewScenarioOptions;
-      data: ScenarioOption[];
-    }
-  | {
-      event: "loading";
-      data?: undefined;
-    }
-  | {
-      event: BroadcastEventName.UserVoted;
-      data?: OptionVotePayload;
-    }
-  | {
-      event: "usersUpdated";
-      data: SessionUser[];
-    }
-  | {
-      event: "error";
-      data: string;
-    }
-  | {
-      event: BroadcastEventName.RequestLatestSessionState;
-      data: { toUserId: string; fromUserId: string };
-    }
-  | {
-      event: BroadcastEventName.LatestSessionState;
-      data: {
-        toUserId: string;
-        sessionData: Pick<
-          State,
-          "scenarioOptions" | "selectedScenario" | "isLoading" | "userIdToVotedOptionMap"
-        >;
-      };
-    };
-
-type BroadcastEvent = BroadcastEventFrom<Action>;
-
-const reducer: Reducer<State, Action> = (state, action) => {
-  console.log("ScenarioSelector reducer", action.event, { state, action });
-  switch (action.event) {
-    case BroadcastEventName.NewScenarioOptions:
-      return {
-        ...state,
-        scenarioOptions: [...action.data],
-        isLoading: false,
-        resetOptions: false,
-        userIdToVotedOptionMap: {}, // restart voting
-      };
-
-    case "loading":
-      return {
-        ...state,
-        isLoading: true,
-      };
-
-    case BroadcastEventName.UserVoted: {
-      if (!action.data) {
-        throw new Error(`Action "${action.event}" data is undefined`);
-      }
-      const newState = {
-        ...state,
-        userIdToVotedOptionMap: {
-          ...state.userIdToVotedOptionMap,
-          [action.data.userId]: action.data.optionId,
-        },
-      };
-
-      const voteIds = Object.values(newState.userIdToVotedOptionMap);
-      const votingComplete = voteIds.length === newState.users.length;
-      if (votingComplete) {
-        newState.userIdToVotedOptionMap = {}; // dont need this anymore
-        const majorityVoteId = getMajorityVoteId(voteIds);
-        if (majorityVoteId) {
-          console.log("majorityVoteId", majorityVoteId);
-          newState.selectedScenario = state.scenarioOptions.find(
-            (option) => option.id === majorityVoteId,
-          )!.text;
-        } else {
-          // the oldest session user has the responsibility of regenerating the options
-          const oldestUser = newState.users[0];
-          console.log("no winning vote", oldestUser.name, "will reset options");
-          newState.resetOptions = state.currentUser.id === oldestUser.id;
-          newState.isLoading = true;
-        }
-      }
-
-      return newState;
-    }
-
-    case BroadcastEventName.RequestLatestSessionState: {
-      return state;
-    }
-
-    case BroadcastEventName.LatestSessionState: {
-      // refreshing all users with the latest state
-      return { ...state, ...action.data.sessionData };
-    }
-
-    case "usersUpdated":
-      return {
-        ...state,
-        users: action.data,
-      };
-
-    case "error":
-      // todo improve error handling
-      throw Error(action.data);
-
-    default:
-      return state;
-  }
-};
 
 function getMajorityVoteId<T>(arr: T[]): T | null {
   const itemToOccurrenceCountMap = arr.reduce((acc, item) => {
@@ -165,20 +33,110 @@ function getMajorityVoteId<T>(arr: T[]): T | null {
   return maxItemEntry as T;
 }
 
-enum BroadcastEventName {
-  UserVoted = "UserVoted",
-  NewScenarioOptions = "NewOptions",
-  RequestLatestSessionState = "RequestLatestSessionState",
-  LatestSessionState = "LatestSessionState",
-}
+function useLogic({
+  selectedOptionId: sessionId,
+  users,
+  currentUser,
+  scenarioOptions,
+  optionVotes,
+}: Props) {
+  const toast = useToast();
+  const [isLoading, setIsLoading] = useState(false);
 
-type OptionVotePayload = {
-  userId: string;
-  /**
-   * @remark A vote for `null` means the user has voted to reset the options.
-   */
-  optionId: string | null;
-};
+  const handleVote = useCallback(async (optionId: number) => {
+    setIsLoading(true);
+
+    debugger;
+
+    // todo check if this is the deciding vote and if so perform relevant session updates e.g. regenerating scenario options or moving the session to the next stage
+    const supabase = getSupabaseClient();
+    const newOptionVotes = { ...optionVotes, [currentUser.id]: optionId };
+    const voteIds = Object.values(newOptionVotes);
+    const votingComplete = voteIds.length === users.length;
+    if (!votingComplete) {
+      return supabase
+        .rpc("vote_for_option", {
+          user_id: currentUser.id,
+          option_id: optionId,
+          session_id: sessionId,
+        })
+        .then((result) => {
+          if (result.error) {
+            console.error("Voting error", result.error);
+            toast({
+              title: "Voting Error",
+              description: result.error.message,
+              status: "error",
+              duration: 9000,
+              isClosable: true,
+            });
+          }
+          setIsLoading(false);
+        });
+    }
+
+    const majorityVoteId = getMajorityVoteId(voteIds);
+    const majorityNotReached = majorityVoteId === null;
+    const majorityVoteIdIsReset = majorityVoteId === -1;
+    if (majorityNotReached || majorityVoteIdIsReset) {
+      console.log("no winning vote resetting options...");
+      // reset options
+      return APIClient.getScenarios()
+        .then(({ scenarios }) => {
+          console.log("got new scenarios", scenarios);
+          return supabase.from("sessions").update({ scenario_options: scenarios });
+        })
+        .catch((error) => {
+          toast({
+            title: "Error",
+            description: error instanceof Error ? error.message : error,
+            status: "error",
+            duration: 9000,
+            isClosable: true,
+          });
+        })
+        .finally(() => setIsLoading(false));
+    }
+
+    const winningScenarioText = scenarioOptions[majorityVoteId];
+    if (!winningScenarioText) {
+      throw Error(`no winning scenario at index ${majorityVoteId}`);
+    }
+
+    const userIdsThatVotedForWinningScenario = Object.entries(newOptionVotes)
+      .filter(([userId, optionId]) => optionId === majorityVoteId)
+      .map(([userId]) => userId);
+
+    const { data: newScenario } = await getSupabaseClient()
+      .from("scenarios")
+      .insert({ text: winningScenarioText, voted_by_user_ids: userIdsThatVotedForWinningScenario })
+      .select("id")
+      .single();
+
+    if (!newScenario) {
+      throw Error("no new scenario");
+    }
+
+    await getSupabaseClient()
+      .from("sessions")
+      .update({
+        selected_scenario_id: newScenario.id,
+        stage: "scenario-outcome-selection",
+      } satisfies Partial<SessionData>)
+      .eq("id", sessionId);
+
+    setIsLoading(false);
+  }, []);
+
+  return {
+    handleVote,
+    isLoading,
+    users,
+    currentUser,
+    optionVotes,
+    scenarioOptions,
+  };
+}
 
 type Props = {
   users: SessionUser[];
@@ -191,99 +149,14 @@ type Props = {
   voteId: number | null;
   selectedOptionId: number;
   scenarioOptions: string[];
+  optionVotes: SessionData["scenario_option_votes"];
 };
 
-export default function ScenarioSelector({
-  selectedOptionId: sessionId,
-  users,
-  currentUser,
-  scenarioOptions,
-}: Props): React.ReactElement {
-  const toast = useToast();
-  const [channel] = useState(() => {
-    const sessionKey = `Session-${sessionId}-voting`;
-    const supabase = getSupabaseClient();
-    const channels = supabase.getChannels();
-    if (channels.length) {
-      console.log(
-        "ScenarioSelector channels",
-        channels.map((c) => c.topic),
-      );
-    }
-    return supabase.channel(sessionKey, {
-      config: {
-        broadcast: {
-          // wait for server to acknowledge sent messages before resolving send message promise
-          ack: true,
-          // send own messages to self
-          self: true,
-        },
-        // presence: {
-        //   key: sessionKey,
-        // },
-      },
-    });
-  });
-  const [state, send] = useReducer(reducer, null, {} as State);
+export default function ScenarioSelector(props: Props): React.ReactElement {
+  const { isLoading, users, currentUser, optionVotes, scenarioOptions, handleVote } =
+    useLogic(props);
 
-  useEffect(() => {
-    // if (!state.resetOptions) {
-    //   return;
-    // }
-
-    console.log("regenerating options");
-    const abortController = new AbortController();
-    // send({ event: "loading" });
-    // todo handle error
-
-    return () => abortController.abort();
-  }, []);
-
-  const handleVote = useCallback(async (optionId: number) => {
-    // todo check if this is the deciding vote and if so perform relevant session updates e.g. regenerating scenario options or moving the session to the next stage
-    const isDecidingVote = false;
-    if (!isDecidingVote) {
-      await getSupabaseClient().rpc("vote_for_option", {
-        user_id: currentUser.id,
-        option_id: optionId,
-        session_id: sessionId,
-      });
-      return;
-    }
-    if (isTie || groupVotedForNewOptions) {
-      void APIClient.getScenarios()
-        .then(({ scenarios }) => {
-          console.log("got scenarios", scenarios);
-          return getSupabaseClient().from("sessions").update({ scenario_options: scenarios });
-        })
-        .catch((error) => {
-          console.error(error);
-          // send({ event: "error", data: error instanceof Error ? error.message : error });
-        });
-      return;
-    }
-    if (winningVoteId) {
-      const userVotesForWinningScenario = [""];
-      const winningScenario = scenarioOptions[winningVoteId];
-      const { data: newScenario } = await getSupabaseClient()
-        .from("scenarios")
-        .insert({ text: winningScenario, voted_by_user_ids: userVotesForWinningScenario })
-        .select("id")
-        .single();
-
-      if (!newScenario) {
-        throw Error("no new scenario");
-      }
-
-      await getSupabaseClient()
-        .from("sessions")
-        .update({ selected_scenario_id: newScenario.id })
-        .eq("id", sessionId);
-      return;
-    }
-  }, []);
-
-  if (state.isLoading || !state.users.length) {
+  if (isLoading || !users.length) {
     return (
       <Center as='section' height='100%'>
         <Spinner />
@@ -298,11 +171,11 @@ export default function ScenarioSelector({
         <span>Waiting to vote: </span>
         {users
           .filter((user) => {
-            const hasNotVoted = typeof state.userIdToVotedOptionMap[user.id] === "undefined";
+            const hasNotVoted = typeof optionVotes[user.id] === "undefined";
             return hasNotVoted;
           })
           .map((user) => (
-            <Badge key={user.id} colorScheme={user.id === state.currentUser.id ? "green" : "gray"}>
+            <Badge key={user.id} colorScheme={user.id === currentUser.id ? "green" : "gray"}>
               {user.name}
             </Badge>
           ))}
@@ -314,62 +187,70 @@ export default function ScenarioSelector({
               id: optionId,
               text,
               onSelect: () => handleVote(optionId),
-              isSelected: state.userIdToVotedOptionMap[currentUser.id] === optionId,
-              // todo make into component
+              isSelected: optionVotes[currentUser.id] === optionId,
               content: (
-                <VStack>
-                  <HStack>
-                    {users
-                      .filter((user) => {
-                        const hasVoted = state.userIdToVotedOptionMap[user.id] === optionId;
-                        return hasVoted;
-                      })
-                      .map((user) => (
-                        <Badge
-                          key={user.id}
-                          colorScheme={user.id === state.currentUser.id ? "green" : "gray"}
-                        >
-                          {user.name}
-                        </Badge>
-                      ))}
-                  </HStack>
-                  <Text align='center' marginTop='auto' display='block'>
-                    {text}
-                  </Text>
-                </VStack>
+                <OptionContent
+                  currentUserId={currentUser.id}
+                  optionId={optionId}
+                  optionVotes={optionVotes}
+                  text={text}
+                  users={users}
+                  key={text}
+                />
               ),
             }),
           ),
           {
             id: -1,
-            text: "🆕 Vote to generate new scenarios",
             content: (
-              <VStack>
-                <HStack>
-                  {users
-                    .filter((user) => {
-                      const hasVoted = state.userIdToVotedOptionMap[user.id] === null;
-                      return hasVoted;
-                    })
-                    .map((user) => (
-                      <Badge
-                        key={user.id}
-                        colorScheme={user.id === state.currentUser.id ? "green" : "gray"}
-                      >
-                        {user.name}
-                      </Badge>
-                    ))}
-                </HStack>
-                <Text align='center' marginTop='auto' display='block'>
-                  🆕 Vote to generate new scenarios
-                </Text>
-              </VStack>
+              <OptionContent
+                currentUserId={currentUser.id}
+                optionId={-1}
+                optionVotes={optionVotes}
+                text='🆕 Vote to generate new scenarios'
+                users={users}
+                key='new'
+              />
             ),
             onSelect: () => handleVote(-1),
-            isSelected: state.userIdToVotedOptionMap[currentUser.id] === null,
+            isSelected: optionVotes[currentUser.id] === null,
           },
         ]}
       />
+    </VStack>
+  );
+}
+
+function OptionContent({
+  users,
+  currentUserId,
+  optionId,
+  optionVotes,
+  text,
+}: {
+  users: SessionUser[];
+  optionId: number;
+  currentUserId: string;
+  optionVotes: SessionData["scenario_option_votes"];
+  text: string;
+}) {
+  return (
+    <VStack>
+      <HStack>
+        {users
+          .filter((user) => {
+            const hasVoted = optionVotes[user.id] === optionId;
+            return hasVoted;
+          })
+          .map((user) => (
+            <Badge key={user.id} colorScheme={user.id === currentUserId ? "green" : "gray"}>
+              {user.name}
+            </Badge>
+          ))}
+      </HStack>
+      <Text align='center' marginTop='auto' display='block'>
+        {text}
+      </Text>
     </VStack>
   );
 }

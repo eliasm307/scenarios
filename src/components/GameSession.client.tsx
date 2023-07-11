@@ -18,7 +18,6 @@ type State = {
   users: SessionUser[];
   currentUser: SessionUser;
   session: SessionData;
-  scenario: string | null;
 };
 
 type Action =
@@ -87,7 +86,6 @@ type Props = {
   };
   initial: {
     session: SessionData;
-    scenario: string | null;
   };
   currentUser: SessionUser;
 };
@@ -102,7 +100,6 @@ export default function GameSession({ existing, initial, currentUser }: Props): 
       session: {
         ...initial.session,
       },
-      scenario: initial.scenario,
       // scenario:
       //   existing?.scenario ??
       //   "" ?? // todo remove this and default scenario below
@@ -191,6 +188,16 @@ export default function GameSession({ existing, initial, currentUser }: Props): 
             toast({ title: `${leftUser?.name || leftPresence.id} left` });
           });
         },
+      )
+      .on<SessionData>(
+        REALTIME_LISTEN_TYPES.POSTGRES_CHANGES,
+        {
+          schema: "public",
+          table: "sessions",
+          event: "UPDATE",
+          filter: `id=eq.${state.session.id}`,
+        },
+        (data) => send({ event: "sessionUpdated", data: data.new }),
       );
 
     function handleBroadcastMessage(message: BroadcastEvent) {
@@ -247,9 +254,12 @@ export default function GameSession({ existing, initial, currentUser }: Props): 
     // eslint-disable-next-line react-hooks/exhaustive-deps -- only run once
   }, [currentUser.name]);
 
-  if (!state.scenario) {
+  if (!state.session.scenario_text) {
     if (state.session.stage !== "scenario-outcome-selection") {
-      throw new Error(`Unexpected session stage ${state.session.stage}, expected scenario selection`);
+      void getSupabaseClient()
+        .from("sessions")
+        .update({ stage: "scenario-outcome-selection" })
+        .match({ id: state.session.id });
     }
     if (!state.session.scenario_options?.length) {
       throw new Error("No initial scenario options provided");
@@ -257,6 +267,7 @@ export default function GameSession({ existing, initial, currentUser }: Props): 
     return (
       <ScenarioSelector
         scenarioOptions={state.session.scenario_options}
+        optionVotes={state.session.scenario_option_votes}
         currentUser={state.currentUser}
         users={state.users}
         selectedOptionId={state.session.id}
@@ -265,8 +276,8 @@ export default function GameSession({ existing, initial, currentUser }: Props): 
     );
   }
 
-  if(state.session.stage === "scenario-outcome-selection") {
-    return <ScenarioChat scenario={state.scenario} existing={existing} />;
+  if (state.session.stage === "scenario-outcome-selection") {
+    return <ScenarioChat selectedScenarioText={state.session.scenario_text} existing={existing} />;
   }
 
   throw new Error(`Unexpected session stage ${state.session.stage}`);

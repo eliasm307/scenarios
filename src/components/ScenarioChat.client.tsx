@@ -178,7 +178,7 @@ function useAiChat({
     return () => {
       void supabase.removeChannel(subscription);
     };
-  }, [chat, sessionId]);
+  }, [chat, sessionId, unlockSession]);
 
   useEffect(() => {
     // if we re-mount it means the session can be unlocked
@@ -187,9 +187,6 @@ function useAiChat({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  if (chat.isLoading) {
-    console.log("useAiChat:isLoading, last message", chat.messages.at(-1));
-  }
   const messagesListRef = useRef<HTMLDivElement>(null);
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
@@ -466,7 +463,7 @@ function useAutoScrolling({
 }
 
 function scrollToBottom(scrollableEl: HTMLElement) {
-  // eslint-disable-next-line no-param-reassign
+  // eslint-disable-next-line no-param-reassign, functional-core/purity
   scrollableEl.scrollTop = scrollableEl.scrollHeight;
 }
 

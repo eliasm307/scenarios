@@ -48,9 +48,6 @@ function useLogic({
     async (optionId: number) => {
       setIsLoading(true);
 
-      debugger;
-
-      // todo check if this is the deciding vote and if so perform relevant session updates e.g. regenerating scenario options or moving the session to the next stage
       const supabase = getSupabaseClient();
       const newOptionVotes = { ...optionVotes, [currentUser.id]: optionId };
       const voteIds = Object.values(newOptionVotes);

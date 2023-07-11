@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/quotes */
-/* eslint-disable quotes */
 import { NextResponse } from "next/server";
 import { generateScenarios } from "../../../utils/server/openai";
 
@@ -11,6 +9,7 @@ export type GetScenariosResponseBody = {
 };
 
 export async function GET() {
+  // eslint-disable-next-line no-console
   console.log("GET /api/scenarios");
   return NextResponse.json({
     scenarios: await generateScenarios(),

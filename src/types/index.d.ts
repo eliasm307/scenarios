@@ -36,7 +36,7 @@ export type SessionData = ExtendTable<
      * @key UserId
      * @value A map of User IDs to whether the user thinks that user will say yes or no to the scenario
      */
-    scenario_outcome_votes: Record<string, Record<string, boolean>>;
+    scenario_outcome_votes: Record<string, Record<string, boolean | undefined> | undefined>;
     stage: "scenario-selection" | "scenario-outcome-selection" | "scenario-outcome-reveal";
   }
 >;

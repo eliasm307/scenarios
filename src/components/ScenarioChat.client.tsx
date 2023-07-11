@@ -1,3 +1,5 @@
+/* eslint-disable react/no-unused-prop-types */
+
 "use client";
 
 import {
@@ -7,7 +9,13 @@ import {
   Flex,
   Grid,
   Heading,
+  Radio,
+  RadioGroup,
   Spinner,
+  Table,
+  TableContainer,
+  Tbody,
+  Td,
   Textarea,
   useToast,
 } from "@chakra-ui/react";
@@ -18,13 +26,15 @@ import { useCallback, useEffect, useRef } from "react";
 import { REALTIME_LISTEN_TYPES } from "@supabase/supabase-js";
 import ChatMessage from "./ChatMessage";
 import { getSupabaseClient } from "../utils/client/supabase";
-import type { SessionMessageData, SessionUser } from "../types";
+import type { SessionData, SessionMessageData, SessionUser } from "../types";
 
 type Props = {
   selectedScenarioText: string;
   currentUser: SessionUser;
+  users: SessionUser[];
   sessionId: number;
   sessionLockedByUserId: string | null;
+  outcomeVotesByCurrentUser: NonNullable<SessionData["scenario_outcome_votes"][string]>;
   initial: {
     messages: Message[];
   };
@@ -316,10 +326,6 @@ export default function ScenarioChat(props: Props) {
     [formRef, textAreaRef],
   );
 
-  console.log("ScenarioChat", {
-    props,
-  });
-
   const controls = (
     <Flex width='100%' gap={2} p={3} pt={1} flexDirection='column'>
       <form ref={formRef} onSubmit={chat.handleSubmit}>
@@ -385,15 +391,11 @@ export default function ScenarioChat(props: Props) {
         padding={2}
         gap={2}
       >
-        <Box m={3} overflow='auto'>
-          {props.selectedScenarioText.split(".").map((sentence) => {
-            return (
-              <Heading key={sentence} as='p' mb={5}>
-                {sentence}.
-              </Heading>
-            );
-          })}
-        </Box>
+        <Grid templateRows='auto auto 1fr' m={3} overflow='hidden'>
+          <ScenarioHero scenarioText={props.selectedScenarioText} />
+          <Divider my={3} />
+          <OutcomeVotingGrid {...props} />
+        </Grid>
         <Grid
           overflow='hidden'
           gap={1}
@@ -442,6 +444,7 @@ function useAutoScrolling({
       // not checking for exact 0 because of floating point errors
       const isAtBottom = scrollDistanceFromBottom < 10;
       // only maintain bottom scroll if user is already at bottom
+      // eslint-disable-next-line functional-core/purity
       shouldAutoScroll.current = isAtBottom;
     };
 
@@ -475,4 +478,81 @@ function getPlaceholderText(chat: UseChatHelpers): string {
     return "An error occurred 😢";
   }
   return "Ask me anything about the scenario 😀";
+}
+
+function OutcomeVotingGrid({ users, currentUser, outcomeVotesByCurrentUser, sessionId }: Props) {
+  const toast = useToast();
+  return (
+    <Box overflowY='auto'>
+      <Heading as='h2' size='md' mb={2} width='100%' textAlign='center'>
+        I think...
+      </Heading>
+      <TableContainer>
+        <Table variant='unstyled'>
+          <Tbody>
+            {users.map((user) => {
+              const userName = user.id === currentUser.id ? "I" : user.name;
+              const outcomeVote = outcomeVotesByCurrentUser[user.id];
+              return (
+                <RadioGroup
+                  as='tr'
+                  key={user.id}
+                  onChange={async (value) => {
+                    const voteUserWouldDoIt = value === "true";
+                    console.log("clicked radio option", value, "for", user.name);
+                    const result = await getSupabaseClient().rpc("vote_for_outcome", {
+                      session_id: sessionId,
+                      vote_by_user_id: currentUser.id,
+                      vote_for_user_id: user.id,
+                      outcome: voteUserWouldDoIt,
+                    });
+                    if (result.error) {
+                      toast({
+                        title: "Voting Error",
+                        description: result.error.message,
+                        status: "error",
+                        duration: 9000,
+                        isClosable: true,
+                      });
+                    }
+                  }}
+                >
+                  <Td>{userName}</Td>
+                  <Td>
+                    <Radio colorScheme='green' value='true' checked={outcomeVote === true}>
+                      would do it
+                    </Radio>
+                  </Td>
+                  <Td>
+                    <Radio colorScheme='red' value='false' checked={outcomeVote === false}>
+                      would not do it
+                    </Radio>
+                  </Td>
+                </RadioGroup>
+              );
+            })}
+          </Tbody>
+        </Table>
+      </TableContainer>
+    </Box>
+  );
+}
+
+function ScenarioHero({ scenarioText }: { scenarioText: string }) {
+  return (
+    <Box>
+      {scenarioText
+        .replaceAll(".", ".\n")
+        .replaceAll("?", "?\n")
+        .split("\n")
+        .filter((sentence) => sentence.trim())
+        .map((sentence) => {
+          return (
+            <Heading fontSize='xl' key={sentence} as='p' mb={5}>
+              {sentence}
+            </Heading>
+          );
+        })}
+    </Box>
+  );
 }

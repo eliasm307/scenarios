@@ -1,12 +1,13 @@
+/* eslint-disable @typescript-eslint/no-throw-literal */
 import "server-only";
 
 import { cookies } from "next/headers";
+import type { Message } from "ai";
 import { Box, Grid } from "../../../components/ChakraUI.client";
 import NavBar from "../../../components/NavBar.client";
 import GameSession from "../../../components/GameSession.client";
 import { getSupabaseServer } from "../../../utils/server/supabase";
-import { SessionData } from "../../../types";
-import { Message } from "ai";
+import type { SessionData } from "../../../types";
 
 export default async function SessionPage({ params: { id } }: { params: { id: string } }) {
   const sessionId = Number(id);
@@ -34,11 +35,11 @@ export default async function SessionPage({ params: { id } }: { params: { id: st
     throw new Error("No user profile found");
   }
 
-  let getSessionResult = await supabase.from("sessions").select("*").eq("id", sessionId).single();
+  let sessionRow = await supabase.from("sessions").select("*").eq("id", sessionId).single();
 
-  if (!getSessionResult.data) {
+  if (!sessionRow.data) {
     console.log("Creating session", sessionId);
-    getSessionResult = await supabase
+    sessionRow = await supabase
       .from("sessions")
       .insert({
         id: sessionId,
@@ -53,13 +54,13 @@ export default async function SessionPage({ params: { id } }: { params: { id: st
       .select()
       .single();
 
-    if (!getSessionResult.data) {
+    if (!sessionRow.data) {
       throw new Error("Could not create session");
     }
   }
 
   let messages: Message[] = [];
-  if (getSessionResult.data.stage !== "scenario-selection") {
+  if (sessionRow.data.stage !== "scenario-selection") {
     const { data: messagesData, error } = await supabase
       .from("messages")
       .select("*")
@@ -81,11 +82,11 @@ export default async function SessionPage({ params: { id } }: { params: { id: st
   }
 
   let scenarioText: string | null = null;
-  if (getSessionResult.data.selected_scenario_id) {
+  if (sessionRow.data.selected_scenario_id) {
     const { data: scenario, error } = await supabase
       .from("scenarios")
       .select("text")
-      .eq("id", getSessionResult.data.selected_scenario_id)
+      .eq("id", sessionRow.data.selected_scenario_id)
       .single();
 
     if (error) {
@@ -106,7 +107,7 @@ export default async function SessionPage({ params: { id } }: { params: { id: st
             joinTimeMs: Date.now(),
           }}
           initial={{
-            session: getSessionResult.data as SessionData,
+            session: sessionRow.data as SessionData,
             messages,
             scenarioText,
           }}

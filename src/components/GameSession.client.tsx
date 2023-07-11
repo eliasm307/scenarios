@@ -314,6 +314,8 @@ export default function GameSession({ initial, currentUser }: Props): React.Reac
         currentUser={currentUser}
         sessionId={state.session.id}
         sessionLockedByUserId={state.session.messaging_locked_by_user_id}
+        users={state.users}
+        outcomeVotesByCurrentUser={state.session.scenario_outcome_votes[currentUser.id] || {}}
       />
     );
   }

@@ -168,6 +168,15 @@ export interface Database {
         };
         Returns: undefined;
       };
+      vote_for_outcome: {
+        Args: {
+          vote_by_user_id: string;
+          vote_for_user_id: string;
+          session_id: number;
+          outcome: Json;
+        };
+        Returns: undefined;
+      };
     };
     Enums: {
       [_ in never]: never;

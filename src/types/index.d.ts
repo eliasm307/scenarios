@@ -1,4 +1,5 @@
 import type { useDisclosure } from "@chakra-ui/react";
+import type { Message } from "ai";
 import type { Database } from "./supabase";
 
 export type ChakraDisclosure = ReturnType<typeof useDisclosure>;
@@ -21,7 +22,7 @@ type ExtendTable<
 > = Omit<OriginalTable, keyof NewTable> & NewTable;
 
 export type SessionData = ExtendTable<
-  Database["public"]["Views"]["sessions_view"]["Row"],
+  Database["public"]["Tables"]["sessions"]["Row"],
   {
     created_at: string;
     id: number;
@@ -37,5 +38,12 @@ export type SessionData = ExtendTable<
      */
     scenario_outcome_votes: Record<string, Record<string, boolean>>;
     stage: "scenario-selection" | "scenario-outcome-selection" | "scenario-outcome-reveal";
+  }
+>;
+
+export type SessionMessageData = ExtendTable<
+  Database["public"]["Tables"]["messages"]["Row"],
+  {
+    author_role: Message["role"];
   }
 >;

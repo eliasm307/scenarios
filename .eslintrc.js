@@ -2,6 +2,7 @@ const ecmConfig = require("@eliasm307/config/eslint")({ withPrettier: true, with
 
 module.exports = {
   ...ecmConfig,
+  plugins: [...ecmConfig.plugins].filter((plugin) => plugin !== "react-hooks"),
   extends: [...ecmConfig.extends, "next/core-web-vitals"],
   root: true,
   rules: {

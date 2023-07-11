@@ -6,32 +6,29 @@ export interface Database {
       messages: {
         Row: {
           author_id: string | null;
-          author_name: string;
           author_role: string;
+          content: string;
           id: number;
           inserted_at: string;
-          session_id: string;
-          text: string;
+          session_id: number;
           updated_at: string;
         };
         Insert: {
           author_id?: string | null;
-          author_name: string;
           author_role: string;
+          content: string;
           id?: number;
           inserted_at?: string;
-          session_id: string;
-          text: string;
+          session_id: number;
           updated_at?: string;
         };
         Update: {
           author_id?: string | null;
-          author_name?: string;
           author_role?: string;
+          content?: string;
           id?: number;
           inserted_at?: string;
-          session_id?: string;
-          text?: string;
+          session_id?: number;
           updated_at?: string;
         };
         Relationships: [
@@ -39,6 +36,12 @@ export interface Database {
             foreignKeyName: "messages_author_id_fkey";
             columns: ["author_id"];
             referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "messages_session_id_fkey";
+            columns: ["session_id"];
+            referencedRelation: "sessions";
             referencedColumns: ["id"];
           },
         ];
@@ -68,6 +71,7 @@ export interface Database {
         Row: {
           created_at: string;
           id: number;
+          messaging_locked_by_user_id: string | null;
           scenario_option_votes: Json;
           scenario_options: string[] | null;
           scenario_outcome_votes: Json;
@@ -77,6 +81,7 @@ export interface Database {
         Insert: {
           created_at?: string;
           id?: number;
+          messaging_locked_by_user_id?: string | null;
           scenario_option_votes?: Json;
           scenario_options?: string[] | null;
           scenario_outcome_votes?: Json;
@@ -86,6 +91,7 @@ export interface Database {
         Update: {
           created_at?: string;
           id?: number;
+          messaging_locked_by_user_id?: string | null;
           scenario_option_votes?: Json;
           scenario_options?: string[] | null;
           scenario_outcome_votes?: Json;
@@ -93,6 +99,12 @@ export interface Database {
           stage?: string;
         };
         Relationships: [
+          {
+            foreignKeyName: "sessions_messaging_locked_by_user_id_fkey";
+            columns: ["messaging_locked_by_user_id"];
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
           {
             foreignKeyName: "sessions_selected_scenario_id_fkey";
             columns: ["selected_scenario_id"];
@@ -131,26 +143,7 @@ export interface Database {
       };
     };
     Views: {
-      sessions_view: {
-        Row: {
-          created_at: string | null;
-          id: number | null;
-          scenario_option_votes: Json | null;
-          scenario_options: string[] | null;
-          scenario_outcome_votes: Json | null;
-          scenario_text: string | null;
-          selected_scenario_id: number | null;
-          stage: string | null;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "sessions_selected_scenario_id_fkey";
-            columns: ["selected_scenario_id"];
-            referencedRelation: "scenarios";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
+      [_ in never]: never;
     };
     Functions: {
       json_matches_schema: {

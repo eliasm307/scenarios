@@ -6,6 +6,7 @@ import NavBar from "../../../components/NavBar.client";
 import GameSession from "../../../components/GameSession.client";
 import { getSupabaseServer } from "../../../utils/server/supabase";
 import { SessionData } from "../../../types";
+import { Message } from "ai";
 
 export default async function SessionPage({ params: { id } }: { params: { id: string } }) {
   const sessionId = Number(id);
@@ -33,11 +34,7 @@ export default async function SessionPage({ params: { id } }: { params: { id: st
     throw new Error("No user profile found");
   }
 
-  let getSessionResult = await supabase
-    .from("sessions_view")
-    .select("*")
-    .eq("id", sessionId)
-    .single();
+  let getSessionResult = await supabase.from("sessions").select("*").eq("id", sessionId).single();
 
   if (!getSessionResult.data) {
     console.log("Creating session", sessionId);
@@ -45,7 +42,7 @@ export default async function SessionPage({ params: { id } }: { params: { id: st
       .from("sessions")
       .insert({
         id: sessionId,
-        stage: "scenario-outcome-selection",
+        stage: "scenario-selection" as SessionData["stage"],
         // todo generate these from API
         scenario_options: [
           "You discover a magical book that can grant any wish, but each wish shortens your life by five years. Would you use the book?",
@@ -61,6 +58,43 @@ export default async function SessionPage({ params: { id } }: { params: { id: st
     }
   }
 
+  let messages: Message[] = [];
+  if (getSessionResult.data.stage !== "scenario-selection") {
+    const { data: messagesData, error } = await supabase
+      .from("messages")
+      .select("*")
+      .eq("session_id", sessionId)
+      .order("updated_at", { ascending: true });
+
+    if (error) {
+      throw error;
+    }
+
+    messages =
+      messagesData?.map((message) => ({
+        content: message.content!,
+        id: String(message.id),
+        role: message.author_role as Message["role"],
+        createdAt: new Date(message.updated_at!),
+        // name: message.author_id!,
+      })) ?? [];
+  }
+
+  let scenarioText: string | null = null;
+  if (getSessionResult.data.selected_scenario_id) {
+    const { data: scenario, error } = await supabase
+      .from("scenarios")
+      .select("text")
+      .eq("id", getSessionResult.data.selected_scenario_id)
+      .single();
+
+    if (error) {
+      throw error;
+    }
+
+    scenarioText = scenario?.text ?? null;
+  }
+
   return (
     <Grid minHeight='100dvh' overflow='hidden' templateRows='auto 1fr' position='fixed' inset={0}>
       <NavBar zIndex={2} />
@@ -73,6 +107,8 @@ export default async function SessionPage({ params: { id } }: { params: { id: st
           }}
           initial={{
             session: getSessionResult.data as SessionData,
+            messages,
+            scenarioText,
           }}
         />
       </Box>

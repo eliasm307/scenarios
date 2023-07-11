@@ -1,16 +1,32 @@
 "use client";
 
-import { Box, Button, Divider, Flex, Grid, Heading, Spinner, Textarea } from "@chakra-ui/react";
+import {
+  Box,
+  Button,
+  Divider,
+  Flex,
+  Grid,
+  Heading,
+  Spinner,
+  Textarea,
+  useToast,
+} from "@chakra-ui/react";
 import type { Message } from "ai";
 import type { UseChatHelpers } from "ai/react";
 import { useChat } from "ai/react";
 import { useCallback, useEffect, useRef } from "react";
+import { REALTIME_LISTEN_TYPES } from "@supabase/supabase-js";
 import ChatMessage from "./ChatMessage";
+import { getSupabaseClient } from "../utils/client/supabase";
+import type { SessionMessageData, SessionUser } from "../types";
 
 type Props = {
   selectedScenarioText: string;
-  existing?: {
-    messages?: Message[];
+  currentUser: SessionUser;
+  sessionId: number;
+  sessionLockedByUserId: string | null;
+  initial: {
+    messages: Message[];
   };
 };
 
@@ -42,11 +58,138 @@ const DUMMY_MESSAGES: Message[] = [
   { id: "7", role: "user", content: "can I convince him not to destroy th art?" },
 ];
 
-export default function ScenarioChat({ selectedScenarioText: scenario, existing }: Props) {
+function useAiChat({
+  initial: existing,
+  selectedScenarioText,
+  currentUser,
+  sessionLockedByUserId,
+  sessionId,
+}: Props) {
+  const toast = useToast();
+
+  const unlockSession = useCallback(() => {
+    if (sessionLockedByUserId !== currentUser.id) {
+      return;
+    }
+    void getSupabaseClient()
+      .from("sessions")
+      .update({ messaging_locked_by_user_id: null })
+      .eq("id", sessionId)
+      .then((result) => {
+        if (result.error) {
+          console.error("Error un-locking session", result.error);
+          toast({
+            title: "Error locking session",
+            description: result.error.message,
+            status: "error",
+            duration: 9000,
+            isClosable: true,
+          });
+        }
+      });
+  }, [currentUser.id, sessionId, sessionLockedByUserId, toast]);
+
   const chat = useChat({
-    initialMessages: existing?.messages || DUMMY_MESSAGES,
-    body: { scenario },
+    initialMessages: existing?.messages, // || DUMMY_MESSAGES,
+    body: { scenario: selectedScenarioText },
+    onFinish(message) {
+      console.log("useAiChat:onFinish", message);
+      unlockSession();
+      void getSupabaseClient()
+        .from("messages")
+        .insert([
+          {
+            session_id: sessionId,
+            content: message.content,
+            author_role: "assistant",
+          },
+        ])
+        .then((result) => {
+          if (result.error) {
+            console.error("Error saving message", result.error);
+            toast({
+              title: "Error saving message",
+              description: result.error.message,
+              status: "error",
+              duration: 9000,
+              isClosable: true,
+            });
+          }
+        });
+    },
+    onError(error) {
+      console.error("useAiChat:onError", error);
+      toast({
+        title: "Error generating response",
+        description: error instanceof Error ? error.message : String(error),
+        status: "error",
+        duration: 9000,
+        isClosable: true,
+      });
+      unlockSession();
+    },
   });
+
+  useEffect(() => {
+    const supabase = getSupabaseClient();
+    const subscription = supabase
+      .channel(`session:${sessionId}`)
+      .on<SessionMessageData>(
+        REALTIME_LISTEN_TYPES.POSTGRES_CHANGES,
+        {
+          schema: "public",
+          table: "messages",
+          event: "INSERT",
+          filter: `session_id=eq.${sessionId}`,
+        },
+        (payload) => {
+          console.log("useAiChat:subscription", payload);
+          const newMessage = payload.new;
+          const localChatAlreadyHasMessage = chat.messages.some(
+            (m) => m.id === String(newMessage.id),
+          );
+          if (localChatAlreadyHasMessage) {
+            return;
+          }
+
+          let currentMessages = chat.messages;
+          const lastMessage = currentMessages.at(-1);
+
+          debugger;
+          if (newMessage.author_role === "assistant") {
+            unlockSession();
+
+            if (lastMessage?.role === "assistant") {
+              currentMessages = currentMessages.slice(0, -1);
+            }
+          }
+
+          chat.setMessages(
+            currentMessages.concat({
+              id: String(newMessage.id),
+              role: newMessage.author_role,
+              content: newMessage.content,
+            }),
+          );
+        },
+      )
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(subscription);
+    };
+  }, [chat, sessionId]);
+
+  useEffect(() => {
+    // if we re-mount it means the session can be unlocked
+    unlockSession();
+    return unlockSession;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  if (chat.isLoading) {
+    console.log("useAiChat:isLoading, last message", chat.messages.at(-1));
+  }
   const messagesListRef = useRef<HTMLDivElement>(null);
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
@@ -74,14 +217,71 @@ export default function ScenarioChat({ selectedScenarioText: scenario, existing 
     }
   }, [chat]);
 
+  return {
+    chat: {
+      ...chat,
+      handleSubmit(e, chatRequestOptions?) {
+        const supabase = getSupabaseClient();
+        const content = textAreaRef.current!.value;
+
+        void Promise.all([
+          supabase
+            .from("sessions")
+            .update({ messaging_locked_by_user_id: currentUser.id })
+            .eq("id", sessionId)
+            .then((result) => {
+              if (result.error) {
+                console.error("Error locking session", result.error);
+                unlockSession();
+                toast({
+                  title: "Error locking session",
+                  description: result.error.message,
+                  status: "error",
+                  duration: 9000,
+                  isClosable: true,
+                });
+              }
+            }),
+
+          supabase
+            .from("messages")
+            .insert([
+              {
+                session_id: sessionId,
+                content,
+                author_role: "user" as Message["role"],
+                author_id: currentUser.id,
+              },
+            ])
+            .then((result) => {
+              if (result.error) {
+                console.error("Error saving message", result.error);
+                unlockSession();
+                toast({
+                  title: "Error saving message",
+                  description: result.error.message,
+                  status: "error",
+                  duration: 9000,
+                  isClosable: true,
+                });
+              }
+            }),
+        ]);
+
+        return chat.handleSubmit(e, chatRequestOptions);
+      },
+    } satisfies UseChatHelpers,
+    messagesListRef: messagesListRefNotifier,
+    textAreaRef,
+    formRef,
+  };
+}
+
+export default function ScenarioChat(props: Props) {
+  const { chat, formRef, messagesListRef, textAreaRef } = useAiChat(props);
+
   const messagesList = (
-    <Flex
-      width='100%'
-      ref={messagesListRefNotifier}
-      direction='column'
-      overflow='auto'
-      tabIndex={0}
-    >
+    <Flex width='100%' ref={messagesListRef} direction='column' overflow='auto' tabIndex={0}>
       {chat.messages.map((message, i) => {
         const isLastEntry = !chat.messages[i + 1];
         return (
@@ -98,23 +298,26 @@ export default function ScenarioChat({ selectedScenarioText: scenario, existing 
     </Flex>
   );
 
-  const handleInputKeyDown = useCallback(async (e: React.KeyboardEvent) => {
-    if (e.key !== "Enter") {
-      return;
-    }
-    const hasUserInput = !!textAreaRef.current?.value;
-    // allow for multiline input, ie shift enter which is not for confirming
-    const isConfirmEnter = !e.shiftKey;
-    if (isConfirmEnter) {
-      if (hasUserInput && formRef.current) {
-        // submit user message only if there is input
-        formRef.current.requestSubmit();
-      } else {
-        // prevent new line on empty input
-        e.preventDefault();
+  const handleInputKeyDown = useCallback(
+    async (e: React.KeyboardEvent) => {
+      if (e.key !== "Enter") {
+        return;
       }
-    }
-  }, []);
+      const hasUserInput = !!textAreaRef.current?.value;
+      // allow for multiline input, ie shift enter which is not for confirming
+      const isConfirmEnter = !e.shiftKey;
+      if (isConfirmEnter) {
+        if (hasUserInput && formRef.current) {
+          // submit user message only if there is input
+          formRef.current.requestSubmit();
+        } else {
+          // prevent new line on empty input
+          e.preventDefault();
+        }
+      }
+    },
+    [formRef, textAreaRef],
+  );
 
   const controls = (
     <Flex width='100%' gap={2} p={3} pt={1} flexDirection='column'>
@@ -131,7 +334,7 @@ export default function ScenarioChat({ selectedScenarioText: scenario, existing 
             // minHeight='unset'
             // maxHeight='10rem'
             value={chat.input}
-            placeholder={getPlaceholderText(chat)}
+            placeholder={props.sessionLockedByUserId ? "AI typing..." : getPlaceholderText(chat)}
             onChange={chat.handleInputChange}
             onKeyDown={handleInputKeyDown}
             spellCheck={false}
@@ -157,7 +360,7 @@ export default function ScenarioChat({ selectedScenarioText: scenario, existing 
                 type='submit'
                 variant='ghost'
                 colorScheme='green'
-                isDisabled={!chat.input}
+                isDisabled={!chat.input || !!props.sessionLockedByUserId}
               >
                 Send
               </Button>
@@ -182,7 +385,7 @@ export default function ScenarioChat({ selectedScenarioText: scenario, existing 
         gap={2}
       >
         <Box m={3} overflow='auto'>
-          {scenario.split(".").map((sentence) => {
+          {props.selectedScenarioText.split(".").map((sentence) => {
             return (
               <Heading key={sentence} as='p' mb={5}>
                 {sentence}.

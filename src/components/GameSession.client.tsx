@@ -6,7 +6,7 @@
 
 import React, { useCallback, useEffect, useReducer, useRef } from "react";
 import type { Message } from "ai";
-import { useToast } from "@chakra-ui/react";
+import { Center, Spinner, useToast } from "@chakra-ui/react";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { REALTIME_LISTEN_TYPES, REALTIME_PRESENCE_LISTEN_EVENTS } from "@supabase/supabase-js";
 import ScenarioSelector from "./ScenarioSelector.client";
@@ -18,6 +18,7 @@ type State = {
   users: SessionUser[];
   currentUser: SessionUser;
   session: SessionData;
+  scenarioText: string | null;
 };
 
 type Action =
@@ -32,6 +33,10 @@ type Action =
   | {
       event: BroadcastEventName.UserNameUpdated;
       data: UserNameUpdatedPayload;
+    }
+  | {
+      event: "scenarioTextUpdated";
+      data: string;
     };
 
 type BroadcastEvent = BroadcastEventFrom<Action>;
@@ -65,6 +70,10 @@ function reducer(state: State, action: Action): State {
       return { ...state, session: action.data };
     }
 
+    case "scenarioTextUpdated": {
+      return { ...state, scenarioText: action.data };
+    }
+
     default:
       throw new Error(`Unknown action type ${(action as Action).event}`);
   }
@@ -80,17 +89,15 @@ type UserNameUpdatedPayload = {
 };
 
 type Props = {
-  existing?: {
-    scenario?: string;
-    messages?: Message[];
-  };
   initial: {
+    messages: Message[];
     session: SessionData;
+    scenarioText: string | null;
   };
   currentUser: SessionUser;
 };
 
-export default function GameSession({ existing, initial, currentUser }: Props): React.ReactElement {
+export default function GameSession({ initial, currentUser }: Props): React.ReactElement {
   const toast = useToast();
   const supabaseChannelRef = useRef<RealtimeChannel>();
   const [state, send] = useReducer(reducer, null, () => {
@@ -100,6 +107,7 @@ export default function GameSession({ existing, initial, currentUser }: Props): 
       session: {
         ...initial.session,
       },
+      scenarioText: initial.scenarioText,
       // scenario:
       //   existing?.scenario ??
       //   "" ?? // todo remove this and default scenario below
@@ -152,7 +160,9 @@ export default function GameSession({ existing, initial, currentUser }: Props): 
     // ! presence state seems to be readonly after being tracked, need to listen to broadcast or DB events to update state
     channel
       .on("presence", { event: "sync" }, () => {
-        const newUsers = channel.presenceState<SessionUser>()[sessionKey] || [];
+        const presenceStateMap = channel.presenceState<SessionUser>();
+        const newUsers = presenceStateMap[sessionKey] || [];
+        console.log("presence sync", { newUsers, presenceStateMap });
         send({ event: "usersUpdated", data: [...newUsers] });
       })
       .on<SessionUser>(
@@ -197,7 +207,10 @@ export default function GameSession({ existing, initial, currentUser }: Props): 
           event: "UPDATE",
           filter: `id=eq.${state.session.id}`,
         },
-        (data) => send({ event: "sessionUpdated", data: data.new }),
+        (data) => {
+          console.log("sessionUpdated", data);
+          send({ event: "sessionUpdated", data: data.new });
+        },
       );
 
     function handleBroadcastMessage(message: BroadcastEvent) {
@@ -254,13 +267,23 @@ export default function GameSession({ existing, initial, currentUser }: Props): 
     // eslint-disable-next-line react-hooks/exhaustive-deps -- only run once
   }, [currentUser.name]);
 
-  if (!state.session.scenario_text) {
-    if (state.session.stage !== "scenario-outcome-selection") {
+  useEffect(() => {
+    if (state.session.selected_scenario_id && !state.scenarioText) {
       void getSupabaseClient()
-        .from("sessions")
-        .update({ stage: "scenario-outcome-selection" })
-        .match({ id: state.session.id });
+        .from("scenarios")
+        .select("text")
+        .eq("id", state.session.selected_scenario_id)
+        .single()
+        .then(({ data }) => {
+          if (!data) {
+            throw new Error("No scenario text found");
+          }
+          send({ event: "scenarioTextUpdated", data: data.text });
+        });
     }
+  }, [state.scenarioText, state.session.selected_scenario_id, state.session.stage]);
+
+  if (state.session.stage === "scenario-selection") {
     if (!state.session.scenario_options?.length) {
       throw new Error("No initial scenario options provided");
     }
@@ -277,7 +300,22 @@ export default function GameSession({ existing, initial, currentUser }: Props): 
   }
 
   if (state.session.stage === "scenario-outcome-selection") {
-    return <ScenarioChat selectedScenarioText={state.session.scenario_text} existing={existing} />;
+    if (!state.scenarioText) {
+      return (
+        <Center width='100%' height='100%'>
+          <Spinner />
+        </Center>
+      );
+    }
+    return (
+      <ScenarioChat
+        selectedScenarioText={state.scenarioText}
+        initial={initial}
+        currentUser={currentUser}
+        sessionId={state.session.id}
+        sessionLockedByUserId={state.session.messaging_locked_by_user_id}
+      />
+    );
   }
 
   throw new Error(`Unexpected session stage ${state.session.stage}`);

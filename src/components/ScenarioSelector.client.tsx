@@ -43,90 +43,119 @@ function useLogic({
   const toast = useToast();
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleVote = useCallback(async (optionId: number) => {
-    setIsLoading(true);
+  const handleVote = useCallback(
+    async (optionId: number) => {
+      setIsLoading(true);
 
-    debugger;
+      debugger;
 
-    // todo check if this is the deciding vote and if so perform relevant session updates e.g. regenerating scenario options or moving the session to the next stage
-    const supabase = getSupabaseClient();
-    const newOptionVotes = { ...optionVotes, [currentUser.id]: optionId };
-    const voteIds = Object.values(newOptionVotes);
-    const votingComplete = voteIds.length === users.length;
-    if (!votingComplete) {
-      return supabase
-        .rpc("vote_for_option", {
-          user_id: currentUser.id,
-          option_id: optionId,
-          session_id: sessionId,
-        })
-        .then((result) => {
-          if (result.error) {
-            console.error("Voting error", result.error);
+      // todo check if this is the deciding vote and if so perform relevant session updates e.g. regenerating scenario options or moving the session to the next stage
+      const supabase = getSupabaseClient();
+      const newOptionVotes = { ...optionVotes, [currentUser.id]: optionId };
+      const voteIds = Object.values(newOptionVotes);
+      const votingComplete = voteIds.length === users.length;
+      if (!votingComplete) {
+        console.log("voting not complete, updating option votes...", { newOptionVotes, users });
+        return supabase
+          .rpc("vote_for_option", {
+            user_id: currentUser.id,
+            option_id: optionId,
+            session_id: sessionId,
+          })
+          .then((result) => {
+            if (result.error) {
+              console.error("Voting error", result.error);
+              toast({
+                title: "Voting Error",
+                description: result.error.message,
+                status: "error",
+                duration: 9000,
+                isClosable: true,
+              });
+            }
+            setIsLoading(false);
+          });
+      }
+
+      const majorityVoteId = getMajorityVoteId(voteIds);
+      const majorityNotReached = majorityVoteId === null;
+      const majorityVoteIdIsReset = majorityVoteId === -1;
+      if (majorityNotReached || majorityVoteIdIsReset) {
+        console.log("no winning vote resetting options...");
+        toast({
+          title: "Re-generating Options",
+          description: "No majority vote, creating new options...",
+          status: "info",
+          duration: 9000,
+          isClosable: true,
+        });
+
+        // reset votes and options
+        return APIClient.getScenarios()
+          .then(({ scenarios }) => {
+            console.log("got new scenarios", scenarios);
+            return supabase
+              .from("sessions")
+              .update({
+                scenario_options: scenarios,
+                scenario_option_votes: {},
+              })
+              .eq("id", sessionId);
+          })
+          .catch((error) => {
             toast({
-              title: "Voting Error",
-              description: result.error.message,
+              title: "Error",
+              description: error instanceof Error ? error.message : error,
               status: "error",
               duration: 9000,
               isClosable: true,
             });
-          }
-          setIsLoading(false);
-        });
-    }
+          })
+          .finally(() => setIsLoading(false));
+      }
 
-    const majorityVoteId = getMajorityVoteId(voteIds);
-    const majorityNotReached = majorityVoteId === null;
-    const majorityVoteIdIsReset = majorityVoteId === -1;
-    if (majorityNotReached || majorityVoteIdIsReset) {
-      console.log("no winning vote resetting options...");
-      // reset options
-      return APIClient.getScenarios()
-        .then(({ scenarios }) => {
-          console.log("got new scenarios", scenarios);
-          return supabase.from("sessions").update({ scenario_options: scenarios });
+      const winningScenarioText = scenarioOptions[majorityVoteId];
+      if (!winningScenarioText) {
+        throw Error(`no winning scenario at index ${majorityVoteId}`);
+      }
+
+      toast({
+        title: "Voting Complete",
+        description: `The majority has voted`,
+        status: "success",
+        duration: 9000,
+        isClosable: true,
+      });
+
+      const userIdsThatVotedForWinningScenario = Object.entries(newOptionVotes)
+        .filter(([userId, voteOptionId]) => voteOptionId === majorityVoteId)
+        .map(([userId]) => userId);
+
+      const { data: newScenario } = await getSupabaseClient()
+        .from("scenarios")
+        .insert({
+          text: winningScenarioText,
+          voted_by_user_ids: userIdsThatVotedForWinningScenario,
         })
-        .catch((error) => {
-          toast({
-            title: "Error",
-            description: error instanceof Error ? error.message : error,
-            status: "error",
-            duration: 9000,
-            isClosable: true,
-          });
-        })
-        .finally(() => setIsLoading(false));
-    }
+        .select("id")
+        .single();
 
-    const winningScenarioText = scenarioOptions[majorityVoteId];
-    if (!winningScenarioText) {
-      throw Error(`no winning scenario at index ${majorityVoteId}`);
-    }
+      if (!newScenario) {
+        throw Error("no new scenario");
+      }
 
-    const userIdsThatVotedForWinningScenario = Object.entries(newOptionVotes)
-      .filter(([userId, optionId]) => optionId === majorityVoteId)
-      .map(([userId]) => userId);
+      await getSupabaseClient()
+        .from("sessions")
+        .update({
+          selected_scenario_id: newScenario.id,
+          stage: "scenario-outcome-selection",
+        } satisfies Partial<SessionData>)
+        .eq("id", sessionId);
 
-    const { data: newScenario } = await getSupabaseClient()
-      .from("scenarios")
-      .insert({ text: winningScenarioText, voted_by_user_ids: userIdsThatVotedForWinningScenario })
-      .select("id")
-      .single();
-
-    if (!newScenario) {
-      throw Error("no new scenario");
-    }
-
-    await getSupabaseClient()
-      .from("sessions")
-      .update({
-        selected_scenario_id: newScenario.id,
-        stage: "scenario-outcome-selection",
-      } satisfies Partial<SessionData>)
-      .eq("id", sessionId);
-
-    setIsLoading(false);
-  }, []);
+      setIsLoading(false);
+    },
+    [currentUser.id, optionVotes, scenarioOptions, sessionId, toast, users],
+  );
 
   return {
     handleVote,

@@ -319,6 +319,10 @@ export default function ScenarioChat(props: Props) {
     [formRef, textAreaRef],
   );
 
+  console.log("ScenarioChat", {
+    props,
+  });
+
   const controls = (
     <Flex width='100%' gap={2} p={3} pt={1} flexDirection='column'>
       <form ref={formRef} onSubmit={chat.handleSubmit}>
@@ -329,7 +333,7 @@ export default function ScenarioChat(props: Props) {
             variant='outline'
             ref={textAreaRef}
             resize='none'
-            disabled={chat.isLoading}
+            disabled={chat.isLoading || !!props.sessionLockedByUserId}
             isInvalid={!!chat.error}
             // minHeight='unset'
             // maxHeight='10rem'

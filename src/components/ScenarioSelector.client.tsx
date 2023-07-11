@@ -1,3 +1,4 @@
+/* eslint-disable react/no-unused-prop-types */
 /* eslint-disable no-console */
 
 "use client";
@@ -128,7 +129,7 @@ function useLogic({
       });
 
       const userIdsThatVotedForWinningScenario = Object.entries(newOptionVotes)
-        .filter(([userId, voteOptionId]) => voteOptionId === majorityVoteId)
+        .filter(([, voteOptionId]) => voteOptionId === majorityVoteId)
         .map(([userId]) => userId);
 
       const { data: newScenario } = await getSupabaseClient()
@@ -149,6 +150,9 @@ function useLogic({
         .update({
           selected_scenario_id: newScenario.id,
           stage: "scenario-outcome-selection",
+          scenario_option_votes: {},
+          scenario_outcome_votes: {},
+          messaging_locked_by_user_id: null,
         } satisfies Partial<SessionData>)
         .eq("id", sessionId);
 
@@ -184,6 +188,14 @@ type Props = {
 export default function ScenarioSelector(props: Props): React.ReactElement {
   const { isLoading, users, currentUser, optionVotes, scenarioOptions, handleVote } =
     useLogic(props);
+
+  if (users.length < 2) {
+    return (
+      <Center as='section' height='100%'>
+        <Text>Waiting for more players to join...</Text>
+      </Center>
+    );
+  }
 
   if (isLoading || !users.length) {
     return (

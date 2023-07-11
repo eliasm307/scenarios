@@ -38,7 +38,6 @@ export default async function SessionPage({ params: { id } }: { params: { id: st
   let sessionRow = await supabase.from("sessions").select("*").eq("id", sessionId).single();
 
   if (!sessionRow.data) {
-    console.log("Creating session", sessionId);
     sessionRow = await supabase
       .from("sessions")
       .insert({

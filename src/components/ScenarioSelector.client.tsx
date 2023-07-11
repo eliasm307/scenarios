@@ -4,7 +4,7 @@
 "use client";
 
 import { Badge, Center, HStack, Heading, Spinner, Text, VStack, useToast } from "@chakra-ui/react";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import APIClient from "../utils/client/APIClient";
 import type { ChoiceConfig } from "./ChoiceGrid.client";
 import ChoiceGrid from "./ChoiceGrid.client";
@@ -43,6 +43,29 @@ function useLogic({
 }: Props) {
   const toast = useToast();
   const [isLoading, setIsLoading] = useState(false);
+
+  const regenerateOptions = useCallback(async () => {
+    await APIClient.getScenarios()
+      .then(({ scenarios }) => {
+        console.log("got new scenarios", scenarios);
+        return getSupabaseClient()
+          .from("sessions")
+          .update({
+            scenario_options: scenarios,
+            scenario_option_votes: {},
+          })
+          .eq("id", sessionId);
+      })
+      .catch((error) => {
+        toast({
+          title: "Error",
+          description: error instanceof Error ? error.message : error,
+          status: "error",
+          duration: 9000,
+          isClosable: true,
+        });
+      });
+  }, [sessionId, toast]);
 
   const handleVote = useCallback(
     async (optionId: number) => {
@@ -89,27 +112,7 @@ function useLogic({
         });
 
         // reset votes and options
-        return APIClient.getScenarios()
-          .then(({ scenarios }) => {
-            console.log("got new scenarios", scenarios);
-            return supabase
-              .from("sessions")
-              .update({
-                scenario_options: scenarios,
-                scenario_option_votes: {},
-              })
-              .eq("id", sessionId);
-          })
-          .catch((error) => {
-            toast({
-              title: "Error",
-              description: error instanceof Error ? error.message : error,
-              status: "error",
-              duration: 9000,
-              isClosable: true,
-            });
-          })
-          .finally(() => setIsLoading(false));
+        return regenerateOptions().finally(() => setIsLoading(false));
       }
 
       const winningScenarioText = scenarioOptions[majorityVoteId];
@@ -155,8 +158,16 @@ function useLogic({
 
       setIsLoading(false);
     },
-    [currentUser.id, optionVotes, scenarioOptions, sessionId, toast, users],
+    [currentUser.id, optionVotes, regenerateOptions, scenarioOptions, sessionId, toast, users],
   );
+
+  useEffect(() => {
+    if (scenarioOptions.length === 0) {
+      console.log("no scenario options, regenerating...");
+      setIsLoading(true);
+      void regenerateOptions().finally(() => setIsLoading(false));
+    }
+  }, [regenerateOptions, scenarioOptions.length]);
 
   return {
     handleVote,
@@ -186,15 +197,7 @@ export default function ScenarioSelector(props: Props): React.ReactElement {
   const { isLoading, users, currentUser, optionVotes, scenarioOptions, handleVote } =
     useLogic(props);
 
-  if (users.length < 2) {
-    return (
-      <Center as='section' height='100%'>
-        <Text>Waiting for more players to join...</Text>
-      </Center>
-    );
-  }
-
-  if (isLoading || !users.length) {
+  if (isLoading || !users.length || !scenarioOptions.length) {
     return (
       <Center as='section' height='100%'>
         <Spinner />

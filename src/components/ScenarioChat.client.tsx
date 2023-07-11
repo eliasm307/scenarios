@@ -34,39 +34,11 @@ type Props = {
   users: SessionUser[];
   sessionId: number;
   sessionLockedByUserId: string | null;
-  outcomeVotesByCurrentUser: NonNullable<SessionData["scenario_outcome_votes"][string]>;
+  outcomeVotes: NonNullable<SessionData["scenario_outcome_votes"]>;
   initial: {
     messages: Message[];
   };
 };
-
-const DUMMY_MESSAGES: Message[] = [
-  { id: "1", role: "user", content: "hi" },
-  {
-    id: "2",
-    role: "assistant",
-    content: "Hello! How can I assist you with the scenario today?",
-  },
-  {
-    id: "3",
-    role: "user",
-    content: "why does he want to destroy the art?",
-  },
-  {
-    id: "4",
-    role: "assistant",
-    content:
-      "The wealthy collector has a rather eccentric personality and often engages in activities that most people don't understand. In this case, he believes that by purchasing and then destroying the art, he is in a way participating in its life cycle. He sees it as an act of creation in reverse, a way of returning the art back to its raw, unformed essence. This may seem confusing and contradictory to many people, including yourself, the artist. This is a peculiarity which complicates your choice. The satisfaction of having your financial struggles solved versus the heartbreaking fact of knowing your beloved artwork will be destroyed after the purchase.",
-  },
-  { id: "5", role: "user", content: "who is he?" },
-  {
-    id: "6",
-    role: "assistant",
-    content:
-      "The wealthy collector is a mysterious individual known for his strange hobbies and eccentric lifestyle. He is also known as an enigmatic figure in the art world with substantial wealth, who seldom appears in social events. However, his identity matters less; what's paramount is his peculiar proposal to you. This man, with his perplexing interest in your art and his plans to destroy it after purchase, is asking you to make a difficult choice: to sell your priceless work to secure financial stability or decline the offer, thereby preserving the integrity and existence of your art.",
-  },
-  { id: "7", role: "user", content: "can I convince him not to destroy th art?" },
-];
 
 function useAiChat({
   initial: existing,
@@ -103,7 +75,7 @@ function useAiChat({
     initialMessages: existing?.messages, // || DUMMY_MESSAGES,
     body: { scenario: selectedScenarioText },
     onFinish(message) {
-      console.log("useAiChat:onFinish", message);
+      // console.log("useAiChat:onFinish", message);
       unlockSession();
       void getSupabaseClient()
         .from("messages")
@@ -153,7 +125,7 @@ function useAiChat({
           filter: `session_id=eq.${sessionId}`,
         },
         (payload) => {
-          console.log("useAiChat:subscription", payload);
+          // console.log("useAiChat:subscription", payload);
           const newMessage = payload.new;
           const localChatAlreadyHasMessage = chat.messages.some(
             (m) => m.id === String(newMessage.id),
@@ -163,12 +135,10 @@ function useAiChat({
           }
 
           let currentMessages = chat.messages;
-          const lastMessage = currentMessages.at(-1);
-
-          debugger;
           if (newMessage.author_role === "assistant") {
             unlockSession();
 
+            const lastMessage = currentMessages.at(-1);
             if (lastMessage?.role === "assistant") {
               currentMessages = currentMessages.slice(0, -1);
             }
@@ -480,8 +450,9 @@ function getPlaceholderText(chat: UseChatHelpers): string {
   return "Ask me anything about the scenario 😀";
 }
 
-function OutcomeVotingGrid({ users, currentUser, outcomeVotesByCurrentUser, sessionId }: Props) {
+function OutcomeVotingGrid({ users, currentUser, outcomeVotes, sessionId }: Props) {
   const toast = useToast();
+  const outcomeVotesForCurrentUser = outcomeVotes[currentUser.id];
   return (
     <Box overflowY='auto'>
       <Heading as='h2' size='md' mb={2} width='100%' textAlign='center'>
@@ -492,19 +463,19 @@ function OutcomeVotingGrid({ users, currentUser, outcomeVotesByCurrentUser, sess
           <Tbody>
             {users.map((user) => {
               const userName = user.id === currentUser.id ? "I" : user.name;
-              const outcomeVote = outcomeVotesByCurrentUser[user.id];
+              const userOutcomeVote = outcomeVotesForCurrentUser?.[user.id];
               return (
                 <RadioGroup
                   as='tr'
                   key={user.id}
-                  onChange={async (value) => {
-                    const voteUserWouldDoIt = value === "true";
-                    console.log("clicked radio option", value, "for", user.name);
+                  value={String(userOutcomeVote)}
+                  onChange={async (newVote) => {
+                    const votedThatUserWouldDoIt = newVote === "true";
                     const result = await getSupabaseClient().rpc("vote_for_outcome", {
                       session_id: sessionId,
                       vote_by_user_id: currentUser.id,
                       vote_for_user_id: user.id,
-                      outcome: voteUserWouldDoIt,
+                      outcome: votedThatUserWouldDoIt,
                     });
                     if (result.error) {
                       toast({
@@ -515,16 +486,56 @@ function OutcomeVotingGrid({ users, currentUser, outcomeVotesByCurrentUser, sess
                         isClosable: true,
                       });
                     }
+
+                    const newOutcomeVotes = {
+                      ...outcomeVotes,
+                      [currentUser.id]: {
+                        ...outcomeVotesForCurrentUser,
+                        [user.id]: votedThatUserWouldDoIt,
+                      },
+                    };
+
+                    const votingComplete =
+                      Object.keys(newOutcomeVotes).length === users.length &&
+                      Object.values(newOutcomeVotes).every((votes) => {
+                        return Object.keys(votes || {}).length === users.length;
+                      });
+
+                    if (!votingComplete) {
+                      return;
+                    }
+                    toast({
+                      title: "Voting Complete",
+                      description: "All votes are in!",
+                      status: "success",
+                      duration: 9000,
+                      isClosable: true,
+                    });
+
+                    const result2 = await getSupabaseClient()
+                      .from("sessions")
+                      .update({ stage: "scenario-outcome-reveal" } satisfies Partial<SessionData>)
+                      .eq("id", sessionId);
+
+                    if (result2.error) {
+                      toast({
+                        title: "Error updating session stage",
+                        description: result2.error.message,
+                        status: "error",
+                        duration: 9000,
+                        isClosable: true,
+                      });
+                    }
                   }}
                 >
                   <Td>{userName}</Td>
                   <Td>
-                    <Radio colorScheme='green' value='true' checked={outcomeVote === true}>
+                    <Radio colorScheme='green' value='true'>
                       would do it
                     </Radio>
                   </Td>
                   <Td>
-                    <Radio colorScheme='red' value='false' checked={outcomeVote === false}>
+                    <Radio colorScheme='red' value='false'>
                       would not do it
                     </Radio>
                   </Td>

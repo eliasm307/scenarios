@@ -6,13 +6,14 @@
 
 import React, { useCallback, useEffect, useReducer, useRef } from "react";
 import type { Message } from "ai";
-import { Center, Spinner, useToast } from "@chakra-ui/react";
+import { Center, Spinner, Text, useToast } from "@chakra-ui/react";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { REALTIME_LISTEN_TYPES, REALTIME_PRESENCE_LISTEN_EVENTS } from "@supabase/supabase-js";
 import ScenarioSelector from "./ScenarioSelector.client";
 import ScenarioChat from "./ScenarioChat.client";
 import { getSupabaseClient } from "../utils/client/supabase";
 import type { BroadcastEventFrom, SessionData, SessionUser } from "../types";
+import OutcomesReveal from "./OutcomesReveal.client";
 
 type State = {
   users: SessionUser[];
@@ -283,10 +284,15 @@ export default function GameSession({ initial, currentUser }: Props): React.Reac
     }
   }, [state.scenarioText, state.session.selected_scenario_id, state.session.stage]);
 
+  if (state.users.length < 2) {
+    return (
+      <Center as='section' height='100%'>
+        <Text>Waiting for more players to join...</Text>
+      </Center>
+    );
+  }
+
   if (state.session.stage === "scenario-selection") {
-    if (!state.session.scenario_options?.length) {
-      throw new Error("No initial scenario options provided");
-    }
     return (
       <ScenarioSelector
         scenarioOptions={state.session.scenario_options}
@@ -315,7 +321,18 @@ export default function GameSession({ initial, currentUser }: Props): React.Reac
         sessionId={state.session.id}
         sessionLockedByUserId={state.session.messaging_locked_by_user_id}
         users={state.users}
-        outcomeVotesByCurrentUser={state.session.scenario_outcome_votes[currentUser.id] || {}}
+        outcomeVotes={state.session.scenario_outcome_votes || {}}
+      />
+    );
+  }
+
+  if (state.session.stage === "scenario-outcome-reveal") {
+    return (
+      <OutcomesReveal
+        sessionId={state.session.id}
+        currentUser={currentUser}
+        outcomeVotes={state.session.scenario_outcome_votes}
+        users={state.users}
       />
     );
   }

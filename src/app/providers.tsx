@@ -9,7 +9,9 @@ import { getSupabaseClient } from "../utils/client/supabase";
 export function CommonProviders({ children }: { children: React.ReactNode }) {
   return (
     <CacheProvider>
-      <ChakraProvider>{children}</ChakraProvider>
+      <ChakraProvider toastOptions={{ defaultOptions: { duration: 5000, isClosable: true } }}>
+        {children}
+      </ChakraProvider>
     </CacheProvider>
   );
 }

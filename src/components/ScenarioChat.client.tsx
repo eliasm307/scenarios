@@ -26,22 +26,22 @@ import { useCallback, useEffect, useRef } from "react";
 import { REALTIME_LISTEN_TYPES } from "@supabase/supabase-js";
 import ChatMessage from "./ChatMessage";
 import { getSupabaseClient } from "../utils/client/supabase";
-import type { SessionData, SessionMessageData, SessionUser } from "../types";
+import type { SessionRow, MessageRow, SessionUser } from "../types";
 
 type Props = {
-  selectedScenarioText: string;
+  selectedScenarioText: string | null;
   currentUser: SessionUser;
   users: SessionUser[];
   sessionId: number;
   sessionLockedByUserId: string | null;
-  outcomeVotes: NonNullable<SessionData["scenario_outcome_votes"]>;
-  initial: {
-    messages: Message[];
+  outcomeVotes: NonNullable<SessionRow["scenario_outcome_votes"]>;
+  existing: {
+    chatMessages: Message[];
   };
 };
 
 function useAiChat({
-  initial: existing,
+  existing,
   selectedScenarioText,
   currentUser,
   sessionLockedByUserId,
@@ -72,7 +72,7 @@ function useAiChat({
   }, [currentUser.id, sessionId, sessionLockedByUserId, toast]);
 
   const chat = useChat({
-    initialMessages: existing?.messages, // || DUMMY_MESSAGES,
+    initialMessages: existing?.chatMessages, // || DUMMY_MESSAGES,
     body: { scenario: selectedScenarioText },
     onFinish(message) {
       // console.log("useAiChat:onFinish", message);
@@ -116,7 +116,7 @@ function useAiChat({
     const supabase = getSupabaseClient();
     const subscription = supabase
       .channel(`session:${sessionId}`)
-      .on<SessionMessageData>(
+      .on<MessageRow>(
         REALTIME_LISTEN_TYPES.POSTGRES_CHANGES,
         {
           schema: "public",
@@ -194,6 +194,10 @@ function useAiChat({
     }
   }, [chat]);
 
+  if (!selectedScenarioText) {
+    throw new Error("selectedScenarioText is required");
+  }
+
   return {
     chat: {
       ...chat,
@@ -251,11 +255,12 @@ function useAiChat({
     messagesListRef: messagesListRefNotifier,
     textAreaRef,
     formRef,
+    selectedScenarioText,
   };
 }
 
 export default function ScenarioChat(props: Props) {
-  const { chat, formRef, messagesListRef, textAreaRef } = useAiChat(props);
+  const { chat, formRef, messagesListRef, textAreaRef, selectedScenarioText } = useAiChat(props);
 
   const messagesList = (
     <Flex width='100%' ref={messagesListRef} direction='column' overflow='auto' tabIndex={0}>
@@ -362,7 +367,7 @@ export default function ScenarioChat(props: Props) {
         gap={2}
       >
         <Grid templateRows='auto auto 1fr' m={3} overflow='hidden'>
-          <ScenarioHero scenarioText={props.selectedScenarioText} />
+          <ScenarioHero scenarioText={selectedScenarioText} />
           <Divider my={3} />
           <OutcomeVotingGrid {...props} />
         </Grid>
@@ -514,7 +519,7 @@ function OutcomeVotingGrid({ users, currentUser, outcomeVotes, sessionId }: Prop
 
                     const result2 = await getSupabaseClient()
                       .from("sessions")
-                      .update({ stage: "scenario-outcome-reveal" } satisfies Partial<SessionData>)
+                      .update({ stage: "scenario-outcome-reveal" } satisfies Partial<SessionRow>)
                       .eq("id", sessionId);
 
                     if (result2.error) {

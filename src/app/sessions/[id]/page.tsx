@@ -7,15 +7,9 @@ import { Box, Grid } from "../../../components/ChakraUI.client";
 import NavBar from "../../../components/NavBar.client";
 import GameSession from "../../../components/GameSession.client";
 import { getSupabaseServer } from "../../../utils/server/supabase";
-import type { SessionData } from "../../../types";
+import type { MessageRow, SessionRow, SessionUser } from "../../../types";
 
-export default async function SessionPage({ params: { id } }: { params: { id: string } }) {
-  const sessionId = Number(id);
-  if (isNaN(sessionId)) {
-    // ! ID will be used in SQL query, so need to make sure it's a number to prevent SQL injection
-    throw new Error(`Session id not a number, it is "${id}"`);
-  }
-
+async function getUserProfile(): Promise<SessionUser> {
   const supabase = getSupabaseServer(cookies);
   const {
     data: { user },
@@ -35,64 +29,90 @@ export default async function SessionPage({ params: { id } }: { params: { id: st
     throw new Error("No user profile found");
   }
 
-  let sessionRow = await supabase.from("sessions").select("*").eq("id", sessionId).single();
+  return {
+    id: user.id,
+    name: userProfile.data.user_name,
+  };
+}
 
-  if (!sessionRow.data) {
-    sessionRow = await supabase
-      .from("sessions")
-      .insert({
-        id: sessionId,
-        stage: "scenario-selection" as SessionData["stage"],
-        // todo generate these from API
-        scenario_options: [
-          "You discover a magical book that can grant any wish, but each wish shortens your life by five years. Would you use the book?",
-          "You're a scientist who has discovered a cure for a rare, deadly disease. However, the cure involves a procedure that is considered highly unethical. Do you proceed to save lives?",
-          "You're a struggling artist and a wealthy collector offers to buy all your work for a sum that would solve all your financial problems. But he intends to destroy all the art after purchase. Do you sell your art to him?",
-        ],
-      })
-      .select()
-      .single();
+async function getSession(sessionId: number) {
+  const supabase = getSupabaseServer(cookies);
+  const session = await supabase.from("sessions").select().eq("id", sessionId).single();
 
-    if (!sessionRow.data) {
-      throw new Error("Could not create session");
-    }
+  if (session.error) {
+    throw new Error(`Get session error: ${session.error.message}`);
   }
 
-  let messages: Message[] = [];
-  if (sessionRow.data.stage !== "scenario-selection") {
-    const { data: messagesData, error } = await supabase
-      .from("messages")
-      .select("*")
-      .eq("session_id", sessionId)
-      .order("updated_at", { ascending: true });
+  return session.data as SessionRow | null;
+}
 
-    if (error) {
-      throw error;
-    }
+async function createSession(sessionId?: number) {
+  const supabase = getSupabaseServer(cookies);
+  const sessionResponse = await supabase
+    .from("sessions")
+    .insert({
+      id: sessionId,
+      stage: "scenario-selection" as SessionRow["stage"],
+      // todo generate these from API
+      scenario_options: [
+        "You discover a magical book that can grant any wish, but each wish shortens your life by five years. Would you use the book?",
+        "You're a scientist who has discovered a cure for a rare, deadly disease. However, the cure involves a procedure that is considered highly unethical. Do you proceed to save lives?",
+        "You're a struggling artist and a wealthy collector offers to buy all your work for a sum that would solve all your financial problems. But he intends to destroy all the art after purchase. Do you sell your art to him?",
+      ],
+    })
+    .select()
+    .single();
 
-    messages =
-      messagesData?.map((message) => ({
-        content: message.content!,
-        id: String(message.id),
-        role: message.author_role as Message["role"],
-        createdAt: new Date(message.updated_at!),
-        // name: message.author_id!,
-      })) ?? [];
+  if (sessionResponse.error) {
+    throw new Error(`Create session error: ${sessionResponse.error.message}`);
   }
 
-  let scenarioText: string | null = null;
-  if (sessionRow.data.selected_scenario_id) {
-    const { data: scenario, error } = await supabase
-      .from("scenarios")
-      .select("text")
-      .eq("id", sessionRow.data.selected_scenario_id)
-      .single();
+  return sessionResponse.data as SessionRow;
+}
 
-    if (error) {
-      throw error;
-    }
+async function getSessionMessages(sessionId: number) {
+  const supabase = getSupabaseServer(cookies);
+  const { data: messages, error } = await supabase
+    .from("messages")
+    .select()
+    .eq("session_id", sessionId)
+    .order("updated_at", { ascending: true });
 
-    scenarioText = scenario?.text ?? null;
+  if (error) {
+    throw new Error(`Get session messages error: ${error.message}`);
+  }
+
+  return (messages || []) as MessageRow[];
+}
+
+function messageRowToChatMessage(messageRow: MessageRow): Message {
+  return {
+    id: String(messageRow.id),
+    content: messageRow.content,
+    role: messageRow.author_role as Message["role"],
+    createdAt: new Date(messageRow.updated_at),
+    // name: message.author_id!,
+  };
+}
+
+export default async function SessionPage({ params: { id } }: { params: { id: string } }) {
+  const sessionId = Number(id);
+  if (isNaN(sessionId)) {
+    // ! ID will be used in SQL query, so need to make sure it's a number to prevent SQL injection
+    throw new Error(`Session id not a number, it is "${id}"`);
+  }
+
+  const userProfile = await getUserProfile();
+
+  let sessionRow = await getSession(sessionId);
+  if (!sessionRow) {
+    sessionRow = await createSession(sessionId);
+  }
+
+  let chatMessages: Message[] = [];
+  if (sessionRow.stage !== "scenario-selection") {
+    const messageRows = await getSessionMessages(sessionId);
+    chatMessages = messageRows.map(messageRowToChatMessage);
   }
 
   return (
@@ -101,14 +121,12 @@ export default async function SessionPage({ params: { id } }: { params: { id: st
       <Box zIndex={1} overflowY='auto'>
         <GameSession
           currentUser={{
-            id: user.id,
-            name: userProfile.data.user_name,
-            joinTimeMs: Date.now(),
+            id: userProfile.id,
+            name: userProfile.name,
           }}
-          initial={{
-            session: sessionRow.data as SessionData,
-            messages,
-            scenarioText,
+          existing={{
+            session: sessionRow,
+            chatMessages,
           }}
         />
       </Box>

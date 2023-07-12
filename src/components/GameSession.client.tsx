@@ -4,22 +4,21 @@
 
 "use client";
 
-import React, { useCallback, useEffect, useReducer, useRef } from "react";
+import React, { useEffect, useReducer, useRef } from "react";
 import type { Message } from "ai";
-import { Center, Spinner, Text, useToast } from "@chakra-ui/react";
+import { Center, Text, useToast } from "@chakra-ui/react";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { REALTIME_LISTEN_TYPES, REALTIME_PRESENCE_LISTEN_EVENTS } from "@supabase/supabase-js";
 import ScenarioSelector from "./ScenarioSelector.client";
 import ScenarioChat from "./ScenarioChat.client";
 import { getSupabaseClient } from "../utils/client/supabase";
-import type { BroadcastEventFrom, SessionData, SessionUser } from "../types";
+import type { BroadcastEventFrom, SessionRow, SessionUser } from "../types";
 import OutcomesReveal from "./OutcomesReveal.client";
 
 type State = {
   users: SessionUser[];
   currentUser: SessionUser;
-  session: SessionData;
-  scenarioText: string | null;
+  session: SessionRow;
 };
 
 type Action =
@@ -29,7 +28,7 @@ type Action =
     }
   | {
       event: "sessionUpdated";
-      data: SessionData;
+      data: SessionRow;
     }
   | {
       event: BroadcastEventName.UserNameUpdated;
@@ -71,10 +70,6 @@ function reducer(state: State, action: Action): State {
       return { ...state, session: action.data };
     }
 
-    case "scenarioTextUpdated": {
-      return { ...state, scenarioText: action.data };
-    }
-
     default:
       throw new Error(`Unknown action type ${(action as Action).event}`);
   }
@@ -89,16 +84,7 @@ type UserNameUpdatedPayload = {
   newUserName: string;
 };
 
-type Props = {
-  initial: {
-    messages: Message[];
-    session: SessionData;
-    scenarioText: string | null;
-  };
-  currentUser: SessionUser;
-};
-
-export default function GameSession({ initial, currentUser }: Props): React.ReactElement {
+function useLogic({ existing: initial, currentUser }: Props) {
   const toast = useToast();
   const supabaseChannelRef = useRef<RealtimeChannel>();
   const [state, send] = useReducer(reducer, null, () => {
@@ -108,7 +94,6 @@ export default function GameSession({ initial, currentUser }: Props): React.Reac
       session: {
         ...initial.session,
       },
-      scenarioText: initial.scenarioText,
       // scenario:
       //   existing?.scenario ??
       //   "" ?? // todo remove this and default scenario below
@@ -120,19 +105,9 @@ export default function GameSession({ initial, currentUser }: Props): React.Reac
   const stateRef = useRef(state);
   useEffect(() => {
     console.log("GameSession - new sessionState", state);
+    // eslint-disable-next-line functional-core/purity
     stateRef.current = state;
   }, [state]);
-
-  const broadcast = useCallback(
-    (action: Action) => {
-      console.log("GameSession:broadcast", action.event, action.data);
-      void supabaseChannelRef.current!.send({
-        ...action,
-        type: REALTIME_LISTEN_TYPES.BROADCAST,
-      } satisfies BroadcastEvent);
-    },
-    [supabaseChannelRef],
-  );
 
   useEffect(() => {
     const sessionKey = `Session-${state.session.id}`;
@@ -200,7 +175,7 @@ export default function GameSession({ initial, currentUser }: Props): React.Reac
           });
         },
       )
-      .on<SessionData>(
+      .on<SessionRow>(
         REALTIME_LISTEN_TYPES.POSTGRES_CHANGES,
         {
           schema: "public",
@@ -232,11 +207,9 @@ export default function GameSession({ initial, currentUser }: Props): React.Reac
         if (presenceTrackStatus !== "ok") {
           console.error("presenceTrackStatus after join", presenceTrackStatus);
         }
-
-        // todo should request state from session
       }
       if (status === "CLOSED") {
-        await channel.untrack();
+        console.error("CLOSED", error);
       }
       if (error || status === "CHANNEL_ERROR") {
         console.error("CHANNEL_ERROR", error);
@@ -252,39 +225,25 @@ export default function GameSession({ initial, currentUser }: Props): React.Reac
     // eslint-disable-next-line react-hooks/exhaustive-deps -- only run once
   }, []);
 
-  useEffect(() => {
-    if (!supabaseChannelRef.current) {
-      return;
-    }
-    const presenceState = supabaseChannelRef.current.presenceState<SessionUser>();
+  return {
+    currentUser,
+    users: state.users,
+    session: state.session,
+  };
+}
 
-    broadcast({
-      event: BroadcastEventName.UserNameUpdated,
-      data: { userId: currentUser.id, newUserName: currentUser.name },
-    });
+type Props = {
+  existing: {
+    chatMessages: Message[];
+    session: SessionRow;
+  };
+  currentUser: SessionUser;
+};
 
-    // todo implement
-    console.log("to handle my username change presenceState", presenceState);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- only run once
-  }, [currentUser.name]);
+export default function GameSession(props: Props): React.ReactElement {
+  const { currentUser, users, session } = useLogic(props);
 
-  useEffect(() => {
-    if (state.session.selected_scenario_id && !state.scenarioText) {
-      void getSupabaseClient()
-        .from("scenarios")
-        .select("text")
-        .eq("id", state.session.selected_scenario_id)
-        .single()
-        .then(({ data }) => {
-          if (!data) {
-            throw new Error("No scenario text found");
-          }
-          send({ event: "scenarioTextUpdated", data: data.text });
-        });
-    }
-  }, [state.scenarioText, state.session.selected_scenario_id, state.session.stage]);
-
-  if (state.users.length < 2) {
+  if (users.length < 2) {
     return (
       <Center as='section' height='100%'>
         <Text>Waiting for more players to join...</Text>
@@ -292,50 +251,43 @@ export default function GameSession({ initial, currentUser }: Props): React.Reac
     );
   }
 
-  if (state.session.stage === "scenario-selection") {
+  if (session.stage === "scenario-selection") {
     return (
       <ScenarioSelector
-        scenarioOptions={state.session.scenario_options}
-        optionVotes={state.session.scenario_option_votes}
-        currentUser={state.currentUser}
-        users={state.users}
-        selectedOptionId={state.session.id}
-        voteId={state.session.scenario_option_votes?.[state.currentUser.id] || null}
+        scenarioOptions={session.scenario_options}
+        optionVotes={session.scenario_option_votes}
+        currentUser={currentUser}
+        users={users}
+        selectedOptionId={session.id}
+        voteId={session.scenario_option_votes?.[currentUser.id] || null}
       />
     );
   }
 
-  if (state.session.stage === "scenario-outcome-selection") {
-    if (!state.scenarioText) {
-      return (
-        <Center width='100%' height='100%'>
-          <Spinner />
-        </Center>
-      );
-    }
+  if (session.stage === "scenario-outcome-selection") {
     return (
       <ScenarioChat
-        selectedScenarioText={state.scenarioText}
-        initial={initial}
+        selectedScenarioText={session.selected_scenario_text}
+        existing={props.existing}
         currentUser={currentUser}
-        sessionId={state.session.id}
-        sessionLockedByUserId={state.session.messaging_locked_by_user_id}
-        users={state.users}
-        outcomeVotes={state.session.scenario_outcome_votes || {}}
+        sessionId={session.id}
+        sessionLockedByUserId={session.messaging_locked_by_user_id}
+        users={users}
+        outcomeVotes={session.scenario_outcome_votes || {}}
       />
     );
   }
 
-  if (state.session.stage === "scenario-outcome-reveal") {
+  if (session.stage === "scenario-outcome-reveal") {
     return (
       <OutcomesReveal
-        sessionId={state.session.id}
+        sessionId={session.id}
         currentUser={currentUser}
-        outcomeVotes={state.session.scenario_outcome_votes}
-        users={state.users}
+        outcomeVotes={session.scenario_outcome_votes}
+        users={users}
       />
     );
   }
 
-  throw new Error(`Unexpected session stage ${state.session.stage}`);
+  throw new Error(`Unexpected session stage ${session.stage}`);
 }

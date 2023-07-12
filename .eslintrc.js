@@ -13,6 +13,7 @@ module.exports = {
         allowThrow: true,
       },
     ],
+    "react/no-unused-prop-types": "off",
   },
   settings: {
     "functional-core": {

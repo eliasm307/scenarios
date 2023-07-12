@@ -1,6 +1,6 @@
-/* eslint-disable no-console */
-
 "use client";
+
+/* eslint-disable no-console */
 
 import { useRouter } from "next/navigation";
 import React, { useMemo, useState } from "react";
@@ -15,7 +15,6 @@ export default function HomeOptions(): React.ReactElement {
   const choices = useMemo((): ChoiceConfig[] => {
     return [
       {
-        id: "create",
         text: "Create a new session",
         onSelect: () => {
           console.log("create new session");

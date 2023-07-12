@@ -6,8 +6,6 @@ import { Card, CardBody, Grid, Text } from "@chakra-ui/react";
 import type { ReactElement } from "react";
 
 export type ChoiceConfig = {
-  /** Used to refer to this choice */
-  id: number;
   text?: string;
   content?: ReactElement;
   onSelect: () => void;

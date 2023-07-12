@@ -8,7 +8,7 @@ import { useCallback, useEffect, useState } from "react";
 import APIClient from "../utils/client/APIClient";
 import type { ChoiceConfig } from "./ChoiceGrid.client";
 import ChoiceGrid from "./ChoiceGrid.client";
-import type { SessionData, SessionUser } from "../types";
+import type { SessionRow, SessionUser } from "../types";
 import { getSupabaseClient } from "../utils/client/supabase";
 
 function getMajorityVoteId<T>(arr: T[]): T | null {
@@ -45,26 +45,10 @@ function useLogic({
   const [isLoading, setIsLoading] = useState(false);
 
   const regenerateOptions = useCallback(async () => {
-    await APIClient.getScenarios()
-      .then(({ scenarios }) => {
-        console.log("got new scenarios", scenarios);
-        return getSupabaseClient()
-          .from("sessions")
-          .update({
-            scenario_options: scenarios,
-            scenario_option_votes: {},
-          })
-          .eq("id", sessionId);
-      })
-      .catch((error) => {
-        toast({
-          title: "Error",
-          description: error instanceof Error ? error.message : error,
-          status: "error",
-          duration: 9000,
-          isClosable: true,
-        });
-      });
+    const errorToastConfig = await APIClient.session.generateNewScenarioOptions(sessionId);
+    if (errorToastConfig) {
+      toast(errorToastConfig);
+    }
   }, [sessionId, toast]);
 
   const handleVote = useCallback(
@@ -117,7 +101,7 @@ function useLogic({
 
       const winningScenarioText = scenarioOptions[majorityVoteId];
       if (!winningScenarioText) {
-        throw Error(`no winning scenario at index ${majorityVoteId}`);
+        throw Error(`No winning scenario at index ${majorityVoteId}`);
       }
 
       toast({
@@ -132,29 +116,14 @@ function useLogic({
         .filter(([, voteOptionId]) => voteOptionId === majorityVoteId)
         .map(([userId]) => userId);
 
-      const { data: newScenario } = await getSupabaseClient()
-        .from("scenarios")
-        .insert({
-          text: winningScenarioText,
-          voted_by_user_ids: userIdsThatVotedForWinningScenario,
-        })
-        .select("id")
-        .single();
-
-      if (!newScenario) {
-        throw Error("no new scenario");
+      const errorToastConfig = await APIClient.session.moveToOutcomeSelectionStage({
+        scenarioText: winningScenarioText,
+        userIdsThatVotedForScenario: userIdsThatVotedForWinningScenario,
+        sessionId,
+      });
+      if (errorToastConfig) {
+        toast(errorToastConfig);
       }
-
-      await getSupabaseClient()
-        .from("sessions")
-        .update({
-          selected_scenario_id: newScenario.id,
-          stage: "scenario-outcome-selection",
-          scenario_option_votes: {},
-          scenario_outcome_votes: {},
-          messaging_locked_by_user_id: null,
-        } satisfies Partial<SessionData>)
-        .eq("id", sessionId);
 
       setIsLoading(false);
     },
@@ -190,7 +159,7 @@ type Props = {
   voteId: number | null;
   selectedOptionId: number;
   scenarioOptions: string[];
-  optionVotes: SessionData["scenario_option_votes"];
+  optionVotes: SessionRow["scenario_option_votes"];
 };
 
 export default function ScenarioSelector(props: Props): React.ReactElement {
@@ -225,7 +194,6 @@ export default function ScenarioSelector(props: Props): React.ReactElement {
         choices={[
           ...scenarioOptions.map(
             (text, optionId): ChoiceConfig => ({
-              id: optionId,
               text,
               onSelect: () => handleVote(optionId),
               isSelected: optionVotes[currentUser.id] === optionId,
@@ -242,7 +210,6 @@ export default function ScenarioSelector(props: Props): React.ReactElement {
             }),
           ),
           {
-            id: -1,
             content: (
               <OptionContent
                 currentUserId={currentUser.id}
@@ -272,7 +239,7 @@ function OptionContent({
   users: SessionUser[];
   optionId: number;
   currentUserId: string;
-  optionVotes: SessionData["scenario_option_votes"];
+  optionVotes: SessionRow["scenario_option_votes"];
   text: string;
 }) {
   return (

@@ -7,21 +7,20 @@ export type ChakraDisclosure = ReturnType<typeof useDisclosure>;
 export type SessionUser = {
   id: string;
   name: string;
-  joinTimeMs: number;
 };
 
 export type BroadcastEventFrom<TAction extends { event: string }> = TAction & {
   type: REALTIME_LISTEN_TYPES.BROADCAST;
 };
 
-type ExtendTable<
-  OriginalTable extends Record<string, unknown>,
-  NewTable extends {
-    [key in keyof OriginalTable]: OriginalTable[key];
+type ExtendRowData<
+  OriginalRowData extends Record<string, unknown>,
+  NewRowData extends {
+    [key in keyof OriginalRowData]: OriginalRowData[key];
   },
-> = Omit<OriginalTable, keyof NewTable> & NewTable;
+> = Omit<OriginalRowData, keyof NewRowData> & NewRowData;
 
-export type SessionData = ExtendTable<
+export type SessionRow = ExtendRowData<
   Database["public"]["Tables"]["sessions"]["Row"],
   {
     created_at: string;
@@ -41,7 +40,7 @@ export type SessionData = ExtendTable<
   }
 >;
 
-export type SessionMessageData = ExtendTable<
+export type MessageRow = ExtendRowData<
   Database["public"]["Tables"]["messages"]["Row"],
   {
     author_role: Message["role"];

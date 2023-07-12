@@ -11,21 +11,26 @@ import {
   Th,
   Thead,
   Tr,
+  useToast,
 } from "@chakra-ui/react";
-import { useMemo } from "react";
-import type { SessionData, SessionUser } from "../types";
-import { getSupabaseClient } from "../utils/client/supabase";
+import { useCallback, useMemo } from "react";
+import type { SessionRow, SessionUser } from "../types";
+import APIClient from "../utils/client/APIClient";
 
 type Props = {
   currentUser: SessionUser;
   users: SessionUser[];
-  outcomeVotes: Required<SessionData["scenario_outcome_votes"]>;
+  outcomeVotes: Required<SessionRow["scenario_outcome_votes"]>;
   sessionId: number;
 };
 
-export default function OutcomesReveal(props: Props): React.ReactElement {
+export default function OutcomesReveal({
+  users,
+  outcomeVotes,
+  sessionId,
+}: Props): React.ReactElement {
+  const toast = useToast();
   const results = useMemo((): UserVotesResult[] => {
-    const { users, outcomeVotes } = props;
     return users.map((voterUser) => {
       const expectedOutcomes = outcomeVotes[voterUser.id]!;
       return {
@@ -39,30 +44,22 @@ export default function OutcomesReveal(props: Props): React.ReactElement {
           })),
       };
     });
-  }, [props]);
+  }, [users, outcomeVotes]);
+
+  const handlePlayAgain = useCallback(async () => {
+    const errorToastConfig = await APIClient.session.reset(sessionId);
+    if (errorToastConfig) {
+      toast(errorToastConfig);
+    }
+  }, [sessionId, toast]);
+
   return (
     <>
       <Box>Outcomes reveal</Box>
       {results.map((result) => {
         return <OutcomeVoteResults key={result.user.id} {...result} />;
       })}
-      <Button
-        onClick={async () => {
-          await getSupabaseClient()
-            .from("sessions")
-            .update({
-              stage: "scenario-selection",
-              messaging_locked_by_user_id: null,
-              scenario_option_votes: {},
-              scenario_options: [],
-              scenario_outcome_votes: {},
-              selected_scenario_id: null,
-            } satisfies Omit<SessionData, "id" | "created_at">)
-            .eq("id", props.sessionId);
-        }}
-      >
-        Play Again
-      </Button>
+      <Button onClick={handlePlayAgain}>Play Again</Button>
     </>
   );
 }

@@ -170,7 +170,6 @@ function useLogic({ existing: initial, currentUser }: Props) {
             const leftUser = stateRef.current.users.find(
               (existingUsers) => existingUsers.id === leftPresence.id,
             );
-            // todo debug why this doesn't find the user that left in left presences
             toast({ title: `${leftUser?.name || leftPresence.id} left` });
           });
         },

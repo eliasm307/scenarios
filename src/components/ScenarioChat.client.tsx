@@ -17,6 +17,7 @@ import {
   Tbody,
   Td,
   Textarea,
+  VStack,
   useToast,
 } from "@chakra-ui/react";
 import type { Message } from "ai";
@@ -320,16 +321,31 @@ export default function ScenarioChat(props: Props) {
         padding={2}
         gap={2}
       >
-        <Grid templateRows='auto auto 1fr' m={3} overflow='hidden'>
+        <VStack m={3} gap={5} width='100%' overflow='hidden'>
           <ScenarioText scenarioText={selectedScenarioText} />
-          <Divider my={3} />
-          <Box overflowY='auto'>
-            <Heading as='h2' size='md' mb={2} width='100%' textAlign='center'>
+          <Divider />
+          <VStack overflowY='auto' gap='inherit' width='100%' flex={1}>
+            <Heading size='md' width='100%' textAlign='center'>
               I think...
             </Heading>
             <OutcomeVotingTable {...props} />
-          </Box>
-        </Grid>
+            {props.users
+              .filter((user) => user.id !== props.currentUser.id)
+              .map((user) => {
+                const userHasFinishedVoting =
+                  Object.values(props.outcomeVotes[user.id] || {}).length === props.users.length;
+                return (
+                  <>
+                    <Divider />
+                    <Heading size='md' width='100%' textAlign='center'>
+                      {userHasFinishedVoting ? <>✅</> : <>🤔</>} &quot;{user.name}&quot;{" "}
+                      {userHasFinishedVoting ? "has decided" : "is deciding..."}
+                    </Heading>
+                  </>
+                );
+              })}
+          </VStack>
+        </VStack>
         <Grid
           overflow='hidden'
           gap={1}

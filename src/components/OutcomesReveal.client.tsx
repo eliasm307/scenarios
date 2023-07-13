@@ -26,19 +26,28 @@ export default function OutcomesReveal({
 }: Props): React.ReactElement {
   const toast = useToast();
   const results = useMemo((): UserVotesResult[] => {
-    return users.map((voterUser) => {
-      const expectedOutcomes = outcomeVotes[voterUser.id]!;
-      return {
-        user: voterUser,
-        voteResults: users
+    return users
+      .map((voterUser) => {
+        const expectedOutcomes = outcomeVotes[voterUser.id]!;
+        const voteResults: UserVotesResult["voteResults"] = users
           .filter((resultUser) => resultUser.id !== voterUser.id)
-          .map((resultUser) => ({
-            user: resultUser,
-            expected: expectedOutcomes[resultUser.id]!,
-            actual: outcomeVotes[resultUser.id]![resultUser.id]!,
-          })),
-      };
-    });
+          .map((resultUser) => {
+            const expected = expectedOutcomes[resultUser.id]!;
+            const actual = outcomeVotes[resultUser.id]![resultUser.id]!;
+            return {
+              user: resultUser,
+              expected,
+              actual,
+              isCorrect: expected === actual,
+            };
+          });
+        return {
+          user: voterUser,
+          voteResults,
+          correctGuessesCount: voteResults.filter((result) => result.isCorrect).length,
+        };
+      })
+      .sort((a, b) => b.correctGuessesCount - a.correctGuessesCount);
   }, [users, outcomeVotes]);
 
   const handlePlayAgain = useCallback(async () => {
@@ -46,7 +55,7 @@ export default function OutcomesReveal({
       event: "Toast",
       data: {
         status: "info",
-        title: `"${currentUser.name}" reset the session`,
+        title: `"${currentUser.name}" re-started the session`,
       },
     });
     const errorToastConfig = await APIClient.sessions.reset(sessionId);
@@ -75,10 +84,12 @@ type UserVotesResult = {
     user: SessionUser;
     expected: boolean;
     actual: boolean;
+    isCorrect: boolean;
   }[];
+  correctGuessesCount: number;
 };
 
-function OutcomeVoteResults({ user, voteResults }: UserVotesResult) {
+function OutcomeVoteResults({ user, voteResults, correctGuessesCount }: UserVotesResult) {
   return (
     <Box overflowY='auto'>
       <Heading as='h2' size='md' mb={2} width='100%' textAlign='center'>
@@ -86,16 +97,18 @@ function OutcomeVoteResults({ user, voteResults }: UserVotesResult) {
       </Heading>
       <VStack>
         {voteResults.map((result) => {
+          const resultEmoji = result.isCorrect ? "✅" : "❌";
+          const expectedDecisionText = result.expected ? "would" : "would not";
+          const resultSummary = `${resultEmoji} "${result.user.relativeName}" ${expectedDecisionText} do it`;
           return (
             <Box key={result.user.id}>
-              <Text>
-                &quot;{result.user.relativeName}&quot; would{" "}
-                {result.expected ? "do it" : "not do it"} (
-                {result.expected === result.actual ? "✅" : "❌"})
-              </Text>
+              <Text>{resultSummary}</Text>
             </Box>
           );
         })}
+        <Box>
+          <Text>Correct guesses: {correctGuessesCount}</Text>
+        </Box>
       </VStack>
     </Box>
   );

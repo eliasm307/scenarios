@@ -157,7 +157,11 @@ export default function ScenarioSelector(props: Props): React.ReactElement {
   const { isLoading, users, currentUser, optionVotes, scenarioOptions, handleVote } =
     useLogic(props);
 
-  if (isLoading || !users.length || !scenarioOptions.length) {
+  if (
+    isLoading ||
+    !users.length
+    // || !scenarioOptions.length
+  ) {
     return (
       <Center as='section' height='100%'>
         <Spinner />

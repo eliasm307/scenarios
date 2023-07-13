@@ -1,3 +1,4 @@
+import "server-only";
 import type { ReadonlyRequestCookies } from "next/dist/server/web/spec-extension/adapters/request-cookies";
 import type { User } from "@supabase/supabase-js";
 import type { SessionUser, SessionRow, MessageRow, ScenarioRow } from "../../types";
@@ -16,7 +17,12 @@ export default class APIServer extends API {
         "get_example_scenarios_fn",
       );
       if (error) {
-        throw new Error(`Get example scenarios error: ${error.message}`);
+        // eslint-disable-next-line no-console
+        console.trace(
+          `Get example scenarios error: ${error.message} (${error.code}) \nDetails: ${error.details} \nHint: ${error.hint}`,
+        );
+        // eslint-disable-next-line @typescript-eslint/no-throw-literal
+        throw error;
       }
 
       const exampleScenarios = exampleScenarioRows.map(({ text }: ScenarioRow) => text);

@@ -1,6 +1,6 @@
 import { OpenAIStream, StreamingTextResponse } from "ai";
 import type { ChatCompletionRequestMessage } from "openai-edge";
-import { openai } from "../../../utils/server/openai";
+import { DEFAULT_CHAT_COMPLETION_REQUEST_CONFIG, openai } from "../../../utils/server/openai";
 
 // IMPORTANT! Set the runtime to edge
 export const runtime = "edge";
@@ -17,10 +17,9 @@ export async function POST(req: Request) {
   const { messages, scenario } = data;
 
   const response = await openai.createChatCompletion({
-    model: "gpt-4",
+    ...DEFAULT_CHAT_COMPLETION_REQUEST_CONFIG,
     stream: true,
     messages: [createSystemMessage(scenario), ...messages.map(formatMessage)],
-    temperature: 0.5,
   });
   return new StreamingTextResponse(OpenAIStream(response));
 }

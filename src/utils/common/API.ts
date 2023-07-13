@@ -122,12 +122,6 @@ export default class API {
 
     generateNewScenarioOptions: async (sessionId: number): Promise<void | UseToastOptions> => {
       try {
-        // clear scenario options so clients dont see the old ones and know something is happening
-        const errorToastConfig = await this.sessions.clearScenarioOptions(sessionId);
-        if (errorToastConfig) {
-          return errorToastConfig;
-        }
-
         const scenarios = await this.ai.createScenarios();
         const response = await this.supabase
           .from("sessions")
@@ -155,24 +149,8 @@ export default class API {
       }
     },
 
-    clearScenarioOptions: async (sessionId: number): Promise<void | UseToastOptions> => {
-      const response = await this.supabase
-        .from("sessions")
-        .update({
-          scenario_options: [],
-          scenario_option_votes: {},
-        })
-        .eq("id", sessionId);
-
-      if (response.error) {
-        const title = "Error clearing scenario options";
-        console.error(title, response.error);
-        return { status: "error", title, description: response.error.message };
-      }
-    },
-
     reset: async (sessionId: number): Promise<void | UseToastOptions> => {
-      const response = await this.supabase
+      let response = await this.supabase
         .from("sessions")
         .update({
           stage: "scenario-selection",
@@ -186,6 +164,24 @@ export default class API {
 
       if (response.error) {
         const title = "Error resetting session";
+        console.error(title, response.error);
+        return { status: "error", title, description: response.error.message };
+      }
+
+      const [scenario_options] = await Promise.all([
+        this.ai.createScenarios(),
+        this.messages.clearForScenario(sessionId),
+      ]);
+
+      response = await this.supabase
+        .from("sessions")
+        .update({
+          scenario_options,
+        } satisfies Partial<SessionRow>)
+        .eq("id", sessionId);
+
+      if (response.error) {
+        const title = "Error generating new scenarios session";
         console.error(title, response.error);
         return { status: "error", title, description: response.error.message };
       }
@@ -232,6 +228,15 @@ export default class API {
 
       if (response.error) {
         const title = "Error adding message";
+        console.error(title, response.error);
+        return { status: "error", title, description: response.error.message };
+      }
+    },
+    clearForScenario: async (sessionId: number): Promise<void | UseToastOptions> => {
+      const response = await this.supabase.from("messages").delete().eq("session_id", sessionId);
+
+      if (response.error) {
+        const title = "Error clearing messages";
         console.error(title, response.error);
         return { status: "error", title, description: response.error.message };
       }

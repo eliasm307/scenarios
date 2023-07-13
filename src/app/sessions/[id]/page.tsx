@@ -25,9 +25,10 @@ export default async function SessionPage({ params: { id } }: { params: { id: st
     return redirect("/");
   }
 
-  if (sessionRow.stage === "scenario-selection" && !sessionRow.scenario_options?.length) {
-    await API.sessions.generateNewScenarioOptions(sessionId);
-  }
+  // todo this shouldnt run here as it means all the session users will try to generate new options
+  // if (sessionRow.stage === "scenario-selection" && !sessionRow.scenario_options?.length) {
+  //   await API.sessions.generateNewScenarioOptions(sessionId);
+  // }
 
   let chatMessages: Message[] = [];
   if (sessionRow.stage !== "scenario-selection") {

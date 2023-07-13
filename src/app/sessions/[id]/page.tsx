@@ -18,11 +18,15 @@ export default async function SessionPage({ params: { id } }: { params: { id: st
   }
 
   const API = new APIServer(cookies);
-  const userProfile = await API.getUserProfile();
+  const currentUser = await API.getCurrentSessionUser();
   const sessionRow = await API.getSession(sessionId);
   if (!sessionRow) {
     // session doesn't exist yet
     return redirect("/");
+  }
+
+  if (sessionRow.stage === "scenario-selection" && sessionRow.scenario_options.length === 0) {
+    await API.sessions.generateNewScenarioOptions(sessionId);
   }
 
   let chatMessages: Message[] = [];
@@ -36,10 +40,7 @@ export default async function SessionPage({ params: { id } }: { params: { id: st
       <NavBar zIndex={2} />
       <Box zIndex={1} overflowY='auto'>
         <GameSession
-          currentUser={{
-            id: userProfile.id,
-            name: userProfile.name,
-          }}
+          currentUser={currentUser}
           existing={{
             session: sessionRow,
             chatMessages,

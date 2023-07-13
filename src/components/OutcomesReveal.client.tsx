@@ -55,14 +55,14 @@ export default function OutcomesReveal({
       event: "Toast",
       data: {
         status: "info",
-        title: `"${currentUser.name}" re-started the session`,
+        title: `"${currentUser.relativeName}" re-started the session`,
       },
     });
     const errorToastConfig = await APIClient.sessions.reset(sessionId);
     if (errorToastConfig) {
       toast(errorToastConfig);
     }
-  }, [broadcast, currentUser.name, sessionId, toast]);
+  }, [broadcast, currentUser.relativeName, sessionId, toast]);
 
   return (
     <VStack spacing={6}>

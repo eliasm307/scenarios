@@ -2,13 +2,17 @@ import type { ReadonlyRequestCookies } from "next/dist/server/web/spec-extension
 import type { User } from "@supabase/supabase-js";
 import type { SessionUser, SessionRow, MessageRow } from "../../types";
 import { getSupabaseServer } from "./supabase";
+import { generateScenarios } from "./openai";
+import API from "../common/API";
 
-export default class APIServer {
-  private supabase: ReturnType<typeof getSupabaseServer>;
-
+export default class APIServer extends API {
   constructor(cookies: () => ReadonlyRequestCookies) {
-    this.supabase = getSupabaseServer(cookies);
+    super(getSupabaseServer(cookies));
   }
+
+  override ai = {
+    createScenarios: generateScenarios,
+  } satisfies API["ai"];
 
   async getUser(): Promise<User> {
     const {
@@ -27,7 +31,7 @@ export default class APIServer {
     return user;
   }
 
-  async getUserProfile(): Promise<SessionUser> {
+  async getCurrentSessionUser(): Promise<SessionUser> {
     const user = await this.getUser();
     if (!user) {
       throw new Error("No user found");
@@ -46,6 +50,8 @@ export default class APIServer {
     return {
       id: user.id,
       name: userProfile.data.user_name,
+      isCurrentUser: true,
+      relativeName: "I",
     };
   }
 
@@ -65,12 +71,12 @@ export default class APIServer {
       .insert({
         id: sessionId,
         stage: "scenario-selection" as SessionRow["stage"],
-        // todo generate these from API
-        scenario_options: [
-          "You discover a magical book that can grant any wish, but each wish shortens your life by five years. Would you use the book?",
-          "You're a scientist who has discovered a cure for a rare, deadly disease. However, the cure involves a procedure that is considered highly unethical. Do you proceed to save lives?",
-          "You're a struggling artist and a wealthy collector offers to buy all your work for a sum that would solve all your financial problems. But he intends to destroy all the art after purchase. Do you sell your art to him?",
-        ],
+        scenario_options: await generateScenarios(),
+        // scenario_options: [
+        //   "You discover a magical book that can grant any wish, but each wish shortens your life by five years. Would you use the book?",
+        //   "You're a scientist who has discovered a cure for a rare, deadly disease. However, the cure involves a procedure that is considered highly unethical. Do you proceed to save lives?",
+        //   "You're a struggling artist and a wealthy collector offers to buy all your work for a sum that would solve all your financial problems. But he intends to destroy all the art after purchase. Do you sell your art to him?",
+        // ],
       })
       .select()
       .single();

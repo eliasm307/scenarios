@@ -42,8 +42,6 @@ type LocalAction =
     };
 
 enum BroadcastEventName {
-  // todo listen to user profiles to avoid needing this
-  UserNameUpdated = "UserNameUpdated",
   Toast = "Toast",
 }
 

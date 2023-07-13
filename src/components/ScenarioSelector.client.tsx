@@ -4,7 +4,7 @@
 "use client";
 
 import { Badge, Center, HStack, Heading, Spinner, Text, VStack, useToast } from "@chakra-ui/react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import APIClient from "../utils/client/APIClient";
 import type { ChoiceConfig } from "./ChoiceGrid.client";
 import ChoiceGrid from "./ChoiceGrid.client";
@@ -44,13 +44,6 @@ function useLogic({
 }: Props) {
   const toast = useToast();
   const [isLoading, setIsLoading] = useState(false);
-
-  const regenerateOptions = useCallback(async () => {
-    const errorToastConfig = await APIClient.sessions.generateNewScenarioOptions(sessionId);
-    if (errorToastConfig) {
-      toast(errorToastConfig);
-    }
-  }, [sessionId, toast]);
 
   const handleVote = useCallback(
     async (optionId: number) => {
@@ -93,7 +86,12 @@ function useLogic({
         });
 
         // reset votes and options
-        return regenerateOptions().finally(() => setIsLoading(false));
+        const errorToastConfig = await APIClient.sessions.generateNewScenarioOptions(sessionId);
+        if (errorToastConfig) {
+          toast(errorToastConfig);
+        }
+        setIsLoading(false);
+        return;
       }
 
       const winningScenarioText = scenarioOptions[majorityVoteId];
@@ -127,25 +125,8 @@ function useLogic({
 
       setIsLoading(false);
     },
-    [
-      broadcast,
-      currentUser.id,
-      optionVotes,
-      regenerateOptions,
-      scenarioOptions,
-      sessionId,
-      toast,
-      users,
-    ],
+    [broadcast, currentUser.id, optionVotes, scenarioOptions, sessionId, toast, users],
   );
-
-  useEffect(() => {
-    if (scenarioOptions.length === 0) {
-      console.log("no scenario options, regenerating...");
-      setIsLoading(true);
-      void regenerateOptions().finally(() => setIsLoading(false));
-    }
-  }, [regenerateOptions, scenarioOptions.length]);
 
   return {
     handleVote,
@@ -196,7 +177,7 @@ export default function ScenarioSelector(props: Props): React.ReactElement {
           })
           .map((user) => (
             <Badge key={user.id} colorScheme={user.isCurrentUser ? "green" : "gray"}>
-              {user.name}
+              {user.isCurrentUser ? "Me" : user.name}
             </Badge>
           ))}
       </HStack>
@@ -258,7 +239,7 @@ function OptionContent({
           })
           .map((user) => (
             <Badge maxHeight={5} key={user.id} colorScheme={user.isCurrentUser ? "green" : "gray"}>
-              {user.name}
+              {user.isCurrentUser ? "Me" : user.name}
             </Badge>
           ))}
       </HStack>

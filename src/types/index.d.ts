@@ -6,7 +6,11 @@ export type ChakraDisclosure = ReturnType<typeof useDisclosure>;
 
 export type SessionUser = {
   id: string;
+  /** The user profile name */
   name: string;
+  /** The user profile name except when its the current session user it is in the first person ie "I" */
+  relativeName: string;
+  isCurrentUser: boolean;
 };
 
 export type BroadcastEventFrom<TAction extends { event: string }> = TAction & {

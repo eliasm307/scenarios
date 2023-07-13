@@ -68,7 +68,17 @@ function reducer(state: State, action: Action): State {
 
   switch (action.event) {
     case "usersUpdated": {
-      return { ...state, users: [...action.data] };
+      return {
+        ...state,
+        users: [...action.data].map((user) => {
+          const isCurrentUser = user.id === state.currentUser.id;
+          return {
+            ...user,
+            isCurrentUser,
+            relativeName: isCurrentUser ? "I" : user.name,
+          };
+        }),
+      };
     }
 
     case "userProfileUpdated": {

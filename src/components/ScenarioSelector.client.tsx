@@ -195,7 +195,7 @@ export default function ScenarioSelector(props: Props): React.ReactElement {
             return hasNotVoted;
           })
           .map((user) => (
-            <Badge key={user.id} colorScheme={user.id === currentUser.id ? "green" : "gray"}>
+            <Badge key={user.id} colorScheme={user.isCurrentUser ? "green" : "gray"}>
               {user.name}
             </Badge>
           ))}
@@ -209,7 +209,6 @@ export default function ScenarioSelector(props: Props): React.ReactElement {
               isSelected: optionVotes[currentUser.id] === optionId,
               content: (
                 <OptionContent
-                  currentUserId={currentUser.id}
                   optionId={optionId}
                   optionVotes={optionVotes}
                   text={text}
@@ -222,7 +221,6 @@ export default function ScenarioSelector(props: Props): React.ReactElement {
           {
             content: (
               <OptionContent
-                currentUserId={currentUser.id}
                 optionId={-1}
                 optionVotes={optionVotes}
                 text='🆕 Vote to generate new scenarios'
@@ -241,14 +239,12 @@ export default function ScenarioSelector(props: Props): React.ReactElement {
 
 function OptionContent({
   users,
-  currentUserId,
   optionId,
   optionVotes,
   text,
 }: {
   users: SessionUser[];
   optionId: number;
-  currentUserId: string;
   optionVotes: SessionRow["scenario_option_votes"];
   text: string;
 }) {
@@ -261,11 +257,7 @@ function OptionContent({
             return hasVoted;
           })
           .map((user) => (
-            <Badge
-              maxHeight={5}
-              key={user.id}
-              colorScheme={user.id === currentUserId ? "green" : "gray"}
-            >
+            <Badge maxHeight={5} key={user.id} colorScheme={user.isCurrentUser ? "green" : "gray"}>
               {user.name}
             </Badge>
           ))}

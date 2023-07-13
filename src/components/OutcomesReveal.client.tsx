@@ -29,7 +29,6 @@ export default function OutcomesReveal({
     return users.map((voterUser) => {
       const expectedOutcomes = outcomeVotes[voterUser.id]!;
       return {
-        isCurrentUser: voterUser.id === currentUser.id,
         user: voterUser,
         voteResults: users
           .filter((resultUser) => resultUser.id !== voterUser.id)
@@ -40,7 +39,7 @@ export default function OutcomesReveal({
           })),
       };
     });
-  }, [users, outcomeVotes, currentUser.id]);
+  }, [users, outcomeVotes]);
 
   const handlePlayAgain = useCallback(async () => {
     broadcast({
@@ -71,7 +70,6 @@ export default function OutcomesReveal({
 }
 
 type UserVotesResult = {
-  isCurrentUser: boolean;
   user: SessionUser;
   voteResults: {
     user: SessionUser;
@@ -80,18 +78,19 @@ type UserVotesResult = {
   }[];
 };
 
-function OutcomeVoteResults({ isCurrentUser, user, voteResults }: UserVotesResult) {
+function OutcomeVoteResults({ user, voteResults }: UserVotesResult) {
   return (
     <Box overflowY='auto'>
       <Heading as='h2' size='md' mb={2} width='100%' textAlign='center'>
-        &quot;{isCurrentUser ? "I" : user.name}&quot; guessed that...
+        &quot;{user.relativeName}&quot; guessed that...
       </Heading>
       <VStack>
         {voteResults.map((result) => {
           return (
             <Box key={result.user.id}>
               <Text>
-                &quot;{result.user.name}&quot; would {result.expected ? "do it" : "not do it"} (
+                &quot;{result.user.relativeName}&quot; would{" "}
+                {result.expected ? "do it" : "not do it"} (
                 {result.expected === result.actual ? "✅" : "❌"})
               </Text>
             </Box>

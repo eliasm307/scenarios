@@ -114,7 +114,7 @@ function useAiChat({
           // console.log("useAiChat:subscription", payload);
           const newMessage = payload.new;
           const localChatAlreadyHasMessage = chat.messages.some(
-            (m) => m.id === String(newMessage.id),
+            (m) => String(m.id) === String(newMessage.id),
           );
           if (localChatAlreadyHasMessage) {
             return;
@@ -501,7 +501,6 @@ function OutcomeVotingTable({ users, sessionId, outcomeVotes, currentUser, broad
             <UserOutcomeVotingRow
               key={user.id}
               voteForUser={user}
-              isCurrentUser={user.id === currentUser.id}
               latestOutcomeVote={outcomeVotesForCurrentUser?.[user.id]}
               handleVoteChange={handleVoteChange}
             />
@@ -515,11 +514,9 @@ function OutcomeVotingTable({ users, sessionId, outcomeVotes, currentUser, broad
 function UserOutcomeVotingRow({
   voteForUser,
   latestOutcomeVote,
-  isCurrentUser,
   handleVoteChange,
 }: {
   voteForUser: SessionUser;
-  isCurrentUser: boolean;
   latestOutcomeVote: boolean | undefined;
   handleVoteChange: (config: { voteForUserId: string; newVote: "true" | "false" }) => void;
 }) {
@@ -537,7 +534,7 @@ function UserOutcomeVotingRow({
       value={String(latestOutcomeVote)}
       onChange={handleSpecificUserVoteChange}
     >
-      <Td>{isCurrentUser ? "I" : voteForUser.name}</Td>
+      <Td>{voteForUser.relativeName}</Td>
       <Td>
         <Radio colorScheme='green' value='true'>
           would do it

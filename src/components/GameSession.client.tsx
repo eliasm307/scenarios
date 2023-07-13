@@ -4,9 +4,11 @@
 
 "use client";
 
-import React, { useEffect, useReducer, useRef } from "react";
+import React, { useCallback, useEffect, useReducer, useRef } from "react";
 import type { Message } from "ai";
+import type { UseToastOptions } from "@chakra-ui/react";
 import { Center, Spinner, Text, useToast } from "@chakra-ui/react";
+import type { RealtimeChannel } from "@supabase/supabase-js";
 import { REALTIME_LISTEN_TYPES, REALTIME_PRESENCE_LISTEN_EVENTS } from "@supabase/supabase-js";
 import ScenarioSelector from "./ScenarioSelector.client";
 import ScenarioChat from "./ScenarioChat.client";
@@ -21,7 +23,7 @@ type State = {
   currentUserHasJoinedSession: boolean;
 };
 
-type Action =
+type LocalAction =
   | {
       event: "usersUpdated";
       data: SessionUser[];
@@ -31,15 +33,31 @@ type Action =
       data: SessionRow;
     }
   | {
-      event: BroadcastEventName.UserNameUpdated;
-      data: UserNameUpdatedPayload;
-    }
-  | {
       event: "currentUserHasJoinedSession";
       data: boolean;
     };
 
-type BroadcastEvent = BroadcastEventFrom<Action>;
+enum BroadcastEventName {
+  // todo listen to user profiles to avoid needing this
+  UserNameUpdated = "UserNameUpdated",
+  Toast = "Toast",
+}
+
+type BroadcastAction =
+  | {
+      event: `${BroadcastEventName.UserNameUpdated}`;
+      data: UserNameUpdatedPayload;
+    }
+  | {
+      event: `${BroadcastEventName.Toast}`;
+      data: UseToastOptions;
+    };
+
+type BroadcastEvent = BroadcastEventFrom<BroadcastAction>;
+
+export type BroadcastFunction = (event: BroadcastAction) => void;
+
+type Action = LocalAction | BroadcastAction;
 
 function reducer(state: State, action: Action): State {
   console.log("GameSession reducer", action.event, { state, action });
@@ -81,11 +99,6 @@ function reducer(state: State, action: Action): State {
   }
 }
 
-enum BroadcastEventName {
-  // todo listen to user profiles to avoid needing this
-  UserNameUpdated = "UserNameUpdated",
-}
-
 type UserNameUpdatedPayload = {
   userId: string;
   newUserName: string;
@@ -116,6 +129,7 @@ function useLogic({ existing: initial, currentUser }: Props) {
     stateRef.current = state;
   }, [state]);
 
+  const channelRef = useRef<RealtimeChannel>({} as RealtimeChannel);
   useEffect(() => {
     const sessionKey = `Session-${state.session.id}`;
     const supabase = getSupabaseClient();
@@ -199,12 +213,18 @@ function useLogic({ existing: initial, currentUser }: Props) {
 
     function handleBroadcastMessage(message: BroadcastEvent) {
       console.log("GameSession: received broadcast", message.event, message.data);
-      send(message as any);
+      if (message.event === BroadcastEventName.Toast) {
+        toast(message.data);
+        return;
+      }
+      send(message);
     }
 
     Object.values(BroadcastEventName).forEach((event) => {
       channel.on(REALTIME_LISTEN_TYPES.BROADCAST, { event }, handleBroadcastMessage as any);
     });
+
+    channelRef.current = channel;
 
     const subscription = channel.subscribe(async (status, error) => {
       // ? when do these fire?
@@ -238,11 +258,30 @@ function useLogic({ existing: initial, currentUser }: Props) {
     send({ event: "currentUserHasJoinedSession", data: currentUserHasJoined });
   }, [currentUser, send, state.users]);
 
+  const broadcast: BroadcastFunction = useCallback(
+    async (event) => {
+      const result = await channelRef.current.send({
+        ...event,
+        type: REALTIME_LISTEN_TYPES.BROADCAST,
+      });
+      if (result !== "ok") {
+        console.error("broadcast error", result);
+        toast({
+          status: "error",
+          title: "Error sending broadcast message",
+          description: result,
+        });
+      }
+    },
+    [toast],
+  );
+
   return {
     currentUser,
     users: state.users,
     session: state.session,
     currentUserHasJoinedSession: state.currentUserHasJoinedSession,
+    broadcast,
   };
 }
 
@@ -255,7 +294,7 @@ type Props = {
 };
 
 export default function GameSession(props: Props): React.ReactElement {
-  const { currentUser, users, session, currentUserHasJoinedSession } = useLogic(props);
+  const { currentUser, users, session, currentUserHasJoinedSession, broadcast } = useLogic(props);
 
   if (!currentUserHasJoinedSession) {
     return (
@@ -282,6 +321,7 @@ export default function GameSession(props: Props): React.ReactElement {
         users={users}
         selectedOptionId={session.id}
         voteId={session.scenario_option_votes?.[currentUser.id] || null}
+        broadcast={broadcast}
       />
     );
   }
@@ -296,6 +336,7 @@ export default function GameSession(props: Props): React.ReactElement {
         sessionLockedByUserId={session.messaging_locked_by_user_id}
         users={users}
         outcomeVotes={session.scenario_outcome_votes || {}}
+        broadcast={broadcast}
       />
     );
   }
@@ -311,6 +352,7 @@ export default function GameSession(props: Props): React.ReactElement {
         outcomeVotes={session.scenario_outcome_votes}
         users={users}
         scenarioText={session.selected_scenario_text}
+        broadcast={broadcast}
       />
     );
   }

@@ -30,6 +30,7 @@ import type { SessionRow, MessageRow, SessionUser } from "../types";
 import APIClient from "../utils/client/APIClient";
 import { isTruthy } from "../utils/general";
 import ScenarioText from "./ScenarioText";
+import type { BroadcastFunction } from "./GameSession.client";
 
 type Props = {
   selectedScenarioText: string | null;
@@ -38,6 +39,7 @@ type Props = {
   sessionId: number;
   sessionLockedByUserId: string | null;
   outcomeVotes: NonNullable<SessionRow["scenario_outcome_votes"]>;
+  broadcast: BroadcastFunction;
   existing: {
     chatMessages: Message[];
   };
@@ -52,7 +54,7 @@ function useAiChat({
 }: Props) {
   const toast = useToast();
 
-  const unlockSession = useCallback(() => {
+  const unlockSessionMessaging = useCallback(() => {
     if (sessionLockedByUserId !== currentUser.id) {
       return;
     }
@@ -69,7 +71,7 @@ function useAiChat({
     body: { scenario: selectedScenarioText },
     async onFinish(message) {
       // console.log("useAiChat:onFinish", message);
-      unlockSession();
+      unlockSessionMessaging();
 
       const errorToastConfig = await APIClient.messages.add({
         session_id: sessionId,
@@ -91,7 +93,7 @@ function useAiChat({
         duration: 9000,
         isClosable: true,
       });
-      unlockSession();
+      unlockSessionMessaging();
     },
   });
 
@@ -119,7 +121,7 @@ function useAiChat({
 
           let currentMessages = chat.messages;
           if (newMessage.author_role === "assistant") {
-            unlockSession();
+            unlockSessionMessaging();
 
             const lastMessage = currentMessages.at(-1);
             if (lastMessage?.role === "assistant") {
@@ -141,12 +143,12 @@ function useAiChat({
     return () => {
       void supabase.removeChannel(subscription);
     };
-  }, [chat, sessionId, unlockSession]);
+  }, [chat, sessionId, unlockSessionMessaging]);
 
   useEffect(() => {
     // if we re-mount it means the session can be unlocked
-    unlockSession();
-    return unlockSession;
+    unlockSessionMessaging();
+    return unlockSessionMessaging;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -428,7 +430,7 @@ function outcomeVotingIsComplete({
   );
 }
 
-function OutcomeVotingTable({ users, sessionId, outcomeVotes, currentUser }: Props) {
+function OutcomeVotingTable({ users, sessionId, outcomeVotes, currentUser, broadcast }: Props) {
   const toast = useToast();
   const outcomeVotesForCurrentUser = outcomeVotes[currentUser.id];
 
@@ -458,12 +460,13 @@ function OutcomeVotingTable({ users, sessionId, outcomeVotes, currentUser }: Pro
         return;
       }
 
-      toast({
-        title: "Voting Complete",
-        description: "All votes are in!",
-        status: "success",
-        duration: 9000,
-        isClosable: true,
+      broadcast({
+        event: "Toast",
+        data: {
+          title: "Voting Complete",
+          description: "All votes are in!",
+          status: "success",
+        },
       });
 
       errorToastConfig = await APIClient.sessions.moveToOutcomeRevealStage(sessionId);
@@ -471,7 +474,7 @@ function OutcomeVotingTable({ users, sessionId, outcomeVotes, currentUser }: Pro
         toast(errorToastConfig);
       }
     },
-    [currentUser.id, outcomeVotes, outcomeVotesForCurrentUser, sessionId, toast, users],
+    [currentUser.id, outcomeVotes, outcomeVotesForCurrentUser, sessionId, toast, users, broadcast],
   );
 
   return (

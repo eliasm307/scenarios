@@ -9,6 +9,7 @@ import APIClient from "../utils/client/APIClient";
 import type { ChoiceConfig } from "./ChoiceGrid.client";
 import ChoiceGrid from "./ChoiceGrid.client";
 import type { SessionRow, SessionUser } from "../types";
+import type { BroadcastFunction } from "./GameSession.client";
 
 function getMajorityVoteId<T>(arr: T[]): T | null {
   const itemToOccurrenceCountMap = arr.reduce((acc, item) => {
@@ -39,6 +40,7 @@ function useLogic({
   currentUser,
   scenarioOptions,
   optionVotes,
+  broadcast,
 }: Props) {
   const toast = useToast();
   const [isLoading, setIsLoading] = useState(false);
@@ -52,12 +54,12 @@ function useLogic({
 
   const handleVote = useCallback(
     async (optionId: number) => {
-      setIsLoading(true);
-
       const newOptionVotes = { ...optionVotes, [currentUser.id]: optionId };
       const voteIds = Object.values(newOptionVotes);
       const votingComplete = voteIds.length === users.length;
       if (!votingComplete) {
+        // updating option votes is pretty quick so dont show loading state unless it takes a noticeable amount of time
+        const timeoutId = setTimeout(() => setIsLoading(true), 1000);
         console.log("voting not complete, updating option votes...", { newOptionVotes, users });
         const errorToastConfig = await APIClient.sessions.voteForScenarioOption({
           user_id: currentUser.id,
@@ -68,21 +70,26 @@ function useLogic({
         if (errorToastConfig) {
           toast(errorToastConfig);
         }
+
+        clearTimeout(timeoutId);
         setIsLoading(false);
         return;
       }
 
+      setIsLoading(true);
       const majorityVoteId = getMajorityVoteId(voteIds);
       const majorityNotReached = majorityVoteId === null;
       const majorityVoteIdIsReset = majorityVoteId === -1;
       if (majorityNotReached || majorityVoteIdIsReset) {
         console.log("no winning vote resetting options...");
-        toast({
-          title: "Re-generating Options",
-          description: "No majority vote, creating new options...",
-          status: "info",
-          duration: 9000,
-          isClosable: true,
+
+        broadcast({
+          event: "Toast",
+          data: {
+            title: "Re-generating Options",
+            description: "No majority vote, creating new options...",
+            status: "info",
+          },
         });
 
         // reset votes and options
@@ -94,12 +101,15 @@ function useLogic({
         throw Error(`No winning scenario at index ${majorityVoteId}`);
       }
 
-      toast({
-        title: "Voting Complete",
-        description: `The majority has voted`,
-        status: "success",
-        duration: 9000,
-        isClosable: true,
+      broadcast({
+        event: "Toast",
+        data: {
+          title: "Voting Complete",
+          description: `The majority has voted`,
+          status: "success",
+          duration: 9000,
+          isClosable: true,
+        },
       });
 
       const userIdsThatVotedForWinningScenario = Object.entries(newOptionVotes)
@@ -117,7 +127,16 @@ function useLogic({
 
       setIsLoading(false);
     },
-    [currentUser.id, optionVotes, regenerateOptions, scenarioOptions, sessionId, toast, users],
+    [
+      broadcast,
+      currentUser.id,
+      optionVotes,
+      regenerateOptions,
+      scenarioOptions,
+      sessionId,
+      toast,
+      users,
+    ],
   );
 
   useEffect(() => {
@@ -150,6 +169,7 @@ type Props = {
   selectedOptionId: number;
   scenarioOptions: string[];
   optionVotes: SessionRow["scenario_option_votes"];
+  broadcast: BroadcastFunction;
 };
 
 export default function ScenarioSelector(props: Props): React.ReactElement {
@@ -234,14 +254,18 @@ function OptionContent({
 }) {
   return (
     <VStack>
-      <HStack>
+      <HStack minHeight={5}>
         {users
           .filter((user) => {
             const hasVoted = optionVotes[user.id] === optionId;
             return hasVoted;
           })
           .map((user) => (
-            <Badge key={user.id} colorScheme={user.id === currentUserId ? "green" : "gray"}>
+            <Badge
+              maxHeight={5}
+              key={user.id}
+              colorScheme={user.id === currentUserId ? "green" : "gray"}
+            >
               {user.name}
             </Badge>
           ))}

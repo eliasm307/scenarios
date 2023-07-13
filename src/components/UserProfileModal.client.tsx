@@ -39,20 +39,10 @@ export default function UserProfileModal({ disclosure: { isOpen, onClose } }: Pr
     }
   }, [isOpen]);
 
-  const handleError = useCallback(
-    (description?: string) => {
-      toast({
-        title: "An error occurred 🥲",
-        description,
-        status: "error",
-        duration: 5000,
-        isClosable: true,
-      });
-      setState("idle-initial");
-      onClose();
-    },
-    [onClose, toast],
-  );
+  const handleError = useCallback(() => {
+    setState("idle-initial");
+    onClose(); // ? why close on error?
+  }, [onClose]);
 
   const handleUserNameChange = useCallback(
     (e: ChangeEvent<HTMLInputElement>) => {
@@ -74,9 +64,9 @@ export default function UserProfileModal({ disclosure: { isOpen, onClose } }: Pr
       e.preventDefault();
       setState("loading");
 
-      const result = await userContext.setUserName(userName);
-      if (result.errorMessage) {
-        handleError(result.errorMessage);
+      const errorMessage = await userContext.setUserName(userName);
+      if (errorMessage) {
+        handleError();
         onClose();
         return;
       }

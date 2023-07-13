@@ -23,7 +23,10 @@ type UserProfile = {
 export type UserContext = {
   user: User;
   userProfile: UserProfile;
-  setUserName: (userName: string) => Promise<void>;
+  /**
+   * @returns Error message if there was an error, otherwise void
+   */
+  setUserName: (userName: string) => Promise<string | void>;
 };
 
 const userContext = createContext<UserContext | null>(null);
@@ -48,7 +51,7 @@ export function UserProvider({
         const errorToastConfig = await APIClient.userProfiles.update({ userId: user.id, newName });
         if (errorToastConfig) {
           toast(errorToastConfig);
-          return;
+          return `${errorToastConfig.title}: ${errorToastConfig.description}`;
         }
 
         setProfile((p) => ({ ...p, user_name: newName }));

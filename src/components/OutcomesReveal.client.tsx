@@ -5,6 +5,7 @@ import { useCallback, useMemo } from "react";
 import type { SessionRow, SessionUser } from "../types";
 import APIClient from "../utils/client/APIClient";
 import ScenarioText from "./ScenarioText";
+import type { BroadcastFunction } from "./GameSession.client";
 
 type Props = {
   currentUser: SessionUser;
@@ -12,6 +13,7 @@ type Props = {
   outcomeVotes: Required<SessionRow["scenario_outcome_votes"]>;
   sessionId: number;
   scenarioText: string;
+  broadcast: BroadcastFunction;
 };
 
 export default function OutcomesReveal({
@@ -20,6 +22,7 @@ export default function OutcomesReveal({
   sessionId,
   currentUser,
   scenarioText,
+  broadcast,
 }: Props): React.ReactElement {
   const toast = useToast();
   const results = useMemo((): UserVotesResult[] => {
@@ -40,11 +43,18 @@ export default function OutcomesReveal({
   }, [users, outcomeVotes, currentUser.id]);
 
   const handlePlayAgain = useCallback(async () => {
+    broadcast({
+      event: "Toast",
+      data: {
+        status: "info",
+        title: `"${currentUser.name}" reset the session`,
+      },
+    });
     const errorToastConfig = await APIClient.sessions.reset(sessionId);
     if (errorToastConfig) {
       toast(errorToastConfig);
     }
-  }, [sessionId, toast]);
+  }, [broadcast, currentUser.name, sessionId, toast]);
 
   return (
     <VStack spacing={6}>

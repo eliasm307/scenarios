@@ -13,7 +13,7 @@ import { REALTIME_LISTEN_TYPES, REALTIME_PRESENCE_LISTEN_EVENTS } from "@supabas
 import ScenarioSelector from "./ScenarioSelector.client";
 import ScenarioChat from "./ScenarioChat.client";
 import { getSupabaseClient } from "../utils/client/supabase";
-import type { BroadcastEventFrom, SessionRow, SessionUser } from "../types";
+import type { BroadcastEventFrom, SessionRow, SessionUser, UserProfileRow } from "../types";
 import OutcomesReveal from "./OutcomesReveal.client";
 
 type State = {
@@ -35,6 +35,10 @@ type LocalAction =
   | {
       event: "currentUserHasJoinedSession";
       data: boolean;
+    }
+  | {
+      event: "userProfileUpdated";
+      data: UserProfileRow;
     };
 
 enum BroadcastEventName {
@@ -43,15 +47,10 @@ enum BroadcastEventName {
   Toast = "Toast",
 }
 
-type BroadcastAction =
-  | {
-      event: `${BroadcastEventName.UserNameUpdated}`;
-      data: UserNameUpdatedPayload;
-    }
-  | {
-      event: `${BroadcastEventName.Toast}`;
-      data: UseToastOptions;
-    };
+type BroadcastAction = {
+  event: `${BroadcastEventName.Toast}`;
+  data: UseToastOptions;
+};
 
 type BroadcastEvent = BroadcastEventFrom<BroadcastAction>;
 
@@ -72,18 +71,16 @@ function reducer(state: State, action: Action): State {
       return { ...state, users: [...action.data] };
     }
 
-    case BroadcastEventName.UserNameUpdated: {
-      const { userId, newUserName } = action.data;
-      const newState: State = {
+    case "userProfileUpdated": {
+      return {
         ...state,
         users: state.users.map((user) => {
-          if (user.id === userId) {
-            return { ...user, name: newUserName };
+          if (user.id === action.data.user_id) {
+            return { ...user, name: action.data.user_name };
           }
           return user;
         }),
       };
-      return newState;
     }
 
     case "sessionUpdated": {
@@ -99,25 +96,16 @@ function reducer(state: State, action: Action): State {
   }
 }
 
-type UserNameUpdatedPayload = {
-  userId: string;
-  newUserName: string;
-};
-
-function useLogic({ existing: initial, currentUser }: Props) {
+function useLogic({ existing, currentUser }: Props) {
   const toast = useToast();
   const [state, send] = useReducer(reducer, null, () => {
     return {
       users: [],
       currentUser,
       session: {
-        ...initial.session,
+        ...existing.session,
       },
       currentUserHasJoinedSession: false,
-      // scenario:
-      //   existing?.scenario ??
-      //   "" ?? // todo remove this and default scenario below
-      //   "You're a struggling artist and a wealthy collector offers to buy all your work for a sum that would solve all your financial problems. But he intends to destroy all the art after purchase. Do you sell your art to him?",
     } satisfies State;
   });
 
@@ -133,13 +121,6 @@ function useLogic({ existing: initial, currentUser }: Props) {
   useEffect(() => {
     const sessionKey = `Session-${state.session.id}`;
     const supabase = getSupabaseClient();
-    const channels = supabase.getChannels();
-    if (channels.length) {
-      console.log(
-        "channels",
-        channels.map((channel) => channel.topic),
-      );
-    }
     const channel = supabase
       .channel(sessionKey, {
         config: {
@@ -209,15 +190,26 @@ function useLogic({ existing: initial, currentUser }: Props) {
           console.log("sessionUpdated", data);
           send({ event: "sessionUpdated", data: data.new });
         },
+      )
+      .on<UserProfileRow>(
+        REALTIME_LISTEN_TYPES.POSTGRES_CHANGES,
+        {
+          schema: "public",
+          table: "user_profiles",
+          event: "UPDATE",
+        },
+        (data) => {
+          console.log("userProfileUpdated", data);
+          send({ event: "userProfileUpdated", data: data.new });
+        },
       );
 
     function handleBroadcastMessage(message: BroadcastEvent) {
-      console.log("GameSession: received broadcast", message.event, message.data);
       if (message.event === BroadcastEventName.Toast) {
         toast(message.data);
         return;
       }
-      send(message);
+      throw new Error(`Unknown broadcast event ${message.event}`);
     }
 
     Object.values(BroadcastEventName).forEach((event) => {
@@ -234,16 +226,33 @@ function useLogic({ existing: initial, currentUser }: Props) {
         const presenceTrackStatus = await channel.track(currentUser);
         if (presenceTrackStatus !== "ok") {
           console.error("presenceTrackStatus after join", presenceTrackStatus);
+          toast({
+            status: "error",
+            title: "Failed to join session",
+            description: presenceTrackStatus,
+          });
         }
       }
       if (status === "CLOSED") {
-        console.error("CLOSED", error);
+        console.error("CLOSED");
+        toast({
+          title: "Session closed",
+        });
       }
       if (error || status === "CHANNEL_ERROR") {
         console.error("CHANNEL_ERROR", error);
+        toast({
+          status: "error",
+          title: "Session error",
+          description: error?.message,
+        });
       }
       if (status === "TIMED_OUT") {
-        console.error("TIMED_OUT", error);
+        console.error("TIMED_OUT");
+        toast({
+          status: "error",
+          title: "Session timed out",
+        });
       }
     });
 

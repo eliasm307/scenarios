@@ -46,3 +46,5 @@ export type MessageRow = ExtendRowData<
     author_role: Message["role"];
   }
 >;
+
+export type UserProfileRow = Database["public"]["Tables"]["user_profiles"]["Row"];

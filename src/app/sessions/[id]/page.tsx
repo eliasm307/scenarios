@@ -25,7 +25,7 @@ export default async function SessionPage({ params: { id } }: { params: { id: st
     return redirect("/");
   }
 
-  if (sessionRow.stage === "scenario-selection" && sessionRow.scenario_options.length === 0) {
+  if (sessionRow.stage === "scenario-selection" && !sessionRow.scenario_options?.length) {
     await API.sessions.generateNewScenarioOptions(sessionId);
   }
 

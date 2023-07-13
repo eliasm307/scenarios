@@ -332,7 +332,7 @@ export default function GameSession(props: Props): React.ReactElement {
   if (session.stage === "scenario-selection") {
     return (
       <ScenarioSelector
-        scenarioOptions={session.scenario_options}
+        scenarioOptions={session.scenario_options || []}
         optionVotes={session.scenario_option_votes}
         currentUser={currentUser}
         users={users}

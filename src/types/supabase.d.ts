@@ -57,7 +57,7 @@ export interface Database {
           created_at?: string;
           id?: number;
           text: string;
-          voted_by_user_ids: string[];
+          voted_by_user_ids?: string[];
         };
         Update: {
           created_at?: string;
@@ -140,6 +140,21 @@ export interface Database {
       [_ in never]: never;
     };
     Functions: {
+      get_example_scenarios: {
+        Args: Record<PropertyKey, never>;
+        Returns: {
+          value: string;
+        }[];
+      };
+      get_example_scenarios_fn: {
+        Args: Record<PropertyKey, never>;
+        Returns: {
+          created_at: string;
+          id: number;
+          text: string;
+          voted_by_user_ids: string[];
+        }[];
+      };
       json_matches_schema: {
         Args: {
           schema: Json;

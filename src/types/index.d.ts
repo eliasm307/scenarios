@@ -29,7 +29,6 @@ export type SessionRow = ExtendRowData<
   {
     created_at: string;
     id: number;
-    scenario_options: string[];
     /**
      * @key UserId
      * @key Index (0-based) of the user's vote (where -1 means voting to skip)
@@ -52,3 +51,5 @@ export type MessageRow = ExtendRowData<
 >;
 
 export type UserProfileRow = Database["public"]["Tables"]["user_profiles"]["Row"];
+
+export type ScenarioRow = Database["public"]["Tables"]["scenarios"]["Row"];

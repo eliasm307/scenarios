@@ -309,7 +309,7 @@ export default function ScenarioChat(props: Props) {
   );
 
   return (
-    <Box height='100%' position='relative' padding={2}>
+    <Box height='100%' position='relative' padding={2} my={2}>
       <Grid
         as='section'
         // height='100dvh'
@@ -321,10 +321,10 @@ export default function ScenarioChat(props: Props) {
         padding={2}
         gap={2}
       >
-        <VStack m={3} gap={5} width='100%' overflow='hidden'>
+        <VStack m={3} gap={5} width='100%' overflow='auto' maxHeight='100%'>
           <ScenarioText scenarioText={selectedScenarioText} />
           <Divider />
-          <VStack overflowY='auto' gap='inherit' width='100%' flex={1}>
+          <VStack gap='inherit' width='100%' flex={1}>
             <Heading size='md' width='100%' textAlign='center'>
               I think...
             </Heading>

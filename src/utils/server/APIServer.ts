@@ -1,6 +1,6 @@
 import type { ReadonlyRequestCookies } from "next/dist/server/web/spec-extension/adapters/request-cookies";
 import type { User } from "@supabase/supabase-js";
-import type { SessionUser, SessionRow, MessageRow } from "../../types";
+import type { SessionUser, SessionRow, MessageRow, ScenarioRow } from "../../types";
 import { getSupabaseServer } from "./supabase";
 import { generateScenarios } from "./openai";
 import API from "../common/API";
@@ -11,7 +11,19 @@ export default class APIServer extends API {
   }
 
   override ai = {
-    createScenarios: generateScenarios,
+    createScenarios: async () => {
+      const { data: exampleScenarioRows, error } = await this.supabase.rpc(
+        "get_example_scenarios_fn",
+      );
+      if (error) {
+        throw new Error(`Get example scenarios error: ${error.message}`);
+      }
+
+      const exampleScenarios = exampleScenarioRows.map(({ text }: ScenarioRow) => text);
+      // eslint-disable-next-line no-console
+      console.log("createScenarios, exampleScenarios", exampleScenarios);
+      return generateScenarios(exampleScenarios);
+    },
   } satisfies API["ai"];
 
   async getUser(): Promise<User> {
@@ -71,7 +83,7 @@ export default class APIServer extends API {
       .insert({
         id: sessionId,
         stage: "scenario-selection" as SessionRow["stage"],
-        scenario_options: await generateScenarios(),
+        scenario_options: await this.ai.createScenarios(),
         // scenario_options: [
         //   "You discover a magical book that can grant any wish, but each wish shortens your life by five years. Would you use the book?",
         //   "You're a scientist who has discovered a cure for a rare, deadly disease. However, the cure involves a procedure that is considered highly unethical. Do you proceed to save lives?",

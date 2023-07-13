@@ -301,12 +301,16 @@ export default function GameSession(props: Props): React.ReactElement {
   }
 
   if (session.stage === "scenario-outcome-reveal") {
+    if (!session.selected_scenario_text) {
+      throw new Error("Missing selected_scenario_text");
+    }
     return (
       <OutcomesReveal
         sessionId={session.id}
         currentUser={currentUser}
         outcomeVotes={session.scenario_outcome_votes}
         users={users}
+        scenarioText={session.selected_scenario_text}
       />
     );
   }

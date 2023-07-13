@@ -1,39 +1,32 @@
 "use client";
 
-import {
-  Box,
-  Button,
-  Heading,
-  Table,
-  TableContainer,
-  Tbody,
-  Td,
-  Th,
-  Thead,
-  Tr,
-  useToast,
-} from "@chakra-ui/react";
+import { Box, Button, Divider, Heading, Text, VStack, useToast } from "@chakra-ui/react";
 import { useCallback, useMemo } from "react";
 import type { SessionRow, SessionUser } from "../types";
 import APIClient from "../utils/client/APIClient";
+import ScenarioText from "./ScenarioText";
 
 type Props = {
   currentUser: SessionUser;
   users: SessionUser[];
   outcomeVotes: Required<SessionRow["scenario_outcome_votes"]>;
   sessionId: number;
+  scenarioText: string;
 };
 
 export default function OutcomesReveal({
   users,
   outcomeVotes,
   sessionId,
+  currentUser,
+  scenarioText,
 }: Props): React.ReactElement {
   const toast = useToast();
   const results = useMemo((): UserVotesResult[] => {
     return users.map((voterUser) => {
       const expectedOutcomes = outcomeVotes[voterUser.id]!;
       return {
+        isCurrentUser: voterUser.id === currentUser.id,
         user: voterUser,
         voteResults: users
           .filter((resultUser) => resultUser.id !== voterUser.id)
@@ -44,7 +37,7 @@ export default function OutcomesReveal({
           })),
       };
     });
-  }, [users, outcomeVotes]);
+  }, [users, outcomeVotes, currentUser.id]);
 
   const handlePlayAgain = useCallback(async () => {
     const errorToastConfig = await APIClient.sessions.reset(sessionId);
@@ -54,17 +47,21 @@ export default function OutcomesReveal({
   }, [sessionId, toast]);
 
   return (
-    <>
-      <Box>Outcomes reveal</Box>
+    <VStack spacing={6}>
+      <Box maxWidth='30rem' textAlign='center'>
+        <ScenarioText scenarioText={scenarioText} />
+      </Box>
+      <Divider />
       {results.map((result) => {
         return <OutcomeVoteResults key={result.user.id} {...result} />;
       })}
       <Button onClick={handlePlayAgain}>Play Again</Button>
-    </>
+    </VStack>
   );
 }
 
 type UserVotesResult = {
+  isCurrentUser: boolean;
   user: SessionUser;
   voteResults: {
     user: SessionUser;
@@ -73,34 +70,24 @@ type UserVotesResult = {
   }[];
 };
 
-function OutcomeVoteResults({ user, voteResults }: UserVotesResult) {
+function OutcomeVoteResults({ isCurrentUser, user, voteResults }: UserVotesResult) {
   return (
     <Box overflowY='auto'>
       <Heading as='h2' size='md' mb={2} width='100%' textAlign='center'>
-        {user.name} Results
+        &quot;{isCurrentUser ? "I" : user.name}&quot; guessed that...
       </Heading>
-      <TableContainer>
-        <Table variant='unstyled'>
-          <Thead>
-            <Tr>
-              <Th />
-              <Th>Expected</Th>
-              <Th>Actual</Th>
-            </Tr>
-          </Thead>
-          <Tbody>
-            {voteResults.map((result) => {
-              return (
-                <Tr key={result.user.id}>
-                  <Td>{result.user.name}</Td>
-                  <Td>{`${result.expected}`}</Td>
-                  <Td>{`${result.actual}`}</Td>
-                </Tr>
-              );
-            })}
-          </Tbody>
-        </Table>
-      </TableContainer>
+      <VStack>
+        {voteResults.map((result) => {
+          return (
+            <Box key={result.user.id}>
+              <Text>
+                &quot;{result.user.name}&quot; would {result.expected ? "do it" : "not do it"} (
+                {result.expected === result.actual ? "✅" : "❌"})
+              </Text>
+            </Box>
+          );
+        })}
+      </VStack>
     </Box>
   );
 }

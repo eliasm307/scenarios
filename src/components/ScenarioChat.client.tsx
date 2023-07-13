@@ -29,6 +29,7 @@ import { getSupabaseClient } from "../utils/client/supabase";
 import type { SessionRow, MessageRow, SessionUser } from "../types";
 import APIClient from "../utils/client/APIClient";
 import { isTruthy } from "../utils/general";
+import ScenarioText from "./ScenarioText";
 
 type Props = {
   selectedScenarioText: string | null;
@@ -342,25 +343,6 @@ export default function ScenarioChat(props: Props) {
           {controls}
         </Grid>
       </Grid>
-    </Box>
-  );
-}
-
-function ScenarioText({ scenarioText }: { scenarioText: string }) {
-  return (
-    <Box>
-      {scenarioText
-        .replaceAll(".", ".\n")
-        .replaceAll("?", "?\n")
-        .split("\n")
-        .filter((sentence) => sentence.trim())
-        .map((sentence) => {
-          return (
-            <Heading fontSize='xl' key={sentence} as='p' mb={5}>
-              {sentence}
-            </Heading>
-          );
-        })}
     </Box>
   );
 }

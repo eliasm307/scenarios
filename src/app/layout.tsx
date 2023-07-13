@@ -13,6 +13,9 @@ export const metadata: Metadata = {
   // viewport: "width=device-width, height=device-height, initial-scale=1.0",
 };
 
+// todo determine why this is needed
+export const dynamic = "force-dynamic";
+
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   console.log("RootLayout");
   const supabase = getSupabaseServer(cookies);

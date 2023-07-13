@@ -308,6 +308,7 @@ export default function ScenarioChat(props: Props) {
     </Flex>
   );
 
+  // todo show the scenario panel and chat panel as tabs on mobile and side by side on larger screens
   return (
     <Box height='100%' position='relative' padding={2} my={2}>
       <Grid

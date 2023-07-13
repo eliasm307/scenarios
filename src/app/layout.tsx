@@ -53,6 +53,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     );
   }
 
+  // this is only for /auth page
   console.log("no user found");
   return <CommonWrapper>{children}</CommonWrapper>;
 }

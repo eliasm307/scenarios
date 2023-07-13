@@ -27,6 +27,8 @@ import { REALTIME_LISTEN_TYPES } from "@supabase/supabase-js";
 import ChatMessage from "./ChatMessage";
 import { getSupabaseClient } from "../utils/client/supabase";
 import type { SessionRow, MessageRow, SessionUser } from "../types";
+import APIClient from "../utils/client/APIClient";
+import { isTruthy } from "../utils/general";
 
 type Props = {
   selectedScenarioText: string | null;
@@ -53,51 +55,31 @@ function useAiChat({
     if (sessionLockedByUserId !== currentUser.id) {
       return;
     }
-    void getSupabaseClient()
-      .from("sessions")
-      .update({ messaging_locked_by_user_id: null })
-      .eq("id", sessionId)
-      .then((result) => {
-        if (result.error) {
-          console.error("Error un-locking session", result.error);
-          toast({
-            title: "Error locking session",
-            description: result.error.message,
-            status: "error",
-            duration: 9000,
-            isClosable: true,
-          });
-        }
-      });
+
+    void APIClient.sessions.unlockMessaging(sessionId).then((errorToastConfig) => {
+      if (errorToastConfig) {
+        toast(errorToastConfig);
+      }
+    });
   }, [currentUser.id, sessionId, sessionLockedByUserId, toast]);
 
   const chat = useChat({
     initialMessages: existing?.chatMessages, // || DUMMY_MESSAGES,
     body: { scenario: selectedScenarioText },
-    onFinish(message) {
+    async onFinish(message) {
       // console.log("useAiChat:onFinish", message);
       unlockSession();
-      void getSupabaseClient()
-        .from("messages")
-        .insert([
-          {
-            session_id: sessionId,
-            content: message.content,
-            author_role: "assistant",
-          },
-        ])
-        .then((result) => {
-          if (result.error) {
-            console.error("Error saving message", result.error);
-            toast({
-              title: "Error saving message",
-              description: result.error.message,
-              status: "error",
-              duration: 9000,
-              isClosable: true,
-            });
-          }
-        });
+
+      const errorToastConfig = await APIClient.messages.add({
+        session_id: sessionId,
+        content: message.content,
+        author_role: "assistant",
+        author_id: null,
+      });
+
+      if (errorToastConfig) {
+        toast(errorToastConfig);
+      }
     },
     onError(error) {
       console.error("useAiChat:onError", error);
@@ -201,53 +183,22 @@ function useAiChat({
   return {
     chat: {
       ...chat,
-      handleSubmit(e, chatRequestOptions?) {
-        const supabase = getSupabaseClient();
-        const content = textAreaRef.current!.value;
-
-        void Promise.all([
-          supabase
-            .from("sessions")
-            .update({ messaging_locked_by_user_id: currentUser.id })
-            .eq("id", sessionId)
-            .then((result) => {
-              if (result.error) {
-                console.error("Error locking session", result.error);
-                unlockSession();
-                toast({
-                  title: "Error locking session",
-                  description: result.error.message,
-                  status: "error",
-                  duration: 9000,
-                  isClosable: true,
-                });
-              }
-            }),
-
-          supabase
-            .from("messages")
-            .insert([
-              {
-                session_id: sessionId,
-                content,
-                author_role: "user" as Message["role"],
-                author_id: currentUser.id,
-              },
-            ])
-            .then((result) => {
-              if (result.error) {
-                console.error("Error saving message", result.error);
-                unlockSession();
-                toast({
-                  title: "Error saving message",
-                  description: result.error.message,
-                  status: "error",
-                  duration: 9000,
-                  isClosable: true,
-                });
-              }
-            }),
+      async handleSubmit(e, chatRequestOptions?) {
+        const potentialErrorToastConfigs = await Promise.all([
+          APIClient.sessions.lockMessaging({ sessionId, lockedByUserId: currentUser.id }),
+          APIClient.messages.add({
+            session_id: sessionId,
+            content: textAreaRef.current!.value.trim(),
+            author_role: "user" as Message["role"],
+            author_id: currentUser.id,
+          }),
         ]);
+
+        const errorToastConfigs = potentialErrorToastConfigs.filter(isTruthy);
+        if (errorToastConfigs.some(isTruthy)) {
+          errorToastConfigs.forEach(toast);
+          return;
+        }
 
         return chat.handleSubmit(e, chatRequestOptions);
       },
@@ -367,9 +318,14 @@ export default function ScenarioChat(props: Props) {
         gap={2}
       >
         <Grid templateRows='auto auto 1fr' m={3} overflow='hidden'>
-          <ScenarioHero scenarioText={selectedScenarioText} />
+          <ScenarioText scenarioText={selectedScenarioText} />
           <Divider my={3} />
-          <OutcomeVotingGrid {...props} />
+          <Box overflowY='auto'>
+            <Heading as='h2' size='md' mb={2} width='100%' textAlign='center'>
+              I think...
+            </Heading>
+            <OutcomeVotingTable {...props} />
+          </Box>
         </Grid>
         <Grid
           overflow='hidden'
@@ -386,6 +342,25 @@ export default function ScenarioChat(props: Props) {
           {controls}
         </Grid>
       </Grid>
+    </Box>
+  );
+}
+
+function ScenarioText({ scenarioText }: { scenarioText: string }) {
+  return (
+    <Box>
+      {scenarioText
+        .replaceAll(".", ".\n")
+        .replaceAll("?", "?\n")
+        .split("\n")
+        .filter((sentence) => sentence.trim())
+        .map((sentence) => {
+          return (
+            <Heading fontSize='xl' key={sentence} as='p' mb={5}>
+              {sentence}
+            </Heading>
+          );
+        })}
     </Box>
   );
 }
@@ -455,120 +430,123 @@ function getPlaceholderText(chat: UseChatHelpers): string {
   return "Ask me anything about the scenario 😀";
 }
 
-function OutcomeVotingGrid({ users, currentUser, outcomeVotes, sessionId }: Props) {
-  const toast = useToast();
-  const outcomeVotesForCurrentUser = outcomeVotes[currentUser.id];
+function outcomeVotingIsComplete({
+  outcomeVotes,
+  users,
+}: {
+  users: SessionUser[];
+  outcomeVotes: SessionRow["scenario_outcome_votes"];
+}) {
+  const userVotesForEachUser = Object.values(outcomeVotes);
   return (
-    <Box overflowY='auto'>
-      <Heading as='h2' size='md' mb={2} width='100%' textAlign='center'>
-        I think...
-      </Heading>
-      <TableContainer>
-        <Table variant='unstyled'>
-          <Tbody>
-            {users.map((user) => {
-              const userName = user.id === currentUser.id ? "I" : user.name;
-              const userOutcomeVote = outcomeVotesForCurrentUser?.[user.id];
-              return (
-                <RadioGroup
-                  as='tr'
-                  key={user.id}
-                  value={String(userOutcomeVote)}
-                  onChange={async (newVote) => {
-                    const votedThatUserWouldDoIt = newVote === "true";
-                    const result = await getSupabaseClient().rpc("vote_for_outcome", {
-                      session_id: sessionId,
-                      vote_by_user_id: currentUser.id,
-                      vote_for_user_id: user.id,
-                      outcome: votedThatUserWouldDoIt,
-                    });
-                    if (result.error) {
-                      toast({
-                        title: "Voting Error",
-                        description: result.error.message,
-                        status: "error",
-                        duration: 9000,
-                        isClosable: true,
-                      });
-                    }
-
-                    const newOutcomeVotes = {
-                      ...outcomeVotes,
-                      [currentUser.id]: {
-                        ...outcomeVotesForCurrentUser,
-                        [user.id]: votedThatUserWouldDoIt,
-                      },
-                    };
-
-                    const votingComplete =
-                      Object.keys(newOutcomeVotes).length === users.length &&
-                      Object.values(newOutcomeVotes).every((votes) => {
-                        return Object.keys(votes || {}).length === users.length;
-                      });
-
-                    if (!votingComplete) {
-                      return;
-                    }
-                    toast({
-                      title: "Voting Complete",
-                      description: "All votes are in!",
-                      status: "success",
-                      duration: 9000,
-                      isClosable: true,
-                    });
-
-                    const result2 = await getSupabaseClient()
-                      .from("sessions")
-                      .update({ stage: "scenario-outcome-reveal" } satisfies Partial<SessionRow>)
-                      .eq("id", sessionId);
-
-                    if (result2.error) {
-                      toast({
-                        title: "Error updating session stage",
-                        description: result2.error.message,
-                        status: "error",
-                        duration: 9000,
-                        isClosable: true,
-                      });
-                    }
-                  }}
-                >
-                  <Td>{userName}</Td>
-                  <Td>
-                    <Radio colorScheme='green' value='true'>
-                      would do it
-                    </Radio>
-                  </Td>
-                  <Td>
-                    <Radio colorScheme='red' value='false'>
-                      would not do it
-                    </Radio>
-                  </Td>
-                </RadioGroup>
-              );
-            })}
-          </Tbody>
-        </Table>
-      </TableContainer>
-    </Box>
+    userVotesForEachUser.length === users.length &&
+    userVotesForEachUser.every((userVotes) => {
+      return Object.keys(userVotes || {}).length === users.length;
+    })
   );
 }
 
-function ScenarioHero({ scenarioText }: { scenarioText: string }) {
+function OutcomeVotingTable({ users, sessionId, outcomeVotes, currentUser }: Props) {
+  const toast = useToast();
+  const outcomeVotesForCurrentUser = outcomeVotes[currentUser.id];
+
+  const handleVoteChange = useCallback(
+    async ({ voteForUserId, newVote }: { voteForUserId: string; newVote: "true" | "false" }) => {
+      const outcomeVoteFromCurrentUser = newVote === "true";
+      let errorToastConfig = await APIClient.sessions.voteForUserOutcome({
+        session_id: sessionId,
+        vote_by_user_id: currentUser.id,
+        vote_for_user_id: voteForUserId,
+        outcome: outcomeVoteFromCurrentUser,
+      });
+      if (errorToastConfig) {
+        toast(errorToastConfig);
+        return;
+      }
+
+      const updatedOutcomeVotes = {
+        ...outcomeVotes,
+        [currentUser.id]: {
+          ...outcomeVotesForCurrentUser,
+          [voteForUserId]: outcomeVoteFromCurrentUser,
+        },
+      };
+
+      if (!outcomeVotingIsComplete({ users, outcomeVotes: updatedOutcomeVotes })) {
+        return;
+      }
+
+      toast({
+        title: "Voting Complete",
+        description: "All votes are in!",
+        status: "success",
+        duration: 9000,
+        isClosable: true,
+      });
+
+      errorToastConfig = await APIClient.sessions.moveToOutcomeRevealStage(sessionId);
+      if (errorToastConfig) {
+        toast(errorToastConfig);
+      }
+    },
+    [currentUser.id, outcomeVotes, outcomeVotesForCurrentUser, sessionId, toast, users],
+  );
+
   return (
-    <Box>
-      {scenarioText
-        .replaceAll(".", ".\n")
-        .replaceAll("?", "?\n")
-        .split("\n")
-        .filter((sentence) => sentence.trim())
-        .map((sentence) => {
-          return (
-            <Heading fontSize='xl' key={sentence} as='p' mb={5}>
-              {sentence}
-            </Heading>
-          );
-        })}
-    </Box>
+    <TableContainer>
+      <Table variant='unstyled'>
+        <Tbody>
+          {users.map((user) => (
+            <UserOutcomeVotingRow
+              key={user.id}
+              voteForUser={user}
+              isCurrentUser={user.id === currentUser.id}
+              latestOutcomeVote={outcomeVotesForCurrentUser?.[user.id]}
+              handleVoteChange={handleVoteChange}
+            />
+          ))}
+        </Tbody>
+      </Table>
+    </TableContainer>
+  );
+}
+
+function UserOutcomeVotingRow({
+  voteForUser,
+  latestOutcomeVote,
+  isCurrentUser,
+  handleVoteChange,
+}: {
+  voteForUser: SessionUser;
+  isCurrentUser: boolean;
+  latestOutcomeVote: boolean | undefined;
+  handleVoteChange: (config: { voteForUserId: string; newVote: "true" | "false" }) => void;
+}) {
+  const handleSpecificUserVoteChange = useCallback(
+    (vote: "true" | "false") => {
+      handleVoteChange({ voteForUserId: voteForUser.id, newVote: vote });
+    },
+    [handleVoteChange, voteForUser.id],
+  );
+
+  return (
+    <RadioGroup
+      name={voteForUser.id}
+      as='tr'
+      value={String(latestOutcomeVote)}
+      onChange={handleSpecificUserVoteChange}
+    >
+      <Td>{isCurrentUser ? "I" : voteForUser.name}</Td>
+      <Td>
+        <Radio colorScheme='green' value='true'>
+          would do it
+        </Radio>
+      </Td>
+      <Td>
+        <Radio colorScheme='red' value='false'>
+          would not do it
+        </Radio>
+      </Td>
+    </RadioGroup>
   );
 }

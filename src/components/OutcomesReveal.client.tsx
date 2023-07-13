@@ -47,7 +47,7 @@ export default function OutcomesReveal({
   }, [users, outcomeVotes]);
 
   const handlePlayAgain = useCallback(async () => {
-    const errorToastConfig = await APIClient.session.reset(sessionId);
+    const errorToastConfig = await APIClient.sessions.reset(sessionId);
     if (errorToastConfig) {
       toast(errorToastConfig);
     }

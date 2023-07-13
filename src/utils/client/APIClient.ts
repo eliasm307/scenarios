@@ -1,7 +1,8 @@
 import type { UseToastOptions } from "@chakra-ui/react";
 import type { GetScenariosResponseBody } from "../../app/api/scenarios/route";
 import { getSupabaseClient } from "./supabase";
-import type { SessionRow } from "../../types";
+import type { MessageRow, SessionRow } from "../../types";
+import type { Database } from "../../types/supabase";
 
 const APIClient = {
   getScenarios: async (signal?: AbortSignal): Promise<GetScenariosResponseBody> => {
@@ -22,7 +23,7 @@ const APIClient = {
     return response.json() as Promise<GetScenariosResponseBody>;
   },
 
-  session: {
+  sessions: {
     async moveToOutcomeSelectionStage({
       scenarioText,
       userIdsThatVotedForScenario,
@@ -33,41 +34,34 @@ const APIClient = {
       sessionId: number;
     }): Promise<void | UseToastOptions> {
       const supabase = getSupabaseClient();
-      const existingScenarioRequest = await supabase
+      const existingScenarioResponse = await supabase
         .from("scenarios")
         .select("id")
         .eq("text", scenarioText)
         .single();
 
-      if (existingScenarioRequest.data) {
-        // scenario already exists
-        return;
+      if (existingScenarioResponse.error) {
+        const title = "Error checking for existing scenario";
+        console.error(title, existingScenarioResponse.error);
+        return { status: "error", title, description: existingScenarioResponse.error.message };
       }
 
-      if (existingScenarioRequest.error) {
-        console.error("Error checking for existing scenario", existingScenarioRequest.error);
-        return {
-          status: "error",
-          title: "Error checking for existing scenario",
-          description: existingScenarioRequest.error.message,
-        };
+      if (!existingScenarioResponse.data) {
+        const insertScenarioResponse = await getSupabaseClient().from("scenarios").insert({
+          text: scenarioText,
+          voted_by_user_ids: userIdsThatVotedForScenario,
+        });
+
+        if (insertScenarioResponse.error) {
+          const title = "Error saving new scenario";
+          console.error(title, insertScenarioResponse.error);
+          return { status: "error", title, description: insertScenarioResponse.error.message };
+        }
+      } else {
+        // scenario already exists, this should only happen in dev
       }
 
-      const insertScenarioRequest = await getSupabaseClient().from("scenarios").insert({
-        text: scenarioText,
-        voted_by_user_ids: userIdsThatVotedForScenario,
-      });
-
-      if (insertScenarioRequest.error) {
-        console.error("Error inserting scenario", insertScenarioRequest.error);
-        return {
-          status: "error",
-          title: "Error inserting scenario",
-          description: insertScenarioRequest.error.message,
-        };
-      }
-
-      const updateSessionStageRequest = await getSupabaseClient()
+      const response = await getSupabaseClient()
         .from("sessions")
         .update({
           stage: "scenario-outcome-selection",
@@ -78,13 +72,45 @@ const APIClient = {
         } satisfies Partial<SessionRow>)
         .eq("id", sessionId);
 
-      if (updateSessionStageRequest.error) {
-        console.error("Error updating session stage", updateSessionStageRequest.error);
-        return {
-          status: "error",
-          title: "Error updating session stage",
-          description: updateSessionStageRequest.error.message,
-        };
+      if (response.error) {
+        const title = "Error updating session stage";
+        console.error(title, response.error);
+        return { status: "error", title, description: response.error.message };
+      }
+    },
+
+    async moveToOutcomeRevealStage(sessionId: number): Promise<void | UseToastOptions> {
+      const response = await getSupabaseClient()
+        .from("sessions")
+        .update({ stage: "scenario-outcome-reveal" } satisfies Partial<SessionRow>)
+        .eq("id", sessionId);
+
+      if (response.error) {
+        const title = "Error updating session stage";
+        console.error(title, response.error);
+        return { status: "error", title, description: response.error.message };
+      }
+    },
+
+    async voteForUserOutcome(
+      config: Database["public"]["Functions"]["vote_for_outcome"]["Args"],
+    ): Promise<void | UseToastOptions> {
+      const result = await getSupabaseClient().rpc("vote_for_outcome", config);
+      if (result.error) {
+        const title = "Outcome Voting Error";
+        console.error(title, result.error);
+        return { status: "error", title, description: result.error.message };
+      }
+    },
+
+    async voteForScenarioOption(
+      config: Database["public"]["Functions"]["vote_for_option"]["Args"],
+    ): Promise<void | UseToastOptions> {
+      const result = await getSupabaseClient().rpc("vote_for_option", config);
+      if (result.error) {
+        const title = "Scenario Voting Error";
+        console.error(title, result.error);
+        return { status: "error", title, description: result.error.message };
       }
     },
 
@@ -93,7 +119,7 @@ const APIClient = {
         const { scenarios } = await APIClient.getScenarios();
         // eslint-disable-next-line no-console
         console.log("got new scenarios", scenarios);
-        const updateSessionResponse = await getSupabaseClient()
+        const response = await getSupabaseClient()
           .from("sessions")
           .update({
             scenario_options: scenarios,
@@ -101,28 +127,26 @@ const APIClient = {
           })
           .eq("id", sessionId);
 
-        if (updateSessionResponse.error) {
-          console.error("Error updating session", updateSessionResponse.error);
-          return {
-            status: "error",
-            title: "Error updating session",
-            description: updateSessionResponse.error.message,
-          };
+        if (response.error) {
+          const title = "Error updating session";
+          console.error(title, response.error);
+          return { status: "error", title, description: response.error.message };
         }
 
         // handle get scenarios errors
       } catch (error) {
-        console.error("Error generating new scenario options", error);
+        const title = "Error generating new scenario options";
+        console.error(title, error);
         return {
           status: "error",
-          title: "Error generating new scenario options",
+          title,
           description: error instanceof Error ? error.message : String(error),
         };
       }
     },
 
     async reset(sessionId: number): Promise<void | UseToastOptions> {
-      const resetSessionResponse = await getSupabaseClient()
+      const response = await getSupabaseClient()
         .from("sessions")
         .update({
           stage: "scenario-selection",
@@ -134,13 +158,77 @@ const APIClient = {
         } satisfies Omit<SessionRow, "id" | "created_at">)
         .eq("id", sessionId);
 
-      if (resetSessionResponse.error) {
-        console.error("Error resetting session", resetSessionResponse.error);
-        return {
-          status: "error",
-          title: "Error resetting session",
-          description: resetSessionResponse.error.message,
-        };
+      if (response.error) {
+        const title = "Error resetting session";
+        console.error(title, response.error);
+        return { status: "error", title, description: response.error.message };
+      }
+    },
+
+    async lockMessaging({
+      sessionId,
+      lockedByUserId,
+    }: {
+      sessionId: number;
+      lockedByUserId: string;
+    }): Promise<void | UseToastOptions> {
+      const response = await getSupabaseClient()
+        .from("sessions")
+        .update({ messaging_locked_by_user_id: lockedByUserId })
+        .eq("id", sessionId);
+
+      if (response.error) {
+        const title = "Error locking session";
+        console.error(title, response.error);
+        return { status: "error", title, description: response.error.message };
+      }
+    },
+
+    async unlockMessaging(sessionId: number): Promise<void | UseToastOptions> {
+      const response = await getSupabaseClient()
+        .from("sessions")
+        .update({ messaging_locked_by_user_id: null })
+        .eq("id", sessionId);
+
+      if (response.error) {
+        const title = "Error un-locking session";
+        console.error(title, response.error);
+        return { status: "error", title, description: response.error.message };
+      }
+    },
+  },
+
+  messages: {
+    async add(
+      message: Pick<MessageRow, "author_id" | "author_role" | "content" | "session_id">,
+    ): Promise<void | UseToastOptions> {
+      const response = await getSupabaseClient().from("messages").insert([message]);
+
+      if (response.error) {
+        const title = "Error adding message";
+        console.error(title, response.error);
+        return { status: "error", title, description: response.error.message };
+      }
+    },
+  },
+
+  userProfiles: {
+    async update({
+      newName,
+      userId,
+    }: {
+      newName: string;
+      userId: string;
+    }): Promise<void | UseToastOptions> {
+      const response = await getSupabaseClient()
+        .from("user_profiles")
+        .update({ user_name: newName })
+        .eq("user_id", userId);
+
+      if (response.error) {
+        const title = "Error updating user name";
+        console.error(title, response.error);
+        return { status: "error", title, description: response.error.message };
       }
     },
   },

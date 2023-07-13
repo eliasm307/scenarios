@@ -1,4 +1,5 @@
 import type { ReadonlyRequestCookies } from "next/dist/server/web/spec-extension/adapters/request-cookies";
+import type { User } from "@supabase/supabase-js";
 import type { SessionUser, SessionRow, MessageRow } from "../../types";
 import { getSupabaseServer } from "./supabase";
 
@@ -9,11 +10,25 @@ export default class APIServer {
     this.supabase = getSupabaseServer(cookies);
   }
 
-  async getUserProfile(): Promise<SessionUser> {
+  async getUser(): Promise<User> {
     const {
       data: { user },
+      error,
     } = await this.supabase.auth.getUser();
 
+    if (!user) {
+      throw new Error("No user found");
+    }
+
+    if (error) {
+      throw new Error(`Get user error: ${error.message}`);
+    }
+
+    return user;
+  }
+
+  async getUserProfile(): Promise<SessionUser> {
+    const user = await this.getUser();
     if (!user) {
       throw new Error("No user found");
     }

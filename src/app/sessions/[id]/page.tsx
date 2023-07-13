@@ -3,32 +3,27 @@ import "server-only";
 
 import { cookies } from "next/headers";
 import type { Message } from "ai";
+import { redirect } from "next/navigation";
 import { Box, Grid } from "../../../components/ChakraUI.client";
 import NavBar from "../../../components/NavBar.client";
 import GameSession from "../../../components/GameSession.client";
-import type { MessageRow } from "../../../types";
 import APIServer from "../../../utils/server/APIServer";
-
-function messageRowToChatMessage(messageRow: MessageRow): Message {
-  return {
-    id: String(messageRow.id),
-    content: messageRow.content,
-    role: messageRow.author_role as Message["role"],
-    createdAt: new Date(messageRow.updated_at),
-    // name: message.author_id!,
-  };
-}
+import { messageRowToChatMessage } from "../../../utils/general";
 
 export default async function SessionPage({ params: { id } }: { params: { id: string } }) {
   const sessionId = Number(id);
   if (isNaN(sessionId)) {
     // ! ID will be used in SQL query, so need to make sure it's a number to prevent SQL injection
-    throw new Error(`Session id not a number, it is "${id}"`);
+    return redirect("/");
   }
 
   const API = new APIServer(cookies);
   const userProfile = await API.getUserProfile();
-  const sessionRow = (await API.getSession(sessionId)) || (await API.createSession(sessionId));
+  const sessionRow = await API.getSession(sessionId);
+  if (!sessionRow) {
+    // session doesn't exist yet
+    return redirect("/");
+  }
 
   let chatMessages: Message[] = [];
   if (sessionRow.stage !== "scenario-selection") {

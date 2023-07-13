@@ -1,10 +1,10 @@
 "use client";
 
 import { CacheProvider } from "@chakra-ui/next-js";
-import { ChakraProvider } from "@chakra-ui/react";
+import { ChakraProvider, useToast } from "@chakra-ui/react";
 import type { User } from "@supabase/auth-helpers-nextjs";
 import { createContext, useContext, useMemo, useState } from "react";
-import { getSupabaseClient } from "../utils/client/supabase";
+import APIClient from "../utils/client/APIClient";
 
 export function CommonProviders({ children }: { children: React.ReactNode }) {
   return (
@@ -23,7 +23,7 @@ type UserProfile = {
 export type UserContext = {
   user: User;
   userProfile: UserProfile;
-  setUserName: (userName: string) => Promise<{ errorMessage?: string }>;
+  setUserName: (userName: string) => Promise<void>;
 };
 
 const userContext = createContext<UserContext | null>(null);
@@ -38,23 +38,23 @@ export function UserProvider({
   initialProfile: UserProfile;
 }) {
   const [userProfile, setProfile] = useState<UserProfile>(initialProfile);
+  const toast = useToast();
 
   const value = useMemo(
     () => ({
       user,
       userProfile,
-      setUserName: async (user_name: string) => {
-        const result = await getSupabaseClient()
-          .from("user_profiles")
-          .update({ user_name })
-          .eq("user_id", user.id);
-        setProfile((p) => ({ ...p, user_name }));
-        return {
-          errorMessage: result.error?.message,
-        };
+      setUserName: async (newName: string) => {
+        const errorToastConfig = await APIClient.userProfiles.update({ userId: user.id, newName });
+        if (errorToastConfig) {
+          toast(errorToastConfig);
+          return;
+        }
+
+        setProfile((p) => ({ ...p, user_name: newName }));
       },
     }),
-    [user, userProfile],
+    [toast, user, userProfile],
   );
 
   return <userContext.Provider value={value}>{children}</userContext.Provider>;

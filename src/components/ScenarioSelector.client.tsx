@@ -9,7 +9,6 @@ import APIClient from "../utils/client/APIClient";
 import type { ChoiceConfig } from "./ChoiceGrid.client";
 import ChoiceGrid from "./ChoiceGrid.client";
 import type { SessionRow, SessionUser } from "../types";
-import { getSupabaseClient } from "../utils/client/supabase";
 
 function getMajorityVoteId<T>(arr: T[]): T | null {
   const itemToOccurrenceCountMap = arr.reduce((acc, item) => {
@@ -45,7 +44,7 @@ function useLogic({
   const [isLoading, setIsLoading] = useState(false);
 
   const regenerateOptions = useCallback(async () => {
-    const errorToastConfig = await APIClient.session.generateNewScenarioOptions(sessionId);
+    const errorToastConfig = await APIClient.sessions.generateNewScenarioOptions(sessionId);
     if (errorToastConfig) {
       toast(errorToastConfig);
     }
@@ -55,31 +54,22 @@ function useLogic({
     async (optionId: number) => {
       setIsLoading(true);
 
-      const supabase = getSupabaseClient();
       const newOptionVotes = { ...optionVotes, [currentUser.id]: optionId };
       const voteIds = Object.values(newOptionVotes);
       const votingComplete = voteIds.length === users.length;
       if (!votingComplete) {
         console.log("voting not complete, updating option votes...", { newOptionVotes, users });
-        return supabase
-          .rpc("vote_for_option", {
-            user_id: currentUser.id,
-            option_id: optionId,
-            session_id: sessionId,
-          })
-          .then((result) => {
-            if (result.error) {
-              console.error("Voting error", result.error);
-              toast({
-                title: "Voting Error",
-                description: result.error.message,
-                status: "error",
-                duration: 9000,
-                isClosable: true,
-              });
-            }
-            setIsLoading(false);
-          });
+        const errorToastConfig = await APIClient.sessions.voteForScenarioOption({
+          user_id: currentUser.id,
+          option_id: optionId,
+          session_id: sessionId,
+        });
+
+        if (errorToastConfig) {
+          toast(errorToastConfig);
+        }
+        setIsLoading(false);
+        return;
       }
 
       const majorityVoteId = getMajorityVoteId(voteIds);
@@ -116,7 +106,7 @@ function useLogic({
         .filter(([, voteOptionId]) => voteOptionId === majorityVoteId)
         .map(([userId]) => userId);
 
-      const errorToastConfig = await APIClient.session.moveToOutcomeSelectionStage({
+      const errorToastConfig = await APIClient.sessions.moveToOutcomeSelectionStage({
         scenarioText: winningScenarioText,
         userIdsThatVotedForScenario: userIdsThatVotedForWinningScenario,
         sessionId,

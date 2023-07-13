@@ -6,8 +6,7 @@
 
 import React, { useEffect, useReducer, useRef } from "react";
 import type { Message } from "ai";
-import { Center, Text, useToast } from "@chakra-ui/react";
-import type { RealtimeChannel } from "@supabase/supabase-js";
+import { Center, Spinner, Text, useToast } from "@chakra-ui/react";
 import { REALTIME_LISTEN_TYPES, REALTIME_PRESENCE_LISTEN_EVENTS } from "@supabase/supabase-js";
 import ScenarioSelector from "./ScenarioSelector.client";
 import ScenarioChat from "./ScenarioChat.client";
@@ -19,6 +18,7 @@ type State = {
   users: SessionUser[];
   currentUser: SessionUser;
   session: SessionRow;
+  currentUserHasJoinedSession: boolean;
 };
 
 type Action =
@@ -35,16 +35,18 @@ type Action =
       data: UserNameUpdatedPayload;
     }
   | {
-      event: "scenarioTextUpdated";
-      data: string;
+      event: "currentUserHasJoinedSession";
+      data: boolean;
     };
 
 type BroadcastEvent = BroadcastEventFrom<Action>;
 
 function reducer(state: State, action: Action): State {
   console.log("GameSession reducer", action.event, { state, action });
-  if (!action.data) {
-    throw new Error(`Action "${action.event}" payload is undefined`);
+  if (typeof action.data === "undefined") {
+    throw new Error(
+      `Action "${(action as Action).event}" payload is "${typeof (action as Action).data}"`,
+    );
   }
 
   switch (action.event) {
@@ -70,12 +72,17 @@ function reducer(state: State, action: Action): State {
       return { ...state, session: action.data };
     }
 
+    case "currentUserHasJoinedSession": {
+      return { ...state, currentUserHasJoinedSession: action.data };
+    }
+
     default:
       throw new Error(`Unknown action type ${(action as Action).event}`);
   }
 }
 
 enum BroadcastEventName {
+  // todo listen to user profiles to avoid needing this
   UserNameUpdated = "UserNameUpdated",
 }
 
@@ -86,7 +93,6 @@ type UserNameUpdatedPayload = {
 
 function useLogic({ existing: initial, currentUser }: Props) {
   const toast = useToast();
-  const supabaseChannelRef = useRef<RealtimeChannel>();
   const [state, send] = useReducer(reducer, null, () => {
     return {
       users: [],
@@ -94,6 +100,7 @@ function useLogic({ existing: initial, currentUser }: Props) {
       session: {
         ...initial.session,
       },
+      currentUserHasJoinedSession: false,
       // scenario:
       //   existing?.scenario ??
       //   "" ?? // todo remove this and default scenario below
@@ -119,22 +126,21 @@ function useLogic({ existing: initial, currentUser }: Props) {
         channels.map((channel) => channel.topic),
       );
     }
-    const channel = supabase.channel(sessionKey, {
-      config: {
-        broadcast: {
-          // wait for server to acknowledge sent messages before resolving send message promise
-          ack: true,
-          // send own messages to self
-          self: true,
+    const channel = supabase
+      .channel(sessionKey, {
+        config: {
+          broadcast: {
+            // wait for server to acknowledge sent messages before resolving send message promise
+            ack: true,
+            // send own messages to self
+            self: true,
+          },
+          presence: {
+            key: sessionKey,
+          },
         },
-        presence: {
-          key: sessionKey,
-        },
-      },
-    });
-    supabaseChannelRef.current = channel;
-    // ! presence state seems to be readonly after being tracked, need to listen to broadcast or DB events to update state
-    channel
+      })
+      // ! presence state seems to be readonly after being tracked, need to listen to broadcast or DB events to update state
       .on("presence", { event: "sync" }, () => {
         const presenceStateMap = channel.presenceState<SessionUser>();
         const newUsers = presenceStateMap[sessionKey] || [];
@@ -150,9 +156,12 @@ function useLogic({ existing: initial, currentUser }: Props) {
             newPresences,
             currentPresences,
           });
-          newPresences.forEach((presence) => {
-            toast({ title: `${presence.name} joined` });
-          });
+          newPresences
+            // dont notify about self joining
+            .filter((newUser) => newUser.id !== currentUser.id)
+            .forEach((presence) => {
+              toast({ title: `${presence.name} joined` });
+            });
         },
       )
       .on<SessionUser>(
@@ -219,15 +228,21 @@ function useLogic({ existing: initial, currentUser }: Props) {
     });
 
     return () => {
-      void getSupabaseClient().removeChannel(subscription);
+      void supabase.removeChannel(subscription);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- only run once
   }, []);
+
+  useEffect(() => {
+    const currentUserHasJoined = state.users.some((user) => user.id === currentUser.id);
+    send({ event: "currentUserHasJoinedSession", data: currentUserHasJoined });
+  }, [currentUser, send, state.users]);
 
   return {
     currentUser,
     users: state.users,
     session: state.session,
+    currentUserHasJoinedSession: state.currentUserHasJoinedSession,
   };
 }
 
@@ -240,7 +255,15 @@ type Props = {
 };
 
 export default function GameSession(props: Props): React.ReactElement {
-  const { currentUser, users, session } = useLogic(props);
+  const { currentUser, users, session, currentUserHasJoinedSession } = useLogic(props);
+
+  if (!currentUserHasJoinedSession) {
+    return (
+      <Center as='section' height='100%'>
+        <Spinner />
+      </Center>
+    );
+  }
 
   if (users.length < 2) {
     return (

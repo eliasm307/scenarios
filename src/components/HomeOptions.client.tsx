@@ -5,8 +5,10 @@
 import { useRouter } from "next/navigation";
 import React, { useMemo, useState } from "react";
 import { Center, Spinner } from "@chakra-ui/react";
+import { cookies } from "next/headers";
 import type { ChoiceConfig } from "./ChoiceGrid.client";
 import ChoiceGrid from "./ChoiceGrid.client";
+import APIServer from "../utils/server/APIServer";
 
 export default function HomeOptions(): React.ReactElement {
   const router = useRouter();
@@ -19,8 +21,11 @@ export default function HomeOptions(): React.ReactElement {
         onSelect: () => {
           console.log("create new session");
           setState("loading");
-          // todo create new session in DB and get session ID
-          void router.push("/sessions/1");
+
+          void new APIServer(cookies).createSession().then((session) => {
+            // eslint-disable-next-line functional-core/purity
+            return router.push(`/sessions/${session.id}`);
+          });
         },
       },
     ];

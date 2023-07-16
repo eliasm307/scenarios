@@ -1,0 +1,14 @@
+{
+  "deno.codeLens.implementations": true,
+  "deno.codeLens.references": true,
+  "deno.codeLens.referencesAllFunctions": true,
+  "deno.codeLens.test": true,
+  "deno.enablePaths": ["./supabase"],
+  "deno.inlayHints.parameterNames.enabled": "all",
+  "deno.inlayHints.propertyDeclarationTypes.enabled": true,
+  "deno.inlayHints.parameterTypes.enabled": true,
+  "deno.inlayHints.variableTypes.enabled": true,
+  "deno.suggest.completeFunctionCalls": true,
+  "deno.enable": true,
+  "deno.importMap": "./supabase/import_map.json"
+}

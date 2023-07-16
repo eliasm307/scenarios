@@ -10,11 +10,34 @@ export type ChatRequestBody = {
   scenario: string;
 };
 
+function createDummyStream() {
+  return new ReadableStream({
+    async start(controller) {
+      const encoder = new TextEncoder();
+      let count = 0;
+      while (count < 3) {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+        const queue = encoder.encode("word ");
+        controller.enqueue(queue);
+        count++;
+      }
+
+      controller.close();
+    },
+  });
+}
+
+const USE_DUMMY_STREAM = true;
+
 export async function POST(req: Request) {
   const data = (await req.json()) as ChatRequestBody;
   // eslint-disable-next-line no-console
   console.log("Chat request body", data);
   const { messages, scenario } = data;
+
+  if (USE_DUMMY_STREAM) {
+    return new StreamingTextResponse(createDummyStream());
+  }
 
   const response = await openai.createChatCompletion({
     ...DEFAULT_CHAT_COMPLETION_REQUEST_CONFIG,

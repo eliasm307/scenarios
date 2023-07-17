@@ -728,7 +728,7 @@ function OutcomeVotingTable({ users, sessionId, outcomeVotes, currentUser, broad
           broadcast({
             event: "Toast",
             data: {
-              title: `${currentUser.name} has finished voting!`,
+              title: `"${currentUser.name}" has finished voting!`,
               status: "success",
             },
           });

@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 import { OpenAIStream, StreamingTextResponse } from "ai";
 import type { ChatCompletionRequestMessage } from "openai-edge";
 import { DEFAULT_CHAT_COMPLETION_REQUEST_CONFIG, openai } from "../../../utils/server/openai";
@@ -5,7 +6,7 @@ import { DEFAULT_CHAT_COMPLETION_REQUEST_CONFIG, openai } from "../../../utils/s
 // IMPORTANT! Set the runtime to edge
 export const runtime = "edge";
 
-const USE_DUMMY_STREAM = true;
+const USE_DUMMY_STREAM = false;
 
 export type ChatRequestBody = {
   messages: ChatCompletionRequestMessage[];

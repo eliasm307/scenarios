@@ -35,9 +35,16 @@ export default async function SessionPage({ params: { id } }: { params: { id: st
   }
 
   return (
-    <Grid minHeight='100dvh' overflow='hidden' templateRows='auto 1fr' position='fixed' inset={0}>
+    <Grid
+      minHeight={{ md: "100dvh" }}
+      height={{ base: "100dvh", md: undefined }}
+      overflow='hidden'
+      templateRows='auto 1fr'
+      position='fixed'
+      inset={0}
+    >
       <NavBar zIndex={2} />
-      <Box zIndex={1} overflowY='auto'>
+      <Box zIndex={1} overflow='hidden'>
         <GameSession
           currentUser={currentUser}
           existing={{

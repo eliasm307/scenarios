@@ -13,8 +13,14 @@ import {
   Heading,
   Radio,
   RadioGroup,
+  Show,
+  Tab,
+  TabList,
+  TabPanel,
+  TabPanels,
   Table,
   TableContainer,
+  Tabs,
   Tbody,
   Td,
   Textarea,
@@ -333,12 +339,6 @@ function useAiChat({
   // }, [chat.messages, messageRows, sessionId]);
 
   useEffect(() => {
-    if (!chatRef.current.input.trim()) {
-      textAreaRef.current!.value = "";
-    }
-  }, [chatRef.current.input]);
-
-  useEffect(() => {
     // if we re-mount it means the session can be unlocked
     void unlockSessionMessaging();
     return () => {
@@ -420,6 +420,7 @@ function useAiChat({
 export default function ScenarioChat(props: Props) {
   const { chat, messageRows, formRef, messagesListRef, textAreaRef, selectedScenarioText } =
     useAiChat(props);
+
   const messagesList = (
     <Flex width='100%' ref={messagesListRef} direction='column' overflow='auto' tabIndex={0}>
       {messageRows.map((messageRow, i) => {
@@ -463,7 +464,7 @@ export default function ScenarioChat(props: Props) {
   );
 
   const controls = (
-    <Flex width='100%' gap={2} p={3} pt={1} flexDirection='column'>
+    <Flex width='100%' gap={2} p={3} pt={1} pb={{ base: 0, md: 3 }} flexDirection='column'>
       <form ref={formRef} onSubmit={chat.handleSubmit}>
         <Flex gap={2} alignItems='center' flexDirection={{ base: "column", md: "row" }}>
           <Textarea
@@ -516,61 +517,99 @@ export default function ScenarioChat(props: Props) {
     </Flex>
   );
 
+  const votingPanel = (
+    <VStack gap={3} width='100%' flex={1}>
+      <Heading size='md' width='100%' textAlign='center'>
+        I think...
+      </Heading>
+      <OutcomeVotingTable {...props} />
+      {props.users
+        .filter((user) => !user.isCurrentUser)
+        .map((user) => {
+          const userVotes = props.outcomeVotes[user.id];
+          const userHasFinishedVoting =
+            userVotes && Object.values(userVotes).length === props.users.length;
+          return (
+            <>
+              <Divider />
+              <Heading size='md' width='100%' textAlign='center'>
+                {userHasFinishedVoting ? <>✅</> : <>🤔</>} &quot;{user.name}&quot;{" "}
+                {userHasFinishedVoting ? "has decided" : "is deciding..."}
+              </Heading>
+            </>
+          );
+        })}
+    </VStack>
+  );
+
+  const chatPanel = (
+    <Grid
+      overflow='hidden'
+      gap={1}
+      templateRows='1fr auto'
+      pt={0}
+      height='100%'
+      // width='100%'
+      // minWidth='330px'
+      // maxWidth='800px'
+      // margin='auto'
+      // height='inherit'
+    >
+      {messagesList}
+      {controls}
+    </Grid>
+  );
+
   // todo show the scenario panel and chat panel as tabs on mobile and side by side on larger screens
   return (
     <Box height='100%' position='relative' padding={2} my={2}>
-      <Grid
-        as='section'
-        // height='100dvh'
-        width='100%'
-        // templateRows='100%'
-        templateColumns='1fr 1fr'
-        position='absolute'
-        inset={0}
-        padding={2}
-        gap={2}
-      >
-        <VStack m={3} gap={5} width='100%' overflow='auto' maxHeight='100%'>
-          <ScenarioText scenarioText={selectedScenarioText} />
-          <Divider />
-          <VStack gap='inherit' width='100%' flex={1}>
-            <Heading size='md' width='100%' textAlign='center'>
-              I think...
-            </Heading>
-            <OutcomeVotingTable {...props} />
-            {props.users
-              .filter((user) => !user.isCurrentUser)
-              .map((user) => {
-                const userVotes = props.outcomeVotes[user.id];
-                const userHasFinishedVoting =
-                  userVotes && Object.values(userVotes).length === props.users.length;
-                return (
-                  <>
-                    <Divider />
-                    <Heading size='md' width='100%' textAlign='center'>
-                      {userHasFinishedVoting ? <>✅</> : <>🤔</>} &quot;{user.name}&quot;{" "}
-                      {userHasFinishedVoting ? "has decided" : "is deciding..."}
-                    </Heading>
-                  </>
-                );
-              })}
-          </VStack>
-        </VStack>
+      <Show above='md'>
         <Grid
-          overflow='hidden'
-          gap={1}
-          templateRows='1fr auto'
-          pt={0}
-          // width='100%'
-          // minWidth='330px'
-          // maxWidth='800px'
-          // margin='auto'
-          // height='inherit'
+          as='section'
+          // height='100dvh'
+          width='100%'
+          // templateRows='100%'
+          templateColumns='1fr 1fr'
+          position='absolute'
+          inset={0}
+          padding={2}
+          gap={2}
         >
-          {messagesList}
-          {controls}
+          <VStack m={3} gap={5} width='100%' maxHeight='100%'>
+            <ScenarioText scenarioText={selectedScenarioText} />
+            <Divider />
+            {votingPanel}
+          </VStack>
+          {chatPanel}
         </Grid>
-      </Grid>
+      </Show>
+      <Show below='md'>
+        <Tabs
+          isFitted
+          variant='enclosed'
+          height='100%'
+          display='flex'
+          flexDirection='column'
+          overflow='hidden'
+        >
+          <TabList mb='1em'>
+            <Tab>Scenario</Tab>
+            <Tab>Vote</Tab>
+            <Tab>Chat</Tab>
+          </TabList>
+          <TabPanels flex={1} overflow='hidden'>
+            <TabPanel height='100%' overflow='auto'>
+              <ScenarioText scenarioText={selectedScenarioText} />
+            </TabPanel>
+            <TabPanel height='100%' overflow='auto'>
+              {votingPanel}
+            </TabPanel>
+            <TabPanel height='100%' overflow='hidden'>
+              {chatPanel}
+            </TabPanel>
+          </TabPanels>
+        </Tabs>
+      </Show>
     </Box>
   );
 }
@@ -640,7 +679,7 @@ function getPlaceholderText(chat: UseChatHelpers): string {
   return "Ask me anything about the scenario 😀";
 }
 
-function outcomeVotingIsComplete({
+function overallOutcomeVotingIsComplete({
   outcomeVotes,
   users,
 }: {
@@ -682,7 +721,19 @@ function OutcomeVotingTable({ users, sessionId, outcomeVotes, currentUser, broad
         },
       };
 
-      if (!outcomeVotingIsComplete({ users, outcomeVotes: updatedOutcomeVotes })) {
+      if (!overallOutcomeVotingIsComplete({ users, outcomeVotes: updatedOutcomeVotes })) {
+        const userOutcomeVotingIsComplete =
+          Object.values(updatedOutcomeVotes[currentUser.id] || {}).length === users.length;
+        if (userOutcomeVotingIsComplete) {
+          broadcast({
+            event: "Toast",
+            data: {
+              title: `${currentUser.name} has finished voting!`,
+              status: "success",
+            },
+          });
+        }
+
         return;
       }
 
@@ -700,7 +751,16 @@ function OutcomeVotingTable({ users, sessionId, outcomeVotes, currentUser, broad
         toast(errorToastConfig);
       }
     },
-    [currentUser.id, outcomeVotes, outcomeVotesForCurrentUser, sessionId, toast, users, broadcast],
+    [
+      sessionId,
+      currentUser.id,
+      currentUser.name,
+      outcomeVotes,
+      outcomeVotesForCurrentUser,
+      users,
+      broadcast,
+      toast,
+    ],
   );
 
   console.log("users", users);

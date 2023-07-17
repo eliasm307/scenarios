@@ -133,8 +133,6 @@ function useAiChat({
       e.preventDefault(); // need to prevent this here as the event gets handled synchronously before our promises below resolve
       const content = chatRef.current.input;
       chatRef.current.setInput("");
-      chatRef.current.input = ""; // todo fix this hack
-      textAreaRef.current!.value = "";
       if (!content) {
         return;
       }
@@ -200,7 +198,6 @@ function useAiChat({
 
               const lastMessage = currentMessageRows.at(-1);
               if (lastMessage?.author_role === "assistant") {
-                // todo handle streaming messages from assistant
                 currentMessageRows = currentMessageRows.slice(0, -1);
               }
             }
@@ -365,7 +362,6 @@ export default function ScenarioChat(props: Props) {
             isInvalid={!!chat.error}
             // minHeight='unset'
             // maxHeight='10rem'
-            // todo fix bug when this is multiline and after submit it doesn't clear multiple lines and show placeholder
             value={chat.input}
             placeholder={chat.isLocked ? "AI typing..." : getPlaceholderText(chat)}
             onChange={chat.handleInputChange}

@@ -5,29 +5,12 @@ import { DEFAULT_CHAT_COMPLETION_REQUEST_CONFIG, openai } from "../../../utils/s
 // IMPORTANT! Set the runtime to edge
 export const runtime = "edge";
 
+const USE_DUMMY_STREAM = true;
+
 export type ChatRequestBody = {
   messages: ChatCompletionRequestMessage[];
   scenario: string;
 };
-
-function createDummyStream() {
-  return new ReadableStream({
-    async start(controller) {
-      const encoder = new TextEncoder();
-      let count = 0;
-      while (count < 3) {
-        await new Promise((resolve) => setTimeout(resolve, 100));
-        const queue = encoder.encode("word ");
-        controller.enqueue(queue);
-        count++;
-      }
-
-      controller.close();
-    },
-  });
-}
-
-const USE_DUMMY_STREAM = true;
 
 export async function POST(req: Request) {
   const data = (await req.json()) as ChatRequestBody;
@@ -70,4 +53,21 @@ function createSystemMessage(scenario: string): ChatCompletionRequestMessage {
     - Avoid repeating details about the scenario in answers.
     - Do not be too dramatic or too boring.`,
   };
+}
+
+function createDummyStream() {
+  return new ReadableStream({
+    async start(controller) {
+      const encoder = new TextEncoder();
+      let count = 0;
+      while (count < 3) {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+        const queue = encoder.encode("word ");
+        controller.enqueue(queue);
+        count++;
+      }
+
+      controller.close();
+    },
+  });
 }

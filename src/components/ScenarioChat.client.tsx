@@ -61,6 +61,33 @@ function useAiChat({
   const messagesListRef = useRef<HTMLDivElement>(null);
   const [isLocallyLocked, setIsLocallyLocked] = useState(false);
 
+  const unlockSessionMessaging = useCallback(async () => {
+    if (sessionLockedByUserId !== currentUser.id) {
+      return; // locked by someone else, cant unlock
+    }
+    const errorToastConfig = await APIClient.sessions.unlockMessaging(sessionId);
+    if (errorToastConfig) {
+      toast(errorToastConfig);
+    } else {
+      setIsLocallyLocked(false);
+    }
+  }, [currentUser.id, sessionId, sessionLockedByUserId, toast]);
+
+  const lockSessionMessaging = useCallback(async () => {
+    if (sessionLockedByUserId) {
+      return; // already locked
+    }
+    const errorToastConfig = await APIClient.sessions.lockMessaging({
+      sessionId,
+      lockedByUserId: currentUser.id,
+    });
+    if (errorToastConfig) {
+      toast(errorToastConfig);
+    } else {
+      setIsLocallyLocked(true);
+    }
+  }, [currentUser.id, sessionId, sessionLockedByUserId, toast]);
+
   const chat = useChat({
     initialMessages: existing?.messageRows.map(messageRowToChatMessage), // || DUMMY_MESSAGES,
     body: { scenario: selectedScenarioText },
@@ -100,33 +127,6 @@ function useAiChat({
   useEffect(() => {
     chatRef.current = chat;
   }, [chat]);
-
-  const unlockSessionMessaging = useCallback(async () => {
-    if (sessionLockedByUserId !== currentUser.id) {
-      return; // locked by someone else, cant unlock
-    }
-    const errorToastConfig = await APIClient.sessions.unlockMessaging(sessionId);
-    if (errorToastConfig) {
-      toast(errorToastConfig);
-    } else {
-      setIsLocallyLocked(false);
-    }
-  }, [currentUser.id, sessionId, sessionLockedByUserId, toast]);
-
-  const lockSessionMessaging = useCallback(async () => {
-    if (sessionLockedByUserId) {
-      return; // already locked
-    }
-    const errorToastConfig = await APIClient.sessions.lockMessaging({
-      sessionId,
-      lockedByUserId: currentUser.id,
-    });
-    if (errorToastConfig) {
-      toast(errorToastConfig);
-    } else {
-      setIsLocallyLocked(true);
-    }
-  }, [currentUser.id, sessionId, sessionLockedByUserId, toast]);
 
   const handleSubmit: UseChatHelpers["handleSubmit"] = useCallback(
     async (e) => {
@@ -216,6 +216,37 @@ function useAiChat({
       void supabase.removeChannel(subscription);
     };
   }, [sessionId, unlockSessionMessaging]);
+
+  // todo handle streaming messages from assistant
+  // useEffect(() => {
+  //   const lastChatMessage = chat.messages.at(-1);
+  //   if (lastChatMessage?.role !== "assistant") {
+  //     return;
+  //   }
+
+  //   // todo share streaming with session users, ie write this to DB
+  //   setMessageRows((currentMessageRows) => {
+  //     const lastMessageRow = messageRows.at(-1);
+  //     if (lastMessageRow?.author_role === "assistant") {
+  //       // update last assistant message
+  //       currentMessageRows = currentMessageRows.slice(0, -1);
+  //     }
+
+  //     return [
+  //       ...currentMessageRows,
+  //       // add assistant message being currently streamed
+  //       {
+  //         id: -1,
+  //         session_id: sessionId,
+  //         content: lastChatMessage.content,
+  //         author_role: lastChatMessage.role,
+  //         author_id: null,
+  //         inserted_at: "",
+  //         updated_at: "",
+  //       } satisfies MessageRow,
+  //     ];
+  //   });
+  // }, [chat.messages, messageRows, sessionId]);
 
   useEffect(() => {
     if (!chatRef.current.input.trim()) {
@@ -319,8 +350,6 @@ export default function ScenarioChat(props: Props) {
     },
     [formRef, textAreaRef],
   );
-
-  console.log("chat.input", `"${chat.input}"`);
 
   const controls = (
     <Flex width='100%' gap={2} p={3} pt={1} flexDirection='column'>

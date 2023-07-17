@@ -169,6 +169,12 @@ function useAiChat({
     [chat],
   );
 
+  const messageRowsRef = useRef<MessageRow[]>(messageRows);
+  const unlockSessionMessagingRef = useRef(unlockSessionMessaging);
+  useEffect(() => {
+    messageRowsRef.current = messageRows;
+    unlockSessionMessagingRef.current = unlockSessionMessaging;
+  }, [messageRows, unlockSessionMessaging]);
   useEffect(() => {
     const supabase = getSupabaseClient();
     const subscription = supabase
@@ -178,32 +184,66 @@ function useAiChat({
         {
           schema: "public",
           table: "messages",
-          event: "INSERT",
+          event: "*",
           filter: `session_id=eq.${sessionId}`,
         },
         async (payload) => {
-          console.log("useAiChat: messages insert subscription event payload", payload);
-          const newMessageRow = payload.new;
-          const localChatAlreadyHasMessage = chatRef.current.messages.some(
-            (m) => String(m.id) === String(newMessageRow.id),
-          );
-          if (localChatAlreadyHasMessage) {
-            console.log("useAiChat: local chat already has message, ignoring", newMessageRow);
-            return;
-          }
-
-          setMessageRows((currentMessageRows) => {
-            if (newMessageRow.author_role === "assistant") {
-              void unlockSessionMessaging();
-
-              const lastMessage = currentMessageRows.at(-1);
-              if (lastMessage?.author_role === "assistant") {
-                currentMessageRows = currentMessageRows.slice(0, -1);
-              }
+          if (payload.eventType === "INSERT") {
+            console.log("useAiChat: messages insert subscription event payload", payload);
+            const newMessageRow = payload.new;
+            const localChatAlreadyHasMessage = chatRef.current.messages.some(
+              (m) => String(m.id) === String(newMessageRow.id),
+            );
+            if (localChatAlreadyHasMessage) {
+              console.log("useAiChat: local chat already has message, ignoring", newMessageRow);
+              return;
             }
 
-            return [...currentMessageRows, newMessageRow];
-          });
+            setMessageRows((currentMessageRows) => {
+              if (newMessageRow.author_role === "assistant") {
+                void unlockSessionMessagingRef.current();
+
+                const lastMessage = currentMessageRows.at(-1);
+                if (lastMessage?.author_role === "assistant") {
+                  currentMessageRows = currentMessageRows.slice(0, -1);
+                }
+              }
+
+              return [...currentMessageRows, newMessageRow];
+            });
+          } else if (payload.eventType === "UPDATE") {
+            console.log("useAiChat: messages update subscription event payload", payload);
+            const updatedMessageRow = payload.new;
+
+            const foundLocalMessageRow = messageRowsRef.current.find(
+              (localMessageRow) => String(localMessageRow.id) === String(updatedMessageRow.id),
+            );
+            if (!foundLocalMessageRow) {
+              console.warn("useAiChat: local message row not found, ignoring", updatedMessageRow);
+              return;
+            }
+
+            const messageRowShouldBeUpdated =
+              updatedMessageRow.content.length > foundLocalMessageRow?.content.length;
+            if (!messageRowShouldBeUpdated) {
+              console.log("useAiChat: message row should not be updated, ignoring", {
+                updatedMessageRow,
+                localMessageRow: foundLocalMessageRow,
+              });
+              return;
+            }
+
+            setMessageRows((localMessageRows) => {
+              return localMessageRows.map((localMessageRow) => {
+                if (String(localMessageRow.id) !== String(updatedMessageRow.id)) {
+                  return localMessageRow;
+                }
+                return updatedMessageRow.content.length > localMessageRow.content.length
+                  ? updatedMessageRow
+                  : localMessageRow;
+              });
+            });
+          }
         },
       )
       .subscribe();
@@ -212,18 +252,65 @@ function useAiChat({
       console.log("useAiChat:unsubscribe");
       void supabase.removeChannel(subscription);
     };
-  }, [sessionId, unlockSessionMessaging]);
+  }, [sessionId]);
 
-  // todo handle streaming messages from assistant
+  // todo handle streaming messages from assistant to all users in session
   // useEffect(() => {
   //   const lastChatMessage = chat.messages.at(-1);
   //   if (lastChatMessage?.role !== "assistant") {
   //     return;
   //   }
 
+  //   let lastMessageRow = messageRows.at(-1);
+  //   const localAssistantChatMessageIsUpToDate =
+  //     lastMessageRow?.author_role === "assistant" &&
+  //     lastMessageRow?.content === lastChatMessage.content;
+  //   if (localAssistantChatMessageIsUpToDate) {
+  //     return;
+  //   }
+
+  //   if (lastChatMessage.content.length < (lastMessageRow?.content.length ?? 0)) {
+  //     return console.warn(
+  //       "useAiChat:local assistant message is shorter than DB message, ignoring",
+  //       {
+  //         lastChatMessage,
+  //         lastMessageRow,
+  //         messageRows,
+  //         chatMessages: chat.messages,
+  //       },
+  //     );
+  //   }
+
+  //   debugger;
+
+  //   // persist assistant message to DB
+  //   console.log("useAiChat:upsert assistant message", {
+  //     lastChatMessage,
+  //     lastMessageRow,
+  //     messageRows,
+  //     chatMessages: chat.messages,
+  //   });
+  //   // void getSupabaseClient()
+  //   //   .from("messages")
+  //   //   .upsert({
+  //   //     id: -sessionId,
+  //   //     session_id: sessionId,
+  //   //     content: lastChatMessage.content,
+  //   //     author_role: lastChatMessage.role,
+  //   //     author_id: null,
+  //   //     updated_at: new Date().toISOString(),
+  //   //   })
+  //   //   .then((response) => {
+  //   //     console.log("useAiChat:upsert response", response);
+
+  //   //     if (response.error) {
+  //   //       console.error("useAiChat:upsert error", response);
+  //   //     }
+  //   //   });
+
   //   // todo share streaming with session users, ie write this to DB
   //   setMessageRows((currentMessageRows) => {
-  //     const lastMessageRow = messageRows.at(-1);
+  //     lastMessageRow = currentMessageRows.at(-1);
   //     if (lastMessageRow?.author_role === "assistant") {
   //       // update last assistant message
   //       currentMessageRows = currentMessageRows.slice(0, -1);
@@ -233,13 +320,13 @@ function useAiChat({
   //       ...currentMessageRows,
   //       // add assistant message being currently streamed
   //       {
-  //         id: -1,
+  //         id: -sessionId,
   //         session_id: sessionId,
   //         content: lastChatMessage.content,
   //         author_role: lastChatMessage.role,
   //         author_id: null,
-  //         inserted_at: "",
-  //         updated_at: "",
+  //         inserted_at: new Date().toISOString(),
+  //         updated_at: new Date().toISOString(),
   //       } satisfies MessageRow,
   //     ];
   //   });
@@ -283,7 +370,7 @@ function useAiChat({
     }
   }, [chatRef, currentUser.id, messageRows]);
 
-  const sortedMessageRows = useMemo(() => {
+  let sortedMessageRows = useMemo(() => {
     return [...messageRows].sort((rowA, rowB) => {
       const dateA = new Date(rowA.updated_at);
       const dateB = new Date(rowB.updated_at);
@@ -293,6 +380,25 @@ function useAiChat({
 
   if (!selectedScenarioText) {
     throw new Error("selectedScenarioText is required");
+  }
+
+  // show locally streamed assistant message
+  if (chat.isLoading) {
+    const lastMessage = chat.messages.at(-1);
+    if (lastMessage?.role === "assistant") {
+      sortedMessageRows = [
+        ...sortedMessageRows,
+        {
+          id: -sessionId,
+          session_id: sessionId,
+          content: lastMessage.content,
+          author_role: lastMessage.role,
+          author_id: null,
+          inserted_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        },
+      ];
+    }
   }
 
   return {

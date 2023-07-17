@@ -58,15 +58,18 @@ function createSystemMessage(scenario: string): ChatCompletionRequestMessage {
 function createDummyStream() {
   return new ReadableStream({
     async start(controller) {
+      console.log("Dummy stream started");
       const encoder = new TextEncoder();
       let count = 0;
-      while (count < 3) {
-        await new Promise((resolve) => setTimeout(resolve, 100));
+      while (count < 10) {
+        await new Promise((resolve) => setTimeout(resolve, 250));
         const queue = encoder.encode("word ");
+        console.log("Dummy stream enqueue", count);
         controller.enqueue(queue);
         count++;
       }
 
+      console.log("Dummy stream close");
       controller.close();
     },
   });

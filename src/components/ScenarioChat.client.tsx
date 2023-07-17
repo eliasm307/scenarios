@@ -24,7 +24,7 @@ import {
 import type { Message } from "ai";
 import type { UseChatHelpers } from "ai/react";
 import { useChat } from "ai/react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { REALTIME_LISTEN_TYPES } from "@supabase/supabase-js";
 import ChatMessage from "./ChatMessage";
 import { getSupabaseClient } from "../utils/client/supabase";
@@ -283,6 +283,14 @@ function useAiChat({
     }
   }, [chatRef, currentUser.id, messageRows]);
 
+  const sortedMessageRows = useMemo(() => {
+    return [...messageRows].sort((rowA, rowB) => {
+      const dateA = new Date(rowA.updated_at);
+      const dateB = new Date(rowB.updated_at);
+      return dateA.getTime() - dateB.getTime();
+    });
+  }, [messageRows]);
+
   if (!selectedScenarioText) {
     throw new Error("selectedScenarioText is required");
   }
@@ -295,7 +303,7 @@ function useAiChat({
       messages: [],
       isLocked: isLocallyLocked || !!sessionLockedByUserId,
     } satisfies UseChatHelpers & Record<string, unknown>,
-    messageRows,
+    messageRows: sortedMessageRows,
     messagesListRef: messagesListRefNotifier,
     textAreaRef,
     formRef,

@@ -1,23 +1,17 @@
 import { HStack, Avatar, Flex, Text, VStack } from "@chakra-ui/react";
-import type { Message } from "ai";
-
-function getFriendlySenderName({ role }: Message): string {
-  if (role === "user") {
-    return "Human";
-  }
-
-  return "AI";
-}
+import type { MessageRow } from "../types";
 
 type Props = {
-  message: Message;
+  authorName: string;
+  messageRow: MessageRow;
 };
 
-function ChatMessage(props: Props) {
-  const { message } = props;
-  const isUser = message.role === "user";
+function ChatMessage({ authorName, messageRow }: Props) {
+  const isUser = messageRow.author_role === "user";
   const senderAvatarSrc = isUser ? "" : "/assets/openai.png";
-  const senderFriendlyName = getFriendlySenderName(message);
+  if (messageRow.author_role === "assistant") {
+    authorName = "AI";
+  }
 
   const headerRow = (
     <Flex
@@ -46,12 +40,13 @@ function ChatMessage(props: Props) {
     >
       <Avatar
         size='sm'
-        name={senderFriendlyName}
+        name={authorName}
         src={senderAvatarSrc}
         background={isUser ? "blue.800" : undefined}
+        color={isUser ? "white" : undefined}
       />
       <Text as='span' fontWeight='bold' fontSize='xl' textAlign={isUser ? "right" : "left"}>
-        {senderFriendlyName}
+        {authorName}
       </Text>
       <HStack flexDirection='inherit' flex={1} justifyContent={isUser ? "start" : "end"} gap={0} />
     </Flex>
@@ -68,7 +63,7 @@ function ChatMessage(props: Props) {
       textAlign={isUser ? "right" : "left"}
     >
       <Flex flexDirection='column' width='inherit' gap={2} position='relative'>
-        {message.content
+        {messageRow.content
           .split(".")
           .filter((sentence) => sentence.trim())
           .map((sentence) => (

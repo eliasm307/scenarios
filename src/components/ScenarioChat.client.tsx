@@ -1,3 +1,5 @@
+/* eslint-disable functional-core/purity */
+/* eslint-disable no-console */
 /* eslint-disable react/no-unused-prop-types */
 
 "use client";
@@ -11,7 +13,6 @@ import {
   Heading,
   Radio,
   RadioGroup,
-  Spinner,
   Table,
   TableContainer,
   Tbody,
@@ -23,13 +24,13 @@ import {
 import type { Message } from "ai";
 import type { UseChatHelpers } from "ai/react";
 import { useChat } from "ai/react";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { REALTIME_LISTEN_TYPES } from "@supabase/supabase-js";
 import ChatMessage from "./ChatMessage";
 import { getSupabaseClient } from "../utils/client/supabase";
 import type { SessionRow, MessageRow, SessionUser } from "../types";
 import APIClient from "../utils/client/APIClient";
-import { isTruthy } from "../utils/general";
+import { isTruthy, messageRowToChatMessage } from "../utils/general";
 import ScenarioText from "./ScenarioText";
 import type { BroadcastFunction } from "./GameSession.client";
 
@@ -42,7 +43,7 @@ type Props = {
   outcomeVotes: NonNullable<SessionRow["scenario_outcome_votes"]>;
   broadcast: BroadcastFunction;
   existing: {
-    chatMessages: Message[];
+    messageRows: MessageRow[];
   };
 };
 
@@ -54,38 +55,37 @@ function useAiChat({
   sessionId,
 }: Props) {
   const toast = useToast();
-
-  const unlockSessionMessaging = useCallback(() => {
-    if (sessionLockedByUserId !== currentUser.id) {
-      return;
-    }
-
-    void APIClient.sessions.unlockMessaging(sessionId).then((errorToastConfig) => {
-      if (errorToastConfig) {
-        toast(errorToastConfig);
-      }
-    });
-  }, [currentUser.id, sessionId, sessionLockedByUserId, toast]);
+  const [messageRows, setMessageRows] = useState<MessageRow[]>(existing?.messageRows ?? []);
+  const textAreaRef = useRef<HTMLTextAreaElement>(null);
+  const formRef = useRef<HTMLFormElement>(null);
+  const messagesListRef = useRef<HTMLDivElement>(null);
+  const [isLocallyLocked, setIsLocallyLocked] = useState(false);
 
   const chat = useChat({
-    initialMessages: existing?.chatMessages, // || DUMMY_MESSAGES,
+    initialMessages: existing?.messageRows.map(messageRowToChatMessage), // || DUMMY_MESSAGES,
     body: { scenario: selectedScenarioText },
-    async onFinish(message) {
-      // console.log("useAiChat:onFinish", message);
-      unlockSessionMessaging();
-
-      const errorToastConfig = await APIClient.messages.add({
-        session_id: sessionId,
-        content: message.content,
-        author_role: "assistant",
-        author_id: null,
-      });
-
-      if (errorToastConfig) {
-        toast(errorToastConfig);
-      }
+    async onResponse(response) {
+      // ie the start of a request response stream
+      console.log("useAiChat:onResponse", response);
+      await lockSessionMessaging();
     },
-    onError(error) {
+    async onFinish(message) {
+      console.log("useAiChat:onFinish", message);
+      const errorToastConfigs = await Promise.all([
+        unlockSessionMessaging(),
+        APIClient.messages.add({
+          session_id: sessionId,
+          content: message.content,
+          author_role: "assistant",
+          author_id: null,
+        }),
+      ]);
+
+      // todo move toasts to APIClient
+      errorToastConfigs.filter(isTruthy).forEach(toast);
+    },
+    async onError(error) {
+      void unlockSessionMessaging();
       console.error("useAiChat:onError", error);
       toast({
         title: "Error generating response",
@@ -94,72 +94,70 @@ function useAiChat({
         duration: 9000,
         isClosable: true,
       });
-      unlockSessionMessaging();
     },
   });
-
+  const chatRef = useRef<UseChatHelpers>(chat);
   useEffect(() => {
-    const supabase = getSupabaseClient();
-    const subscription = supabase
-      .channel(`session:${sessionId}`)
-      .on<MessageRow>(
-        REALTIME_LISTEN_TYPES.POSTGRES_CHANGES,
-        {
-          schema: "public",
-          table: "messages",
-          event: "INSERT",
-          filter: `session_id=eq.${sessionId}`,
-        },
-        (payload) => {
-          // console.log("useAiChat:subscription", payload);
-          const newMessage = payload.new;
-          const localChatAlreadyHasMessage = chat.messages.some(
-            (m) => String(m.id) === String(newMessage.id),
-          );
-          if (localChatAlreadyHasMessage) {
-            return;
-          }
+    chatRef.current = chat;
+  }, [chat]);
 
-          let currentMessages = chat.messages;
-          if (newMessage.author_role === "assistant") {
-            unlockSessionMessaging();
+  const unlockSessionMessaging = useCallback(async () => {
+    if (sessionLockedByUserId !== currentUser.id) {
+      return; // locked by someone else, cant unlock
+    }
+    const errorToastConfig = await APIClient.sessions.unlockMessaging(sessionId);
+    if (errorToastConfig) {
+      toast(errorToastConfig);
+    } else {
+      setIsLocallyLocked(false);
+    }
+  }, [currentUser.id, sessionId, sessionLockedByUserId, toast]);
 
-            const lastMessage = currentMessages.at(-1);
-            if (lastMessage?.role === "assistant") {
-              currentMessages = currentMessages.slice(0, -1);
-            }
-          }
+  const lockSessionMessaging = useCallback(async () => {
+    if (sessionLockedByUserId) {
+      return; // already locked
+    }
+    const errorToastConfig = await APIClient.sessions.lockMessaging({
+      sessionId,
+      lockedByUserId: currentUser.id,
+    });
+    if (errorToastConfig) {
+      toast(errorToastConfig);
+    } else {
+      setIsLocallyLocked(true);
+    }
+  }, [currentUser.id, sessionId, sessionLockedByUserId, toast]);
 
-          chat.setMessages(
-            currentMessages.concat({
-              id: String(newMessage.id),
-              role: newMessage.author_role,
-              content: newMessage.content,
-            }),
-          );
-        },
-      )
-      .subscribe();
+  const handleSubmit: UseChatHelpers["handleSubmit"] = useCallback(
+    async (e) => {
+      e.preventDefault(); // need to prevent this here as the event gets handled synchronously before our promises below resolve
+      const content = chatRef.current.input;
+      chatRef.current.setInput("");
+      chatRef.current.input = ""; // todo fix this hack
+      textAreaRef.current!.value = "";
+      if (!content) {
+        return;
+      }
 
-    return () => {
-      void supabase.removeChannel(subscription);
-    };
-  }, [chat, sessionId, unlockSessionMessaging]);
+      const potentialErrorToastConfigs = await Promise.all([
+        lockSessionMessaging(),
+        // this will trigger message insert listeners which will update UI
+        APIClient.messages.add({
+          session_id: sessionId,
+          content,
+          author_role: "user" as Message["role"],
+          author_id: currentUser.id,
+        }),
+      ]);
 
-  useEffect(() => {
-    // if we re-mount it means the session can be unlocked
-    unlockSessionMessaging();
-    return unlockSessionMessaging;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const messagesListRef = useRef<HTMLDivElement>(null);
-  const textAreaRef = useRef<HTMLTextAreaElement>(null);
-  const formRef = useRef<HTMLFormElement>(null);
-  useAutoScrolling({
-    messages: chat.messages,
-    messagesListEl: messagesListRef.current,
-  });
+      const errorToastConfigs = potentialErrorToastConfigs.filter(isTruthy);
+      if (errorToastConfigs.some(isTruthy)) {
+        errorToastConfigs.forEach(toast);
+        await unlockSessionMessaging();
+      }
+    },
+    [currentUser.id, lockSessionMessaging, sessionId, toast, unlockSessionMessaging],
+  );
 
   const messagesListRefNotifier = useCallback(
     (node: HTMLDivElement | null) => {
@@ -173,12 +171,89 @@ function useAiChat({
     [chat],
   );
 
+  useEffect(() => {
+    const supabase = getSupabaseClient();
+    const subscription = supabase
+      .channel(`session:${sessionId}`)
+      .on<MessageRow>(
+        REALTIME_LISTEN_TYPES.POSTGRES_CHANGES,
+        {
+          schema: "public",
+          table: "messages",
+          event: "INSERT",
+          filter: `session_id=eq.${sessionId}`,
+        },
+        async (payload) => {
+          console.log("useAiChat: messages insert subscription event payload", payload);
+          const newMessageRow = payload.new;
+          const localChatAlreadyHasMessage = chatRef.current.messages.some(
+            (m) => String(m.id) === String(newMessageRow.id),
+          );
+          if (localChatAlreadyHasMessage) {
+            console.log("useAiChat: local chat already has message, ignoring", newMessageRow);
+            return;
+          }
+
+          setMessageRows((currentMessageRows) => {
+            if (newMessageRow.author_role === "assistant") {
+              void unlockSessionMessaging();
+
+              const lastMessage = currentMessageRows.at(-1);
+              if (lastMessage?.author_role === "assistant") {
+                // todo handle streaming messages from assistant
+                currentMessageRows = currentMessageRows.slice(0, -1);
+              }
+            }
+
+            return [...currentMessageRows, newMessageRow];
+          });
+        },
+      )
+      .subscribe();
+
+    return () => {
+      console.log("useAiChat:unsubscribe");
+      void supabase.removeChannel(subscription);
+    };
+  }, [sessionId, unlockSessionMessaging]);
+
+  useEffect(() => {
+    if (!chatRef.current.input.trim()) {
+      textAreaRef.current!.value = "";
+    }
+  }, [chatRef.current.input]);
+
+  useEffect(() => {
+    // if we re-mount it means the session can be unlocked
+    void unlockSessionMessaging();
+    return () => {
+      void unlockSessionMessaging();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- prevent unlocking on re-render
+  }, []);
+
+  useAutoScrolling({
+    messages: chat.messages,
+    messagesListEl: messagesListRef.current,
+  });
+
   // focus on input when chat is ready
   useEffect(() => {
     if (!chat.isLoading) {
       textAreaRef.current?.focus();
     }
-  }, [chat]);
+  }, [chat.isLoading]);
+
+  // create chat response when user message is added
+  useEffect(() => {
+    const lastMessage = messageRows.at(-1);
+    if (lastMessage?.author_id === currentUser.id) {
+      console.log("useAiChat: last message is from user, loading ai response...", lastMessage);
+      chatRef.current.setMessages(messageRows.map(messageRowToChatMessage));
+      // reload after a tick to ensure the chat is ready
+      setTimeout(() => chatRef.current.reload(), 0);
+    }
+  }, [chatRef, currentUser.id, messageRows]);
 
   if (!selectedScenarioText) {
     throw new Error("selectedScenarioText is required");
@@ -187,26 +262,12 @@ function useAiChat({
   return {
     chat: {
       ...chat,
-      async handleSubmit(e, chatRequestOptions?) {
-        const potentialErrorToastConfigs = await Promise.all([
-          APIClient.sessions.lockMessaging({ sessionId, lockedByUserId: currentUser.id }),
-          APIClient.messages.add({
-            session_id: sessionId,
-            content: textAreaRef.current!.value.trim(),
-            author_role: "user" as Message["role"],
-            author_id: currentUser.id,
-          }),
-        ]);
-
-        const errorToastConfigs = potentialErrorToastConfigs.filter(isTruthy);
-        if (errorToastConfigs.some(isTruthy)) {
-          errorToastConfigs.forEach(toast);
-          return;
-        }
-
-        return chat.handleSubmit(e, chatRequestOptions);
-      },
-    } satisfies UseChatHelpers,
+      handleSubmit,
+      // should not be used externally, prefer messageRows
+      messages: [],
+      isLocked: isLocallyLocked || !!sessionLockedByUserId,
+    } satisfies UseChatHelpers & Record<string, unknown>,
+    messageRows,
     messagesListRef: messagesListRefNotifier,
     textAreaRef,
     formRef,
@@ -215,15 +276,16 @@ function useAiChat({
 }
 
 export default function ScenarioChat(props: Props) {
-  const { chat, formRef, messagesListRef, textAreaRef, selectedScenarioText } = useAiChat(props);
-
+  const { chat, messageRows, formRef, messagesListRef, textAreaRef, selectedScenarioText } =
+    useAiChat(props);
   const messagesList = (
     <Flex width='100%' ref={messagesListRef} direction='column' overflow='auto' tabIndex={0}>
-      {chat.messages.map((message, i) => {
-        const isLastEntry = !chat.messages[i + 1];
+      {messageRows.map((messageRow, i) => {
+        const isLastEntry = !messageRows[i + 1];
+        const authorUser = props.users.find((u) => u.id === messageRow.author_id);
         return (
-          <Box key={message.id}>
-            <ChatMessage key={message.id} message={message} />
+          <Box key={messageRow.id}>
+            <ChatMessage messageRow={messageRow} authorName={authorUser?.name || "..."} />
             {isLastEntry ? null : (
               <Box width='100%' pl={2}>
                 <Divider my={3} />
@@ -245,6 +307,8 @@ export default function ScenarioChat(props: Props) {
       const isConfirmEnter = !e.shiftKey;
       if (isConfirmEnter) {
         if (hasUserInput && formRef.current) {
+          // prevent new line on submit
+          e.preventDefault();
           // submit user message only if there is input
           formRef.current.requestSubmit();
         } else {
@@ -256,6 +320,8 @@ export default function ScenarioChat(props: Props) {
     [formRef, textAreaRef],
   );
 
+  console.log("chat.input", `"${chat.input}"`);
+
   const controls = (
     <Flex width='100%' gap={2} p={3} pt={1} flexDirection='column'>
       <form ref={formRef} onSubmit={chat.handleSubmit}>
@@ -266,12 +332,13 @@ export default function ScenarioChat(props: Props) {
             variant='outline'
             ref={textAreaRef}
             resize='none'
-            disabled={chat.isLoading || !!props.sessionLockedByUserId}
+            disabled={chat.isLoading || chat.isLocked}
             isInvalid={!!chat.error}
             // minHeight='unset'
             // maxHeight='10rem'
+            // todo fix bug when this is multiline and after submit it doesn't clear multiple lines and show placeholder
             value={chat.input}
-            placeholder={props.sessionLockedByUserId ? "AI typing..." : getPlaceholderText(chat)}
+            placeholder={chat.isLocked ? "AI typing..." : getPlaceholderText(chat)}
             onChange={chat.handleInputChange}
             onKeyDown={handleInputKeyDown}
             spellCheck={false}
@@ -284,10 +351,12 @@ export default function ScenarioChat(props: Props) {
             {chat.isLoading ? (
               <Button
                 key='stop'
+                type='button'
                 variant='ghost'
                 colorScheme='orange'
-                leftIcon={<Spinner />}
+                // leftIcon={<Spinner />}
                 onClick={chat.stop}
+                isLoading
               >
                 Stop
               </Button>
@@ -331,10 +400,11 @@ export default function ScenarioChat(props: Props) {
             </Heading>
             <OutcomeVotingTable {...props} />
             {props.users
-              .filter((user) => user.id !== props.currentUser.id)
+              .filter((user) => !user.isCurrentUser)
               .map((user) => {
+                const userVotes = props.outcomeVotes[user.id];
                 const userHasFinishedVoting =
-                  Object.values(props.outcomeVotes[user.id] || {}).length === props.users.length;
+                  userVotes && Object.values(userVotes).length === props.users.length;
                 return (
                   <>
                     <Divider />
@@ -494,6 +564,7 @@ function OutcomeVotingTable({ users, sessionId, outcomeVotes, currentUser, broad
     [currentUser.id, outcomeVotes, outcomeVotesForCurrentUser, sessionId, toast, users, broadcast],
   );
 
+  console.log("users", users);
   return (
     <TableContainer>
       <Table variant='unstyled'>

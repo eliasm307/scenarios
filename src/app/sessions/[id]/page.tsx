@@ -2,13 +2,12 @@
 import "server-only";
 
 import { cookies } from "next/headers";
-import type { Message } from "ai";
 import { redirect } from "next/navigation";
 import { Box, Grid } from "../../../components/ChakraUI.client";
 import NavBar from "../../../components/NavBar.client";
 import GameSession from "../../../components/GameSession.client";
 import APIServer from "../../../utils/server/APIServer";
-import { messageRowToChatMessage } from "../../../utils/general";
+import type { MessageRow } from "../../../types";
 
 export default async function SessionPage({ params: { id } }: { params: { id: string } }) {
   const sessionId = Number(id);
@@ -30,10 +29,9 @@ export default async function SessionPage({ params: { id } }: { params: { id: st
   //   await API.sessions.generateNewScenarioOptions(sessionId);
   // }
 
-  let chatMessages: Message[] = [];
+  let messageRows: MessageRow[] = [];
   if (sessionRow.stage !== "scenario-selection") {
-    const messageRows = await API.getSessionMessages(sessionId);
-    chatMessages = messageRows.map(messageRowToChatMessage);
+    messageRows = await API.getSessionMessages(sessionId);
   }
 
   return (
@@ -44,7 +42,7 @@ export default async function SessionPage({ params: { id } }: { params: { id: st
           currentUser={currentUser}
           existing={{
             session: sessionRow,
-            chatMessages,
+            messageRows,
           }}
         />
       </Box>

@@ -160,6 +160,7 @@ export default function ScenarioSelector(props: Props): React.ReactElement {
   if (
     isLoading ||
     !users.length
+    // todo uncomment this when we have a way to generate new options, e.g. via db webhooks
     // || !scenarioOptions.length
   ) {
     return (

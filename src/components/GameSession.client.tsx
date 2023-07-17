@@ -5,7 +5,6 @@
 "use client";
 
 import React, { useCallback, useEffect, useReducer, useRef } from "react";
-import type { Message } from "ai";
 import type { UseToastOptions } from "@chakra-ui/react";
 import { Center, Spinner, Text, useToast } from "@chakra-ui/react";
 import type { RealtimeChannel } from "@supabase/supabase-js";
@@ -13,7 +12,13 @@ import { REALTIME_LISTEN_TYPES, REALTIME_PRESENCE_LISTEN_EVENTS } from "@supabas
 import ScenarioSelector from "./ScenarioSelector.client";
 import ScenarioChat from "./ScenarioChat.client";
 import { getSupabaseClient } from "../utils/client/supabase";
-import type { BroadcastEventFrom, SessionRow, SessionUser, UserProfileRow } from "../types";
+import type {
+  BroadcastEventFrom,
+  MessageRow,
+  SessionRow,
+  SessionUser,
+  UserProfileRow,
+} from "../types";
 import OutcomesReveal from "./OutcomesReveal.client";
 
 type State = {
@@ -304,7 +309,7 @@ function useLogic({ existing, currentUser }: Props) {
 
 type Props = {
   existing: {
-    chatMessages: Message[];
+    messageRows: MessageRow[];
     session: SessionRow;
   };
   currentUser: SessionUser;

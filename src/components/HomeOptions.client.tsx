@@ -7,7 +7,7 @@ import React, { useMemo, useState } from "react";
 import { Center, Spinner } from "@chakra-ui/react";
 import type { ChoiceConfig } from "./ChoiceGrid.client";
 import ChoiceGrid from "./ChoiceGrid.client";
-import APIClient from "../utils/client/APIClient";
+import { invokeCreateSessionAction } from "../utils/server/actions";
 
 export default function HomeOptions(): React.ReactElement {
   const router = useRouter();
@@ -21,7 +21,8 @@ export default function HomeOptions(): React.ReactElement {
           console.log("create new session");
           setState("loading");
 
-          void APIClient.sessions.create().then((session) => {
+          void invokeCreateSessionAction().then((session) => {
+            console.log("created session with id", session.id);
             // eslint-disable-next-line functional-core/purity
             return router.push(`/sessions/${session.id}`);
           });

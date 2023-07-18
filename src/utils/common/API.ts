@@ -219,27 +219,6 @@ export default class API {
       }
     },
 
-    create: async () => {
-      const sessionResponse = await this.supabase
-        .from("sessions")
-        .insert({
-          stage: "scenario-selection" as SessionRow["stage"],
-          scenario_options: await this.ai.createScenarios(),
-          // scenario_options: [
-          //   "You discover a magical book that can grant any wish, but each wish shortens your life by five years. Would you use the book?",
-          //   "You're a scientist who has discovered a cure for a rare, deadly disease. However, the cure involves a procedure that is considered highly unethical. Do you proceed to save lives?",
-          //   "You're a struggling artist and a wealthy collector offers to buy all your work for a sum that would solve all your financial problems. But he intends to destroy all the art after purchase. Do you sell your art to him?",
-          // ],
-        })
-        .select()
-        .single();
-
-      if (sessionResponse.error) {
-        throw new Error(`Create session error: ${sessionResponse.error.message}`);
-      }
-
-      return sessionResponse.data as SessionRow;
-    },
   };
 
   messages = {

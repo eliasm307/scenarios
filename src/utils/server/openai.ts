@@ -58,18 +58,27 @@ export async function generateScenarios(exampleScenarios: string[]): Promise<str
   console.log("generateScenarios, messages", messages);
 
   // Ask OpenAI for a streaming chat completion given the prompt
-  const response = await openai.createChatCompletion({
-    ...DEFAULT_CHAT_COMPLETION_REQUEST_CONFIG,
-    messages,
-  });
+  const response = await openai
+    .createChatCompletion({
+      ...DEFAULT_CHAT_COMPLETION_REQUEST_CONFIG,
+      messages,
+    })
+    .catch((error) => {
+      console.error("generateScenarios, error", error);
+      throw error;
+    });
+
+  console.log("generateScenarios, response", response);
 
   if (!response.ok) {
+    console.error("generateScenarios error", response.status, response.statusText, response);
     console.error(await response.text());
     throw Error("OpenAI request failed");
   }
 
   const responseData: CreateChatCompletionResponse = await response.json();
   const responseText = responseData.choices[0].message?.content;
+  console.log("generateScenarios, responseText", responseText);
   if (!responseText) {
     console.error("No responseText");
     throw Error("OpenAI response missing text");

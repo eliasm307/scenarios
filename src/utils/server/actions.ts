@@ -2,6 +2,8 @@
 
 "use server";
 
+import "server-only";
+
 import { cookies } from "next/headers";
 import { getSupabaseServer } from "./supabase";
 import type { ScenarioRow, SessionRow } from "../../types";

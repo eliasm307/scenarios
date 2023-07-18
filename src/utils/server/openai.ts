@@ -6,10 +6,11 @@ import type {
   CreateChatCompletionResponse,
 } from "openai-edge";
 import { Configuration, OpenAIApi } from "openai-edge";
+import { getSeverEnvVariable } from "./general";
 
 // Create an OpenAI API client (that's edge friendly!)
 const config = new Configuration({
-  apiKey: process.env.OPENAI_API_KEY,
+  apiKey: getSeverEnvVariable("OPENAI_API_KEY"),
 });
 
 export const openai = new OpenAIApi(config);
@@ -59,7 +60,6 @@ export async function generateScenarios(exampleScenarios: string[]): Promise<str
   // Ask OpenAI for a streaming chat completion given the prompt
   const response = await openai.createChatCompletion({
     ...DEFAULT_CHAT_COMPLETION_REQUEST_CONFIG,
-
     messages,
   });
 

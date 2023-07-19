@@ -33,6 +33,16 @@ serve(async (req) => {
     const payload: WebhookPayload = await req.json();
     console.log("handling event payload", payload);
 
+    if (
+      req.headers.get("Authorization") !== `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`
+    ) {
+      console.log("unauthorized");
+      return new Response(JSON.stringify({ message: "unauthorized" }), {
+        headers: { "Content-Type": "application/json" },
+        status: 401,
+      });
+    }
+
     if (payload.record.scenario_options?.length) {
       console.log(`session ${payload.record.id} has scenarios, returning`);
       return new Response(JSON.stringify({ message: "existing scenarios" }), {
@@ -42,6 +52,7 @@ serve(async (req) => {
     }
 
     // Create a Supabase client with the Auth context of the logged in user.
+    // see default env variables here https://supabase.com/docs/guides/functions/secrets#default-secrets
     const supabase = createClient<Database>(
       // Supabase API URL - env var exported by default.
       Deno.env.get("SUPABASE_URL") ?? "",

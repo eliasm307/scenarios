@@ -427,7 +427,7 @@ export default function ScenarioChat(props: Props) {
         const isLastEntry = !messageRows[i + 1];
         const authorUser = props.users.find((u) => u.id === messageRow.author_id);
         return (
-          <Box key={messageRow.id}>
+          <Box key={`message-${messageRow.id}`}>
             <ChatMessage messageRow={messageRow} authorName={authorUser?.name || "..."} />
             {isLastEntry ? null : (
               <Box width='100%' pl={2}>
@@ -562,7 +562,7 @@ export default function ScenarioChat(props: Props) {
 
   // todo show the scenario panel and chat panel as tabs on mobile and side by side on larger screens
   return (
-    <Box height='100%' position='relative' padding={2} my={2}>
+    <Box height='100%' position='relative' padding={2} my={2} width='100%'>
       <Show above='md'>
         <Grid
           as='section'
@@ -702,12 +702,15 @@ function OutcomeVotingTable({ users, sessionId, outcomeVotes, currentUser, broad
   const handleVoteChange = useCallback(
     async ({ voteForUserId, newVote }: { voteForUserId: string; newVote: "true" | "false" }) => {
       const outcomeVoteFromCurrentUser = newVote === "true";
+      const voteTargetUser = users.find((user) => user.id === voteForUserId);
+      console.log("outcomeVoteFromCurrentUser", voteTargetUser?.name, outcomeVoteFromCurrentUser);
       let errorToastConfig = await APIClient.sessions.voteForUserOutcome({
         session_id: sessionId,
         vote_by_user_id: currentUser.id,
         vote_for_user_id: voteForUserId,
         outcome: outcomeVoteFromCurrentUser,
       });
+      console.log("outcomeVoteFromCurrentUser errorToastConfig", errorToastConfig);
       if (errorToastConfig) {
         toast(errorToastConfig);
         return;
@@ -733,9 +736,9 @@ function OutcomeVotingTable({ users, sessionId, outcomeVotes, currentUser, broad
             },
           });
         }
-
         return;
       }
+      console.log("voting complete");
 
       broadcast({
         event: "Toast",
@@ -770,7 +773,7 @@ function OutcomeVotingTable({ users, sessionId, outcomeVotes, currentUser, broad
         <Tbody>
           {users.map((user) => (
             <UserOutcomeVotingRow
-              key={user.id}
+              key={`${user.id}-outcome-voting-row`}
               voteForUser={user}
               latestOutcomeVote={outcomeVotesForCurrentUser?.[user.id]}
               handleVoteChange={handleVoteChange}

@@ -3,13 +3,15 @@
 
 "use client";
 
-import { Badge, Center, HStack, Heading, Spinner, Text, VStack, useToast } from "@chakra-ui/react";
+import { Badge, Box, Center, HStack, Heading, Spinner, VStack, useToast } from "@chakra-ui/react";
 import { useCallback, useState } from "react";
 import APIClient from "../utils/client/APIClient";
 import type { ChoiceConfig } from "./ChoiceGrid.client";
 import ChoiceGrid from "./ChoiceGrid.client";
 import type { SessionRow, SessionUser } from "../types";
 import type { BroadcastFunction } from "./GameSession.client";
+import { invokeMoveSessionToOutcomeSelectionStageAction } from "../utils/server/actions";
+import ScenarioText from "./ScenarioText";
 
 function getMajorityVoteId<T>(arr: T[]): T | null {
   const itemToOccurrenceCountMap = arr.reduce((acc, item) => {
@@ -114,7 +116,7 @@ function useLogic({
         .filter(([, voteOptionId]) => voteOptionId === majorityVoteId)
         .map(([userId]) => userId);
 
-      const errorToastConfig = await APIClient.sessions.moveToOutcomeSelectionStage({
+      const errorToastConfig = await invokeMoveSessionToOutcomeSelectionStageAction({
         scenarioText: winningScenarioText,
         userIdsThatVotedForScenario: userIdsThatVotedForWinningScenario,
         sessionId,
@@ -157,24 +159,29 @@ export default function ScenarioSelector(props: Props): React.ReactElement {
   const { isLoading, users, currentUser, optionVotes, scenarioOptions, handleVote } =
     useLogic(props);
 
-  if (
-    isLoading ||
-    !users.length
-    // todo uncomment this when we have a way to generate new options, e.g. via db webhooks
-    // || !scenarioOptions.length
-  ) {
+  if (!scenarioOptions.length) {
     return (
-      <Center as='section' height='100%'>
+      <Center as='section' height='100%' display='flex' flexDirection='column' gap={3}>
         <Spinner />
+        <Heading fontSize='2xl'>Loading new scenarios...</Heading>
+      </Center>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <Center as='section' height='100%' display='flex' flexDirection='column' gap={3}>
+        <Spinner fontSize='2xl' />
+        <Heading>Loading...</Heading>
       </Center>
     );
   }
 
   return (
-    <VStack as='section' m={3}>
+    <VStack as='section' m={3} height='100%'>
       <Heading textAlign='center'>Vote for a Scenario to Play!</Heading>
       <HStack>
-        <span>Waiting to vote: </span>
+        <span>Users waiting to vote: </span>
         {users
           .filter((user) => {
             const hasNotVoted = typeof optionVotes[user.id] === "undefined";
@@ -186,39 +193,41 @@ export default function ScenarioSelector(props: Props): React.ReactElement {
             </Badge>
           ))}
       </HStack>
-      <ChoiceGrid
-        choices={[
-          ...scenarioOptions.map(
-            (text, optionId): ChoiceConfig => ({
-              text,
-              onSelect: () => handleVote(optionId),
-              isSelected: optionVotes[currentUser.id] === optionId,
+      <Box overflow='auto' pb={6} flex={1}>
+        <ChoiceGrid
+          choices={[
+            ...scenarioOptions.map(
+              (text, optionId): ChoiceConfig => ({
+                text,
+                onSelect: () => handleVote(optionId),
+                isSelected: optionVotes[currentUser.id] === optionId,
+                content: (
+                  <OptionContent
+                    optionId={optionId}
+                    optionVotes={optionVotes}
+                    text={text}
+                    users={users}
+                    key={text}
+                  />
+                ),
+              }),
+            ),
+            {
               content: (
                 <OptionContent
-                  optionId={optionId}
+                  optionId={-1}
                   optionVotes={optionVotes}
-                  text={text}
+                  text='🆕 Vote to generate new scenarios'
                   users={users}
-                  key={text}
+                  key='new'
                 />
               ),
-            }),
-          ),
-          {
-            content: (
-              <OptionContent
-                optionId={-1}
-                optionVotes={optionVotes}
-                text='🆕 Vote to generate new scenarios'
-                users={users}
-                key='new'
-              />
-            ),
-            onSelect: () => handleVote(-1),
-            isSelected: optionVotes[currentUser.id] === null,
-          },
-        ]}
-      />
+              onSelect: () => handleVote(-1),
+              isSelected: optionVotes[currentUser.id] === null,
+            },
+          ]}
+        />
+      </Box>
     </VStack>
   );
 }
@@ -248,9 +257,7 @@ function OptionContent({
             </Badge>
           ))}
       </HStack>
-      <Text align='center' marginTop='auto' display='block'>
-        {text}
-      </Text>
+      <ScenarioText scenarioText={text} />
     </VStack>
   );
 }

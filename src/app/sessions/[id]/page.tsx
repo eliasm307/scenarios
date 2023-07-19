@@ -3,7 +3,7 @@ import "server-only";
 
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { Box, Grid } from "../../../components/ChakraUI.client";
+import { Grid, VStack } from "../../../components/ChakraUI.client";
 import NavBar from "../../../components/NavBar.client";
 import GameSession from "../../../components/GameSession.client";
 import APIServer from "../../../utils/server/APIServer";
@@ -44,7 +44,7 @@ export default async function SessionPage({ params: { id } }: { params: { id: st
       inset={0}
     >
       <NavBar zIndex={2} />
-      <Box zIndex={1} overflow='hidden'>
+      <VStack zIndex={1} overflow='hidden'>
         <GameSession
           currentUser={currentUser}
           existing={{
@@ -52,7 +52,7 @@ export default async function SessionPage({ params: { id } }: { params: { id: st
             messageRows,
           }}
         />
-      </Box>
+      </VStack>
     </Grid>
   );
 }

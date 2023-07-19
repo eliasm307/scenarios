@@ -86,7 +86,7 @@ export interface Database {
           scenario_options?: string[] | null;
           scenario_outcome_votes?: Json;
           selected_scenario_text?: string | null;
-          stage: string;
+          stage?: string;
         };
         Update: {
           created_at?: string;

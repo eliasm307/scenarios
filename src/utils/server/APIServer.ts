@@ -1,36 +1,14 @@
 import "server-only";
 import type { ReadonlyRequestCookies } from "next/dist/server/web/spec-extension/adapters/request-cookies";
 import type { User } from "@supabase/supabase-js";
-import type { SessionUser, SessionRow, MessageRow, ScenarioRow } from "../../types";
+import type { SessionUser, SessionRow, MessageRow } from "../../types";
 import { getSupabaseServer } from "./supabase";
-import { generateScenarios } from "./openai";
 import API from "../common/API";
 
 export default class APIServer extends API {
   constructor(cookies: () => ReadonlyRequestCookies) {
     super(getSupabaseServer(cookies));
   }
-
-  override ai = {
-    createScenarios: async () => {
-      const { data: exampleScenarioRows, error } = await this.supabase.rpc(
-        "get_example_scenarios_fn",
-      );
-      if (error) {
-        // eslint-disable-next-line no-console
-        console.trace(
-          `Get example scenarios error: ${error.message} (${error.code}) \nDetails: ${error.details} \nHint: ${error.hint}`,
-        );
-        // eslint-disable-next-line @typescript-eslint/no-throw-literal
-        throw error;
-      }
-
-      const exampleScenarios = exampleScenarioRows.map(({ text }: ScenarioRow) => text);
-      // eslint-disable-next-line no-console
-      console.log("createScenarios, exampleScenarios", exampleScenarios);
-      return generateScenarios(exampleScenarios);
-    },
-  } satisfies API["ai"];
 
   async getUser(): Promise<User> {
     const {

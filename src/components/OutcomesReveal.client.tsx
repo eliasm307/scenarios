@@ -1,11 +1,11 @@
 "use client";
 
-import { Box, Button, Divider, Heading, Text, VStack, useToast } from "@chakra-ui/react";
+import { Box, Button, Divider, HStack, Heading, Text, VStack, useToast } from "@chakra-ui/react";
 import { useCallback, useMemo } from "react";
 import type { SessionRow, SessionUser } from "../types";
-import APIClient from "../utils/client/APIClient";
 import ScenarioText from "./ScenarioText";
 import type { BroadcastFunction } from "./GameSession.client";
+import { invokeResetSessionAction } from "../utils/server/actions";
 
 type Props = {
   currentUser: SessionUser;
@@ -58,22 +58,25 @@ export default function OutcomesReveal({
         title: `"${currentUser.name}" re-started the session`,
       },
     });
-    const errorToastConfig = await APIClient.sessions.reset(sessionId);
-    if (errorToastConfig) {
-      toast(errorToastConfig);
-    }
+    const errorToastConfig = await invokeResetSessionAction(sessionId);
+    errorToastConfig?.forEach(toast);
   }, [broadcast, currentUser.name, sessionId, toast]);
 
   return (
-    <VStack spacing={6} mt={5} mb={10}>
+    <VStack spacing={3} mt={5} mb={10} overflow='auto' width='100%' gap={5}>
       <Box maxWidth='30rem' textAlign='center'>
         <ScenarioText scenarioText={scenarioText} />
       </Box>
       <Divider />
-      {results.map((result) => {
-        return <OutcomeVoteResults key={result.user.id} {...result} />;
-      })}
-      <Button onClick={handlePlayAgain}>Play Again</Button>
+      <HStack flex={1} width='100%' justifyContent='space-evenly' wrap='wrap' gap={3}>
+        {results.map((result) => {
+          return <OutcomeVoteResults key={result.user.id} {...result} />;
+        })}
+      </HStack>
+      <Divider />
+      <Button colorScheme='green' onClick={handlePlayAgain}>
+        Play Again
+      </Button>
     </VStack>
   );
 }
@@ -91,7 +94,7 @@ type UserVotesResult = {
 
 function OutcomeVoteResults({ user, voteResults, correctGuessesCount }: UserVotesResult) {
   return (
-    <Box overflowY='auto'>
+    <Box overflowY='auto' maxWidth='20rem'>
       <Heading as='h2' size='md' mb={2} width='100%' textAlign='center'>
         &quot;{user.relativeName}&quot; guessed that...
       </Heading>

@@ -26,11 +26,12 @@ function ChoiceCard({ text, onSelect, isSelected, content }: ChoiceConfig) {
   return (
     <Card
       minHeight='10rem'
+      shadow='lg'
       onClick={() => {
         console.log("clicked", text);
         onSelect();
       }}
-      _hover={{ outline: "5px solid green", cursor: "pointer" }}
+      _hover={{ outline: "5px solid gray", cursor: "pointer" }}
       style={isSelected ? { outline: "5px solid green" } : undefined}
     >
       <CardBody display='grid' placeContent='center'>

@@ -3,6 +3,16 @@ const nextConfig = {
   experimental: {
     serverActions: true,
   },
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "dmjwwnpltjvsevmfujec.supabase.co",
+        port: "",
+        pathname: "/storage/v1/object/public/images/**",
+      },
+    ],
+  },
   eslint: {
     ignoreDuringBuilds: true,
   },

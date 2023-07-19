@@ -50,18 +50,24 @@ export interface Database {
         Row: {
           created_at: string;
           id: number;
+          image_prompt: string | null;
+          image_url: string | null;
           text: string;
           voted_by_user_ids: string[];
         };
         Insert: {
           created_at?: string;
           id?: number;
+          image_prompt?: string | null;
+          image_url?: string | null;
           text: string;
           voted_by_user_ids?: string[];
         };
         Update: {
           created_at?: string;
           id?: number;
+          image_prompt?: string | null;
+          image_url?: string | null;
           text?: string;
           voted_by_user_ids?: string[];
         };
@@ -75,6 +81,8 @@ export interface Database {
           scenario_option_votes: Json;
           scenario_options: string[] | null;
           scenario_outcome_votes: Json;
+          selected_scenario_id: number | null;
+          selected_scenario_image_url: string | null;
           selected_scenario_text: string | null;
           stage: string;
         };
@@ -85,6 +93,8 @@ export interface Database {
           scenario_option_votes?: Json;
           scenario_options?: string[] | null;
           scenario_outcome_votes?: Json;
+          selected_scenario_id?: number | null;
+          selected_scenario_image_url?: string | null;
           selected_scenario_text?: string | null;
           stage?: string;
         };
@@ -95,6 +105,8 @@ export interface Database {
           scenario_option_votes?: Json;
           scenario_options?: string[] | null;
           scenario_outcome_votes?: Json;
+          selected_scenario_id?: number | null;
+          selected_scenario_image_url?: string | null;
           selected_scenario_text?: string | null;
           stage?: string;
         };
@@ -103,6 +115,12 @@ export interface Database {
             foreignKeyName: "sessions_messaging_locked_by_user_id_fkey";
             columns: ["messaging_locked_by_user_id"];
             referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "sessions_selected_scenario_id_fkey";
+            columns: ["selected_scenario_id"];
+            referencedRelation: "scenarios";
             referencedColumns: ["id"];
           },
         ];
@@ -151,6 +169,8 @@ export interface Database {
         Returns: {
           created_at: string;
           id: number;
+          image_prompt: string | null;
+          image_url: string | null;
           text: string;
           voted_by_user_ids: string[];
         }[];

@@ -1,10 +1,8 @@
 const { HfInference } = require("@huggingface/inference");
 const fs = require("fs");
 
-const HF_ACCESS_TOKEN = "";
-
 (async () => {
-  const inference = new HfInference(HF_ACCESS_TOKEN);
+  const inference = new HfInference();
 
   // see https://huggingface.co/docs/huggingface.js/inference/classes/HfInference#texttoimage
   const result = await inference.textToImage(
@@ -12,12 +10,16 @@ const HF_ACCESS_TOKEN = "";
       // model: "stabilityai/stable-diffusion-xl-base-0.9",
       model: "stabilityai/stable-diffusion-2-1",
       inputs:
-        "High-resolution and emotionally stirring image of a conflicted singer, torn between the sparkle of an enticing record deal and the looming shadow of artistry's compromise, sparking heated debates on music forums and rising rapidly on Artstation's trending list.",
+        "Intriguing, high-resolution image of a middle-aged musician against an array of digital screens illuminating his weary face. On one screen is an advanced AI entity generating mesmerizing music compositions based on his works. Around him are symbols of a waning career and looming struggle: a neglected guitar, dwindling concert tickets, and unopened bills. The two worlds contrasting, coaxing conversation on both traditional music creation methods vs Ai generated compositions and raising privacy concerns around cloud storage. Featured on popular technology and music artist platforms alike.",
+      // "High-resolution and emotionally stirring image of a conflicted singer, torn between the sparkle of an enticing record deal and the looming shadow of artistry's compromise, sparking heated debates on music forums and rising rapidly on Artstation's trending list.",
       parameters: {
         negative_prompt: "blurry",
       },
     },
-    {},
+    {
+      use_cache: false,
+      retry_on_error: true,
+    },
   );
 
   console.log("prompt result", result);

@@ -74,17 +74,23 @@ export async function invokeMoveSessionToOutcomeSelectionStageAction({
     return { status: "error", title, description: existingScenarioResponse.error.message };
   }
 
+  let scenarioId = existingScenarioResponse.data[0]?.id;
   if (!existingScenarioResponse.data.length) {
-    const insertScenarioResponse = await supabase.from("scenarios").insert({
-      text: scenarioText,
-      voted_by_user_ids: userIdsThatVotedForScenario,
-    });
+    const insertScenarioResponse = await supabase
+      .from("scenarios")
+      .insert({
+        text: scenarioText,
+        voted_by_user_ids: userIdsThatVotedForScenario,
+      })
+      .select("id");
 
     if (insertScenarioResponse.error) {
       const title = "Error saving new scenario";
       console.error(title, insertScenarioResponse.error);
       return { status: "error", title, description: insertScenarioResponse.error.message };
     }
+
+    scenarioId = insertScenarioResponse.data[0].id;
   } else {
     // scenario already exists, this should only happen in dev
   }
@@ -94,6 +100,7 @@ export async function invokeMoveSessionToOutcomeSelectionStageAction({
     .update({
       stage: "scenario-outcome-selection",
       selected_scenario_text: scenarioText,
+      selected_scenario_id: scenarioId,
       scenario_option_votes: {},
       scenario_outcome_votes: {},
       messaging_locked_by_user_id: null,
@@ -123,7 +130,9 @@ async function resetSessionRow({
       scenario_options: [], // will trigger new scenario options to be generated
       scenario_outcome_votes: {},
       selected_scenario_text: null,
-    } satisfies Omit<SessionRow, "id" | "created_at">)
+      selected_scenario_image_url: null,
+      selected_scenario_id: null,
+    } satisfies Required<Omit<SessionRow, "id" | "created_at">>)
     .eq("id", sessionId);
 
   if (response.error) {

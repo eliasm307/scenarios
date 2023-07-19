@@ -32,6 +32,7 @@ import type { UseChatHelpers } from "ai/react";
 import { useChat } from "ai/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { REALTIME_LISTEN_TYPES } from "@supabase/supabase-js";
+import Image from "next/image";
 import ChatMessage from "./ChatMessage";
 import { getSupabaseClient } from "../utils/client/supabase";
 import type { SessionRow, MessageRow, SessionUser } from "../types";
@@ -48,6 +49,7 @@ type Props = {
   sessionLockedByUserId: string | null;
   outcomeVotes: NonNullable<SessionRow["scenario_outcome_votes"]>;
   broadcast: BroadcastFunction;
+  selectedScenarioImageUrl: string | null;
   existing: {
     messageRows: MessageRow[];
   };
@@ -59,6 +61,7 @@ function useAiChat({
   currentUser,
   sessionLockedByUserId,
   sessionId,
+  selectedScenarioImageUrl,
 }: Props) {
   const toast = useToast();
   const [messageRows, setMessageRows] = useState<MessageRow[]>(existing?.messageRows ?? []);
@@ -179,6 +182,7 @@ function useAiChat({
     messageRowsRef.current = messageRows;
     unlockSessionMessagingRef.current = unlockSessionMessaging;
   }, [messageRows, unlockSessionMessaging]);
+
   useEffect(() => {
     const supabase = getSupabaseClient();
     const subscription = supabase
@@ -412,15 +416,28 @@ function useAiChat({
     textAreaRef,
     formRef,
     selectedScenarioText,
+    selectedScenarioImageUrl,
   };
 }
 
 export default function ScenarioChat(props: Props) {
-  const { chat, messageRows, formRef, messagesListRef, textAreaRef, selectedScenarioText } =
-    useAiChat(props);
+  const {
+    chat,
+    messageRows,
+    formRef,
+    messagesListRef,
+    textAreaRef,
+    selectedScenarioText,
+    selectedScenarioImageUrl,
+  } = useAiChat(props);
 
   const messagesList = (
     <Flex width='100%' ref={messagesListRef} direction='column' overflow='auto' tabIndex={0}>
+      {selectedScenarioImageUrl && (
+        <Box position='relative' width='100%' minHeight='20rem'>
+          <Image src={selectedScenarioImageUrl} alt='Scenario image' fill objectFit='contain' />
+        </Box>
+      )}
       {messageRows.map((messageRow, i) => {
         const isLastEntry = !messageRows[i + 1];
         const authorUser = props.users.find((u) => u.id === messageRow.author_id);

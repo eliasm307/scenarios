@@ -9,6 +9,5 @@
   "deno.inlayHints.parameterTypes.enabled": true,
   "deno.inlayHints.variableTypes.enabled": true,
   "deno.suggest.completeFunctionCalls": true,
-  "deno.enable": true,
-  "deno.importMap": "./supabase/import_map.json"
+  "deno.enable": true
 }

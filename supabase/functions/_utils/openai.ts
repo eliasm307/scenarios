@@ -1,16 +1,16 @@
+/* eslint-disable import/no-unresolved */
+/* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable no-console */
-import "server-only";
 import type {
   ChatCompletionRequestMessage,
   CreateChatCompletionRequest,
   CreateChatCompletionResponse,
-} from "openai-edge";
-import { Configuration, OpenAIApi } from "openai-edge";
-import { getSeverEnvVariable } from "./general";
+} from "https://esm.sh/openai-edge@1.2.0";
+import { Configuration, OpenAIApi } from "https://esm.sh/openai-edge@1.2.0";
 
 // Create an OpenAI API client (that's edge friendly!)
 const config = new Configuration({
-  apiKey: getSeverEnvVariable("OPENAI_API_KEY"),
+  apiKey: Deno.env.get("OPENAI_API_KEY"),
 });
 
 const openai = new OpenAIApi(config);
@@ -33,7 +33,7 @@ function createSystemMessage(): string {
   ].join("\n\n");
 }
 
-export const DEFAULT_CHAT_COMPLETION_REQUEST_CONFIG = {
+const DEFAULT_CHAT_COMPLETION_REQUEST_CONFIG = {
   model: "gpt-4",
   temperature: 1,
   frequency_penalty: 0.5,

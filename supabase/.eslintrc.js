@@ -1,9 +1,7 @@
-const ecmConfig = require("@eliasm307/config/eslint")({ withPrettier: true, withReact: true });
+const ecmConfig = require("@eliasm307/config/eslint")({ withPrettier: true, withReact: false });
 
 module.exports = {
   ...ecmConfig,
-  plugins: [...ecmConfig.plugins].filter((plugin) => plugin !== "react-hooks"),
-  extends: [...ecmConfig.extends, "next/core-web-vitals"],
   root: true,
   rules: {
     ...ecmConfig.rules,
@@ -15,6 +13,7 @@ module.exports = {
     ],
     "react/no-unused-prop-types": "off",
     "import/no-unresolved": "off",
+    "@typescript-eslint/no-unsafe-return": "off",
   },
   settings: {
     "functional-core": {

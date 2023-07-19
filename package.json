@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "supabase:gen-types": "npx supabase gen types typescript --project-id \"dmjwwnpltjvsevmfujec\" --schema public > src/types/supabase.d.ts && prettier --write src/types/supabase.d.ts"
+    "supabase:gen-types": "npx supabase gen types typescript --project-id \"dmjwwnpltjvsevmfujec\" --schema public | tee src/types/supabase.d.ts ",
+    "postsupabase:gen-types": "prettier --write src/types/supabase.d.ts",
+    "supabase:deploy-functions": "supabase functions deploy && supabase secrets set --env-file ./.env.local"
   },
   "dependencies": {
     "@chakra-ui/next-js": "^2.1.4",
@@ -37,6 +39,6 @@
     "@eliasm307/config": "^0.30.0",
     "@typescript-eslint/eslint-plugin": "^5.62.0",
     "@typescript-eslint/parser": "^5.62.0",
-    "supabase": "^1.75.3"
+    "supabase": "^1.77.9"
   }
 }

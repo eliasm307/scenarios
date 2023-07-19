@@ -104,11 +104,9 @@ function useLogic({
       broadcast({
         event: "Toast",
         data: {
-          title: "Voting Complete",
-          description: `The majority has voted`,
+          title: "Scenario Voting Complete",
+          description: `The majority has voted for a scenario to play!`,
           status: "success",
-          duration: 9000,
-          isClosable: true,
         },
       });
 

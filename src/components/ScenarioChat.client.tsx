@@ -124,8 +124,6 @@ function useAiChat({
         title: "Error generating response",
         description: error instanceof Error ? error.message : String(error),
         status: "error",
-        duration: 9000,
-        isClosable: true,
       });
     },
   });

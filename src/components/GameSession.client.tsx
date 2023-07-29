@@ -335,9 +335,15 @@ export default function GameSession(props: Props): React.ReactElement {
   }
 
   if (session.stage === "scenario-selection") {
+    const scenarioOptions = [...(session.scenario_options || [])];
+    // making sure there are always 3 options even when loading
+    while (scenarioOptions.length < 3) {
+      scenarioOptions.push("");
+    }
+
     return (
       <ScenarioSelector
-        scenarioOptions={session.scenario_options || []}
+        scenarioOptions={scenarioOptions}
         optionVotes={session.scenario_option_votes}
         currentUser={currentUser}
         users={users}

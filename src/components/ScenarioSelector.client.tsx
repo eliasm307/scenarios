@@ -157,15 +157,6 @@ export default function ScenarioSelector(props: Props): React.ReactElement {
   const { isLoading, users, currentUser, optionVotes, scenarioOptions, handleVote } =
     useLogic(props);
 
-  if (!scenarioOptions.length) {
-    return (
-      <Center as='section' height='100%' display='flex' flexDirection='column' gap={3}>
-        <Spinner />
-        <Heading fontSize='2xl'>Loading new scenarios...</Heading>
-      </Center>
-    );
-  }
-
   if (isLoading) {
     return (
       <Center as='section' height='100%' display='flex' flexDirection='column' gap={3}>
@@ -199,7 +190,7 @@ export default function ScenarioSelector(props: Props): React.ReactElement {
                 text,
                 onSelect: () => handleVote(optionId),
                 isSelected: optionVotes[currentUser.id] === optionId,
-                content: (
+                content: text ? (
                   <OptionContent
                     optionId={optionId}
                     optionVotes={optionVotes}
@@ -207,6 +198,11 @@ export default function ScenarioSelector(props: Props): React.ReactElement {
                     users={users}
                     key={text}
                   />
+                ) : (
+                  <Center as='section' height='100%' display='flex' flexDirection='column' gap={3}>
+                    <Spinner />
+                    <Heading fontSize='xl'>Loading scenario...</Heading>
+                  </Center>
                 ),
               }),
             ),

@@ -130,7 +130,7 @@ async function resetSessionRow({
       scenario_options: [], // will trigger new scenario options to be generated
       scenario_outcome_votes: {},
       selected_scenario_text: null,
-      selected_scenario_image_url: null,
+      selected_scenario_image_path: null,
       selected_scenario_id: null,
     } satisfies Required<Omit<SessionRow, "id" | "created_at">>)
     .eq("id", sessionId);

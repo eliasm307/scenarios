@@ -28,20 +28,31 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     console.log("user found, loading profile...");
     let { data: profile } = await supabase
       .from("user_profiles")
-      .select("user_name")
+      .select()
       .eq("user_id", user.id)
       .single();
 
     if (!profile) {
-      profile = {
-        user_name: user.email || "Anon User 🥷🏾",
-      };
-
       console.log("creating a user profile for the user because none exists...");
-      await supabase.from("user_profiles").upsert({
-        ...profile,
-        user_id: user.id,
-      });
+      const profileResponse = await supabase
+        .from("user_profiles")
+        .upsert({
+          user_id: user.id,
+          user_name: user.email || "Anon User 🥷🏾",
+          preferred_reading_rate: 1,
+        })
+        .select()
+        .single();
+
+      if (profileResponse.error) {
+        console.error("error creating user profile", profileResponse.error);
+        // todo collect all eslint-disable comments and move them to config, also check ignored rules in eslintrc
+        // eslint-disable-next-line @typescript-eslint/no-throw-literal
+        throw profileResponse.error;
+      }
+
+      profile = profileResponse.data;
+
       console.log("user profile created!");
     } else {
       console.log("user profile already exists");

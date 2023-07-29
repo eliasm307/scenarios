@@ -238,14 +238,14 @@ function useLogic({ existing, currentUser }: Props) {
       );
 
     // this is to try and prevent the connection from being closed due to inactivity
-    const pingIntervalId = setInterval(
-      () =>
-        channel.send({
-          type: REALTIME_LISTEN_TYPES.BROADCAST,
-          event: "ping",
-        }),
-      10_000,
-    );
+    // const pingIntervalId = setInterval(
+    //   () =>
+    //     channel.send({
+    //       type: REALTIME_LISTEN_TYPES.BROADCAST,
+    //       event: "ping",
+    //     }),
+    //   10_000,
+    // );
 
     function handleBroadcastMessage(message: BroadcastEvent) {
       if (message.event === BroadcastEventName.Toast) {
@@ -304,7 +304,7 @@ function useLogic({ existing, currentUser }: Props) {
     });
 
     return () => {
-      clearInterval(pingIntervalId);
+      // clearInterval(pingIntervalId);
       void supabase.removeChannel(subscription);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- only run once

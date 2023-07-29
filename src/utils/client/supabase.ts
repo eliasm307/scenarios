@@ -6,7 +6,9 @@ export const getSupabaseClient = () => {
     isSingleton: true,
     options: {
       realtime: {
-        log_level: "info",
+        log_level: "debug",
+        timeout: 15 * 60 * 1000,
+        heartbeatIntervalMs: 5 * 60 * 1000,
       },
     },
   });

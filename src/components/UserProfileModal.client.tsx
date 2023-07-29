@@ -143,11 +143,12 @@ export default function UserProfileModal({ disclosure: { isOpen, onClose } }: Pr
             <FormLabel>Reading Voice</FormLabel>
             <Select
               required
+              title='Select to change reading voice'
               value={tempVoiceName || undefined}
               onChange={(e) => setPreferredVoiceNameTemp(e.target.value)}
             >
               {getAvailableVoices().map((voice) => (
-                <option key={voice.name} value={voice.name}>
+                <option key={voice.name} value={voice.name} aria-label={voice.name}>
                   {voice.name}
                 </option>
               ))}

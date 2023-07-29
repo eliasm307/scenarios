@@ -62,7 +62,7 @@ export type BroadcastFunction = (event: BroadcastAction) => void;
 type Action = LocalAction | BroadcastAction;
 
 function reducer(state: State, action: Action): State {
-  console.log("GameSession reducer", action.event, { state, action });
+  console.log("GameSession reducer action received", action.event, { state, action });
   if (typeof action.data === "undefined") {
     throw new Error(
       `Action "${(action as Action).event}" payload is "${typeof (action as Action).data}"`,

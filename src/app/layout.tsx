@@ -25,7 +25,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   } = await supabase.auth.getUser();
 
   if (user) {
-    console.log("user found, loading profile...");
     let { data: profile } = await supabase
       .from("user_profiles")
       .select()
@@ -54,8 +53,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       profile = profileResponse.data;
 
       console.log("user profile created!");
-    } else {
-      console.log("user profile already exists");
     }
 
     return (
@@ -68,7 +65,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   }
 
   // this is only for /auth page
-  console.log("no user found");
+  console.warn("no user found");
   return <CommonWrapper>{children}</CommonWrapper>;
 }
 

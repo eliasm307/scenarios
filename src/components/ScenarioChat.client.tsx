@@ -879,12 +879,12 @@ function UserOutcomeVotingRow({
       <Td>{voteForUser.relativeName}</Td>
       <Td>
         <Radio colorScheme='green' value='true'>
-          would do it
+          👍🏾 would do it
         </Radio>
       </Td>
       <Td>
         <Radio colorScheme='red' value='false'>
-          would not do it
+          👎🏾 would not do it
         </Radio>
       </Td>
     </RadioGroup>

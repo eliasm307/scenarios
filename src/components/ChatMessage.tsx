@@ -1,5 +1,6 @@
 import { HStack, Avatar, Flex, Text, VStack } from "@chakra-ui/react";
 import type { MessageRow } from "../types";
+import ReadOutLoudButton from "./ReadOutLoudButton";
 
 type Props = {
   authorName: string;
@@ -48,7 +49,9 @@ function ChatMessage({ authorName, messageRow }: Props) {
       <Text as='span' fontWeight='bold' fontSize='xl' textAlign={isUser ? "right" : "left"}>
         {authorName}
       </Text>
-      <HStack flexDirection='inherit' flex={1} justifyContent={isUser ? "start" : "end"} gap={0} />
+      <HStack flexDirection='inherit' flex={1} justifyContent={isUser ? "start" : "end"} gap={0}>
+        {!isUser && <ReadOutLoudButton text={messageRow.content} />}
+      </HStack>
     </Flex>
   );
 

@@ -43,12 +43,12 @@
     "typescript": "5.1.6"
   },
   "devDependencies": {
-    "@types/json-schema": "^7.0.12",
-    "openai": "^4.0.0-beta.6",
     "@eliasm307/config": "^0.30.0",
+    "@types/json-schema": "^7.0.12",
     "@typescript-eslint/eslint-plugin": "^5.62.0",
     "@typescript-eslint/parser": "^5.62.0",
     "dotenv": "^16.3.1",
+    "openai": "^4.0.0-beta.6",
     "supabase": "^1.77.9"
   }
 }

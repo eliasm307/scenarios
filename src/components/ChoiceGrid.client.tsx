@@ -14,7 +14,13 @@ export type ChoiceConfig = {
 
 export default function ChoiceGrid({ choices }: { choices: ChoiceConfig[] }): ReactElement {
   return (
-    <Grid fontSize='2xl' templateColumns={{ base: "1fr", md: "1fr 1fr" }} gap={3} p={3}>
+    <Grid
+      className='choice-grid'
+      fontSize='2xl'
+      templateColumns={{ base: "1fr", md: "1fr 1fr" }}
+      gap={3}
+      p={3}
+    >
       {choices.map((choiceConfig) => (
         <ChoiceCard key={choiceConfig.text} {...choiceConfig} />
       ))}
@@ -25,6 +31,7 @@ export default function ChoiceGrid({ choices }: { choices: ChoiceConfig[] }): Re
 function ChoiceCard({ text, onSelect, isSelected, content }: ChoiceConfig) {
   return (
     <Card
+      className='choice-card'
       minHeight='10rem'
       shadow='lg'
       onClick={() => {
@@ -34,7 +41,13 @@ function ChoiceCard({ text, onSelect, isSelected, content }: ChoiceConfig) {
       _hover={{ outline: "5px solid gray", cursor: "pointer" }}
       style={isSelected ? { outline: "5px solid green" } : undefined}
     >
-      <CardBody display='grid' placeContent='center'>
+      <CardBody
+        className='card-body'
+        display='grid'
+        gridTemplateRows='1fr'
+        gridTemplateColumns='1fr'
+        placeContent='center'
+      >
         {content ?? (
           <Text align='center' marginTop='auto' display='block'>
             {text}

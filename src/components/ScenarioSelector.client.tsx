@@ -3,7 +3,18 @@
 
 "use client";
 
-import { Badge, Box, Center, HStack, Heading, Spinner, VStack, useToast } from "@chakra-ui/react";
+import {
+  Badge,
+  Box,
+  Center,
+  Divider,
+  HStack,
+  Heading,
+  Spinner,
+  Text,
+  VStack,
+  useToast,
+} from "@chakra-ui/react";
 import { useCallback, useState } from "react";
 import APIClient from "../utils/client/APIClient";
 import type { ChoiceConfig } from "./ChoiceGrid.client";
@@ -12,6 +23,7 @@ import type { SessionRow, SessionUser } from "../types";
 import type { BroadcastFunction } from "./GameSession.client";
 import { invokeMoveSessionToOutcomeSelectionStageAction } from "../utils/server/actions";
 import ScenarioText from "./ScenarioText";
+import ReadOutLoudButton from "./ReadOutLoudButton";
 
 function getMajorityVoteId<T>(arr: T[]): T | null {
   const itemToOccurrenceCountMap = arr.reduce((acc, item) => {
@@ -224,6 +236,7 @@ export default function ScenarioSelector(props: Props): React.ReactElement {
                 <OptionContent
                   optionId={-1}
                   optionVotes={optionVotes}
+                  notReadable
                   text='🆕 Vote to generate new scenarios'
                   users={users}
                   key='new'
@@ -244,27 +257,45 @@ function OptionContent({
   optionId,
   optionVotes,
   text,
+  notReadable,
 }: {
   users: SessionUser[];
   optionId: number;
   optionVotes: SessionRow["scenario_option_votes"];
   text: string;
+  notReadable?: boolean;
 }) {
   return (
-    <VStack>
-      <HStack minHeight={5}>
-        {users
-          .filter((user) => {
-            const hasVoted = optionVotes[user.id] === optionId;
-            return hasVoted;
-          })
-          .map((user) => (
-            <Badge maxHeight={5} key={user.id} colorScheme={user.isCurrentUser ? "green" : "gray"}>
-              {user.isCurrentUser ? "Me" : user.name}
-            </Badge>
-          ))}
+    <VStack height='100%' width='100%'>
+      <HStack minHeight={10} width='100%'>
+        <HStack flex={1}>
+          <Text>Votes:</Text>
+          {users
+            .filter((user) => {
+              const hasVoted = optionVotes[user.id] === optionId;
+              return hasVoted;
+            })
+            .map((user) => (
+              <Badge
+                maxHeight={10}
+                fontSize='lg'
+                key={user.id}
+                colorScheme={user.isCurrentUser ? "green" : "gray"}
+              >
+                {user.isCurrentUser ? "Me" : user.name}
+              </Badge>
+            ))}
+        </HStack>
+        {!notReadable && (
+          <Box>
+            <ReadOutLoudButton text={text} />
+          </Box>
+        )}
       </HStack>
-      <ScenarioText scenarioText={text} />
+      <Divider my={3} width='100%' />
+      <Box flex={1}>
+        <ScenarioText scenarioText={text} />
+      </Box>
     </VStack>
   );
 }

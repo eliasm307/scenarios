@@ -11,6 +11,8 @@ export type SessionUser = {
   /** The user profile name except when its the current session user it is in the first person ie "I" */
   relativeName: string;
   isCurrentUser: boolean;
+  preferredVoiceName?: string;
+  preferredVoiceRate?: number;
 };
 
 export type BroadcastEventFrom<TAction extends { event: string }> = TAction & {

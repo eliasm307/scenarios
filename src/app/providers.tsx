@@ -5,6 +5,7 @@ import { ChakraProvider, useToast } from "@chakra-ui/react";
 import type { User } from "@supabase/auth-helpers-nextjs";
 import { createContext, useContext, useMemo, useState } from "react";
 import APIClient from "../utils/client/APIClient";
+import type { UserProfileRow } from "../types";
 
 export function CommonProviders({ children }: { children: React.ReactNode }) {
   return (
@@ -16,9 +17,7 @@ export function CommonProviders({ children }: { children: React.ReactNode }) {
   );
 }
 
-type UserProfile = {
-  user_name: string;
-};
+type UserProfile = UserProfileRow;
 
 export type UserContext = {
   user: User;

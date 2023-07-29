@@ -129,18 +129,24 @@ export interface Database {
         Row: {
           created_at: string;
           id: number;
+          preferred_reading_rate: number | null;
+          preferred_reading_voice_name: string | null;
           user_id: string;
           user_name: string;
         };
         Insert: {
           created_at?: string;
           id?: number;
+          preferred_reading_rate?: number | null;
+          preferred_reading_voice_name?: string | null;
           user_id: string;
           user_name: string;
         };
         Update: {
           created_at?: string;
           id?: number;
+          preferred_reading_rate?: number | null;
+          preferred_reading_voice_name?: string | null;
           user_id?: string;
           user_name?: string;
         };

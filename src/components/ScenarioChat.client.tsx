@@ -7,6 +7,7 @@
 import {
   Box,
   Button,
+  Center,
   Divider,
   Flex,
   Grid,
@@ -42,6 +43,7 @@ import APIClient from "../utils/client/APIClient";
 import { isTruthy, messageRowToChatMessage } from "../utils/general";
 import ScenarioText from "./ScenarioText";
 import type { BroadcastFunction } from "./GameSession.client";
+import ReadOutLoudButton from "./ReadOutLoudButton";
 
 type Props = {
   selectedScenarioText: string | null;
@@ -640,6 +642,9 @@ export default function ScenarioChat(props: Props) {
         >
           <VStack m={3} gap={5} width='100%' maxHeight='100%' overflowY='auto'>
             <ScenarioText scenarioText={selectedScenarioText} />
+            <Center>
+              <ReadOutLoudButton text={selectedScenarioText} />
+            </Center>
             <Divider />
             {votingPanel}
           </VStack>

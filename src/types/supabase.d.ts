@@ -130,7 +130,6 @@ export interface Database {
           created_at: string;
           id: number;
           preferred_reading_rate: number | null;
-          preferred_reading_voice_name: string | null;
           user_id: string;
           user_name: string;
         };
@@ -138,7 +137,6 @@ export interface Database {
           created_at?: string;
           id?: number;
           preferred_reading_rate?: number | null;
-          preferred_reading_voice_name?: string | null;
           user_id: string;
           user_name: string;
         };
@@ -146,7 +144,6 @@ export interface Database {
           created_at?: string;
           id?: number;
           preferred_reading_rate?: number | null;
-          preferred_reading_voice_name?: string | null;
           user_id?: string;
           user_name?: string;
         };

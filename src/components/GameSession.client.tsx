@@ -150,10 +150,30 @@ function useLogic({ existing, currentUser }: Props) {
       })
       // ! presence state seems to be readonly after being tracked, need to listen to broadcast or DB events to update state
       .on("presence", { event: "sync" }, () => {
+        const currentUsers = stateRef.current.users;
         const presenceStateMap = channel.presenceState<SessionUser>();
-        const newUsers = presenceStateMap[sessionKey] || [];
-        console.log("presence sync", { newUsers, presenceStateMap });
-        send({ event: "usersUpdated", data: [...newUsers] });
+        const newUsersRaw = presenceStateMap[sessionKey] || [];
+        // prevent duplicate users from users using multiple tabs/browsers/devices, they should all be the same user
+        const uniqueNewUsers = newUsersRaw.filter((newUser, newUserIndex) => {
+          // ie if the same user exists at different indexes then one is a duplicate, we take the first one as the real one
+          const isDuplicateUser =
+            newUsersRaw.findIndex((user) => user.id === newUser.id) !== newUserIndex;
+          if (isDuplicateUser) {
+            console.log("duplicate user", { newUser, newUsersRaw });
+          }
+          return !isDuplicateUser;
+        });
+
+        if (uniqueNewUsers.length > 0) {
+          console.log("presence sync", {
+            newUsers: uniqueNewUsers,
+            presenceStateMap,
+            oldUsers: currentUsers,
+          });
+          send({ event: "usersUpdated", data: [...uniqueNewUsers] });
+        } else {
+          console.log("presence sync but no new users", { presenceStateMap, currentUsers });
+        }
       })
       .on<SessionUser>(
         REALTIME_LISTEN_TYPES.PRESENCE,
@@ -236,7 +256,11 @@ function useLogic({ existing, currentUser }: Props) {
       if (status === "SUBSCRIBED") {
         // delay to prevent rate limiting
         await new Promise((resolve) => setTimeout(resolve, 100));
-        const presenceTrackStatus = await channel.track(currentUser);
+        const presenceTrackStatus = await channel.track({
+          ...currentUser,
+          isCurrentUser: false,
+        } satisfies SessionUser);
+
         if (presenceTrackStatus !== "ok") {
           console.error("presenceTrackStatus after join", presenceTrackStatus);
           toast({
@@ -276,9 +300,12 @@ function useLogic({ existing, currentUser }: Props) {
   }, []);
 
   useEffect(() => {
+    if (state.currentUserHasJoinedSession) {
+      return;
+    }
     const currentUserHasJoined = state.users.some((user) => user.id === currentUser.id);
     send({ event: "currentUserHasJoinedSession", data: currentUserHasJoined });
-  }, [currentUser, send, state.users]);
+  }, [currentUser, send, state.currentUserHasJoinedSession, state.users]);
 
   const broadcast: BroadcastFunction = useCallback(
     async (event) => {
@@ -319,6 +346,7 @@ export default function GameSession(props: Props): React.ReactElement {
   const { currentUser, users, session, currentUserHasJoinedSession, broadcast } = useLogic(props);
 
   if (!currentUserHasJoinedSession) {
+    console.log("waiting for user to join session...");
     return (
       <Center as='section' height='100%'>
         <Spinner />

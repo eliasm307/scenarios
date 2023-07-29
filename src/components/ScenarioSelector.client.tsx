@@ -172,6 +172,7 @@ export default function ScenarioSelector(props: Props): React.ReactElement {
   console.log({ scenarioOptions: [...scenarioOptions] });
 
   if (isLoading) {
+    console.log("scenario selector loading...");
     return (
       <Center as='section' height='100%' display='flex' flexDirection='column' gap={3}>
         <Spinner fontSize='2xl' />

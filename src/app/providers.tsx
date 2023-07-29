@@ -25,7 +25,7 @@ export type UserContext = {
   /**
    * @returns Error message if there was an error, otherwise void
    */
-  setUserName: (userName: string) => Promise<string | void>;
+  updateProfile: (updates: Partial<UserProfile>) => Promise<string | void>;
 };
 
 const userContext = createContext<UserContext | null>(null);
@@ -43,19 +43,23 @@ export function UserProvider({
   const toast = useToast();
 
   const value = useMemo(
-    () => ({
-      user,
-      userProfile,
-      setUserName: async (newName: string) => {
-        const errorToastConfig = await APIClient.userProfiles.update({ userId: user.id, newName });
-        if (errorToastConfig) {
-          toast(errorToastConfig);
-          return `${errorToastConfig.title}: ${errorToastConfig.description}`;
-        }
+    () =>
+      ({
+        user,
+        userProfile,
+        updateProfile: async (updates) => {
+          const errorToastConfig = await APIClient.userProfiles.update({
+            userId: user.id,
+            updates,
+          });
+          if (errorToastConfig) {
+            toast(errorToastConfig);
+            return `${errorToastConfig.title}: ${errorToastConfig.description}`;
+          }
 
-        setProfile((p) => ({ ...p, user_name: newName }));
-      },
-    }),
+          setProfile((p) => ({ ...p, ...updates }));
+        },
+      }) satisfies UserContext,
     [toast, user, userProfile],
   );
 

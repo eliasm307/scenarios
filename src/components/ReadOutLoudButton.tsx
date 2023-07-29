@@ -1,7 +1,8 @@
 import { Tooltip, IconButton } from "@chakra-ui/react";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { SoundIcon, StopIcon } from "./Icons";
-import { useVoiceSynthesis } from "../utils/client/hooks";
+import { useSelectedVoiceName, useVoiceSynthesis } from "../utils/client/hooks";
+import { useUserContext } from "../app/providers";
 
 function StartReadOutLoudButton({ onClick }: { onClick: () => void }) {
   return (
@@ -29,21 +30,37 @@ function StopReadingOutLoudButton({ onClick }: { onClick: () => void }) {
   );
 }
 
-export default function ReadOutLoudButton({ text }: { text: string }) {
+export default function ReadOutLoudButton({
+  text,
+  overrideVoiceName,
+  overrideReadingRate,
+}: {
+  text: string;
+  overrideVoiceName?: string;
+  overrideReadingRate?: number;
+}) {
   const voice = useVoiceSynthesis();
   const [isPlaying, setIsPlaying] = useState(false);
+  const selectedVoiceName = useSelectedVoiceName();
+  const { userProfile } = useUserContext();
+
+  useEffect(() => {
+    setIsPlaying(window.speechSynthesis.speaking);
+  }, []);
+
   const handlePlay = useCallback(async () => {
     setIsPlaying(true);
     try {
-      await voice.speak(text);
+      await voice.speak(text, { overrideVoiceName, overrideReadingRate });
     } finally {
       setIsPlaying(false);
     }
-  }, [text, voice]);
+  }, [voice, text, overrideVoiceName, overrideReadingRate]);
 
+  const key = `${selectedVoiceName.value}-${overrideVoiceName}-${userProfile.preferred_reading_rate}-${overrideReadingRate}-${text}`;
   return isPlaying ? (
-    <StopReadingOutLoudButton onClick={voice.stop} />
+    <StopReadingOutLoudButton key={`stop-${key}`} onClick={voice.stop} />
   ) : (
-    <StartReadOutLoudButton onClick={handlePlay} />
+    <StartReadOutLoudButton key={`start-${key}`} onClick={handlePlay} />
   );
 }

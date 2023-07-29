@@ -32,6 +32,7 @@ export default function HomeOptions(): React.ReactElement {
   }, [router]);
 
   if (state === "loading") {
+    console.log("home options loading...");
     return (
       <Center as='section' height='100%'>
         <Spinner />

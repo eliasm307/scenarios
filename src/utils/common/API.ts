@@ -1,7 +1,7 @@
 /* eslint-disable no-console */
 import type { UseToastOptions } from "@chakra-ui/react";
 import type { getSupabaseClient } from "../client/supabase";
-import type { MessageRow, SessionRow } from "../../types";
+import type { MessageRow, SessionRow, UserProfileRow } from "../../types";
 import type { Database } from "../../types/supabase";
 
 export default class API {
@@ -108,15 +108,15 @@ export default class API {
 
   userProfiles = {
     update: async ({
-      newName,
       userId,
+      updates,
     }: {
-      newName: string;
       userId: string;
+      updates: Partial<UserProfileRow>;
     }): Promise<void | UseToastOptions> => {
       const response = await this.supabase
         .from("user_profiles")
-        .update({ user_name: newName })
+        .update(updates)
         .eq("user_id", userId);
 
       if (response.error) {

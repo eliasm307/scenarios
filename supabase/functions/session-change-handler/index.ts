@@ -14,7 +14,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 import type { SessionRow, ScenarioRow } from "../../../src/types/databaseRows.ts";
-import { createScenarioImagePrompt, generateScenarios } from "../_utils/openai.ts";
+import { createScenarioImagePrompt, generateScenariosStream } from "../_utils/openai.ts";
 import { supabaseAdminClient } from "../_utils/supabase.ts";
 import { generateImageFromPrompt } from "../_utils/huggingFace.ts";
 
@@ -154,9 +154,38 @@ async function generateNewSessionScenarios(sessionId: number) {
   console.log("exampleScenarios", exampleScenarios);
 
   console.log("generating scenarios");
-  const newScenarios = await generateScenarios(exampleScenarios);
-  console.log("newScenarios", newScenarios);
+  const newScenariosStream = await generateScenariosStream(exampleScenarios);
+  console.log("newScenariosStream", newScenariosStream);
 
+  let newScenarios: string[] = [];
+
+  console.log("creating session update interval");
+  let count = 1;
+  const intervalId = setInterval(async () => {
+    console.log("session update interval call", count++);
+    const updateSessionResponse = await supabaseAdminClient
+      .from("sessions")
+      .update({ scenario_options: newScenarios, scenario_option_votes: {} })
+      .match({ id: sessionId });
+
+    if (updateSessionResponse.error) {
+      // eslint-disable-next-line no-console
+      console.error(
+        `Update session error: ${updateSessionResponse.error.message} (${updateSessionResponse.error.code}) \nDetails: ${updateSessionResponse.error.details} \nHint: ${updateSessionResponse.error.hint}`,
+      );
+      // eslint-disable-next-line @typescript-eslint/no-throw-literal
+      throw updateSessionResponse.error;
+    }
+  }, 100);
+
+  for await (const scenarios of newScenariosStream) {
+    newScenarios = scenarios;
+  }
+  clearInterval(intervalId);
+  console.log("scenarios stream ended, new scenarios", JSON.stringify(newScenarios, null, 2));
+
+  // make sure we are up to date
+  // ! not providing a way for UI to know when this is done, assuming users will wait for scenarios to finising generating
   const updateSessionResponse = await supabaseAdminClient
     .from("sessions")
     .update({ scenario_options: newScenarios, scenario_option_votes: {} })
@@ -170,7 +199,7 @@ async function generateNewSessionScenarios(sessionId: number) {
     // eslint-disable-next-line @typescript-eslint/no-throw-literal
     throw updateSessionResponse.error;
   }
-  console.log("updateSessionResponse", updateSessionResponse);
+  console.log("newScenarios", newScenarios);
 }
 
 // To invoke:

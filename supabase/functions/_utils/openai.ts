@@ -2,12 +2,18 @@
 /* eslint-disable import/no-unresolved */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable no-console */
+
+// todo migrate to OpenAI v4 when it's out of beta and supports esm.sh (npm: doesn't work for supabase, see https://github.com/openai/openai-node/discussions/182#discussioncomment-6442002)
+// import OpenAI from "npm:openai@4.0.0-beta.4";
 import type {
   ChatCompletionRequestMessage,
   CreateChatCompletionRequest,
   CreateChatCompletionResponse,
 } from "https://esm.sh/openai-edge@1.2.0";
 import { Configuration, OpenAIApi } from "https://esm.sh/openai-edge@1.2.0";
+import { OpenAIStream } from "https://esm.sh/ai@2.1.28";
+
+type Messages = ChatCompletionRequestMessage[];
 
 // Create an OpenAI API client (that's edge friendly!)
 const config = new Configuration({
@@ -17,7 +23,8 @@ const config = new Configuration({
 const openai = new OpenAIApi(config);
 
 const DEFAULT_CHAT_COMPLETION_REQUEST_CONFIG = {
-  model: "gpt-4",
+  // todo revert to gpt-4 when done testing
+  model: "gpt-3.5-turbo", // "gpt-4",
   temperature: 1,
   frequency_penalty: 0.5,
   presence_penalty: 0.5,
@@ -58,10 +65,12 @@ function createGenerateScenariosSystemMessage(): string {
   ].join("\n\n");
 }
 
-export async function generateScenarios(exampleScenarios: string[]): Promise<string[]> {
+export async function generateScenariosStream(
+  exampleScenarios: string[],
+): Promise<AsyncIterable<string[]>> {
   console.log("generateScenarios, creating chat completion...");
 
-  const messages: ChatCompletionRequestMessage[] = [
+  const messages: Messages = [
     {
       role: "system",
       content: [
@@ -74,20 +83,44 @@ export async function generateScenarios(exampleScenarios: string[]): Promise<str
   ];
   console.log("generateScenarios, messages", JSON.stringify(messages, null, 2));
 
-  const responseText = await getChatResponse(messages);
-  const scenarios = responseText
-    .split("---")
-    .map((s) => s.trim())
-    .filter((s) => s);
+  const chatResponseStream = await getChatResponseStream(messages);
+  const responseIterator = chatResponseStream[Symbol.asyncIterator]();
 
-  console.log("generateScenarios, scenarios", JSON.stringify(scenarios, null, 2));
-  return scenarios;
+  let scenarios: string[] = [];
+  return {
+    [Symbol.asyncIterator]() {
+      return {
+        async next(): Promise<IteratorResult<string[], string[]>> {
+          const { done, value } = await responseIterator.next();
+          if (done) {
+            console.log(
+              "generateScenariosStream done, scenarios",
+              JSON.stringify(scenarios, null, 2),
+              {
+                value: JSON.stringify(value, null, 2),
+                done,
+              },
+            );
+
+            return { value: scenarios, done: true };
+          }
+
+          scenarios = value
+            .split("---")
+            .map((s) => s.trim())
+            .filter((s) => s);
+
+          return { value: scenarios, done: false };
+        },
+      };
+    },
+  };
 }
 
 export async function createScenarioImagePrompt(scenario: string): Promise<string> {
   console.log("createScenarioImagePrompt, creating chat completion for scenario:", scenario);
 
-  const messages: ChatCompletionRequestMessage[] = [
+  const messages: Messages = [
     {
       role: "system",
       content: [
@@ -111,7 +144,39 @@ export async function createScenarioImagePrompt(scenario: string): Promise<strin
   return imagePrompt;
 }
 
-async function getChatResponse(messages: ChatCompletionRequestMessage[]): Promise<string> {
+async function getChatResponseStream(messages: Messages): Promise<AsyncIterable<string>> {
+  console.log("getChatResponseStream, creating chat completion...");
+  const response = await openai.createChatCompletion({
+    ...DEFAULT_CHAT_COMPLETION_REQUEST_CONFIG,
+    stream: true,
+    messages,
+  });
+
+  const stream = OpenAIStream(response);
+  const streamReader = stream.getReader();
+  const decoder = new TextDecoder();
+
+  console.log("getChatResponseStream, stream", stream);
+
+  let content = "";
+  return {
+    [Symbol.asyncIterator]() {
+      return {
+        async next(): Promise<IteratorResult<string, string>> {
+          const { value: rawChunk, done } = await streamReader.read();
+          if (done) {
+            console.log("getChatResponseStream, done", content);
+            streamReader.releaseLock();
+          }
+          content += decoder.decode(rawChunk);
+          return { value: content, done };
+        },
+      };
+    },
+  };
+}
+
+async function getChatResponse(messages: Messages): Promise<string> {
   const response = await openai
     .createChatCompletion({
       ...DEFAULT_CHAT_COMPLETION_REQUEST_CONFIG,

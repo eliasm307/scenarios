@@ -157,6 +157,8 @@ export default function ScenarioSelector(props: Props): React.ReactElement {
   const { isLoading, users, currentUser, optionVotes, scenarioOptions, handleVote } =
     useLogic(props);
 
+  console.log({ scenarioOptions: [...scenarioOptions] });
+
   if (isLoading) {
     return (
       <Center as='section' height='100%' display='flex' flexDirection='column' gap={3}>
@@ -182,7 +184,7 @@ export default function ScenarioSelector(props: Props): React.ReactElement {
             </Badge>
           ))}
       </HStack>
-      <Box overflow='auto' pb={6} flex={1}>
+      <Box key={scenarioOptions.join("+")} overflow='auto' pb={6} flex={1}>
         <ChoiceGrid
           choices={[
             ...scenarioOptions.map(
@@ -190,19 +192,30 @@ export default function ScenarioSelector(props: Props): React.ReactElement {
                 text,
                 onSelect: () => handleVote(optionId),
                 isSelected: optionVotes[currentUser.id] === optionId,
-                content: text ? (
-                  <OptionContent
-                    optionId={optionId}
-                    optionVotes={optionVotes}
-                    text={text}
-                    users={users}
-                    key={text}
-                  />
-                ) : (
-                  <Center as='section' height='100%' display='flex' flexDirection='column' gap={3}>
-                    <Spinner />
-                    <Heading fontSize='xl'>Loading scenario...</Heading>
-                  </Center>
+                content: (
+                  <Box key={text.trim() || optionId}>
+                    {text.trim() ? (
+                      <OptionContent
+                        optionId={optionId}
+                        optionVotes={optionVotes}
+                        text={text}
+                        users={users}
+                        key={text}
+                      />
+                    ) : (
+                      <Center
+                        key={`${optionId}-loading`}
+                        as='section'
+                        height='100%'
+                        display='flex'
+                        flexDirection='column'
+                        gap={3}
+                      >
+                        <Spinner />
+                        <Heading fontSize='xl'>Loading scenario...</Heading>
+                      </Center>
+                    )}
+                  </Box>
                 ),
               }),
             ),

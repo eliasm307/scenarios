@@ -163,21 +163,10 @@ async function generateNewSessionScenarios(sessionId: number) {
   let count = 1;
   const intervalId = setInterval(async () => {
     console.log("session update interval call", count++);
-    const updateSessionResponse = await supabaseAdminClient
-      .from("sessions")
-      .update({ scenario_options: newScenarios, scenario_option_votes: {} })
-      .match({ id: sessionId });
-
-    if (updateSessionResponse.error) {
-      // eslint-disable-next-line no-console
-      console.error(
-        `Update session error: ${updateSessionResponse.error.message} (${updateSessionResponse.error.code}) \nDetails: ${updateSessionResponse.error.details} \nHint: ${updateSessionResponse.error.hint}`,
-      );
-      // eslint-disable-next-line @typescript-eslint/no-throw-literal
-      throw updateSessionResponse.error;
-    }
+    await updateSessionScenarioOptions({ sessionId, newScenarios });
   }, 100);
 
+  console.log("starting scenarios stream");
   for await (const scenarios of newScenariosStream) {
     newScenarios = scenarios;
   }
@@ -186,6 +175,17 @@ async function generateNewSessionScenarios(sessionId: number) {
 
   // make sure we are up to date
   // ! not providing a way for UI to know when this is done, assuming users will wait for scenarios to finising generating
+  await updateSessionScenarioOptions({ sessionId, newScenarios });
+  console.log("newScenarios", newScenarios);
+}
+
+async function updateSessionScenarioOptions({
+  sessionId,
+  newScenarios,
+}: {
+  sessionId: number;
+  newScenarios: string[];
+}) {
   const updateSessionResponse = await supabaseAdminClient
     .from("sessions")
     .update({ scenario_options: newScenarios, scenario_option_votes: {} })
@@ -199,7 +199,6 @@ async function generateNewSessionScenarios(sessionId: number) {
     // eslint-disable-next-line @typescript-eslint/no-throw-literal
     throw updateSessionResponse.error;
   }
-  console.log("newScenarios", newScenarios);
 }
 
 // To invoke:

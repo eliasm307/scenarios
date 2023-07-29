@@ -9,7 +9,8 @@
     "lint": "next lint",
     "supabase:gen-types": "npx supabase gen types typescript --project-id \"dmjwwnpltjvsevmfujec\" --schema public | tee src/types/supabase.d.ts ",
     "postsupabase:gen-types": "prettier --write src/types/supabase.d.ts",
-    "supabase:deploy-functions": "supabase functions deploy && supabase secrets set --env-file ./.env.local",
+    "supabase:deploy-functions": "supabase functions deploy",
+    "supabase:deploy-secrets": "supabase secrets set --env-file ./.env.local",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

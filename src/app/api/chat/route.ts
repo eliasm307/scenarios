@@ -2,11 +2,10 @@
 import { OpenAIStream, StreamingTextResponse } from "ai";
 import type { ChatCompletionRequestMessage } from "openai-edge";
 import { DEFAULT_CHAT_COMPLETION_REQUEST_CONFIG, openai } from "../../../utils/server/openai";
+import { USE_DUMMY_CHAT_RESPONSE_STREAM } from "../../../utils/constants";
 
 // IMPORTANT! Set the runtime to edge
 export const runtime = "edge";
-
-const USE_DUMMY_STREAM = false;
 
 export type ChatRequestBody = {
   messages: ChatCompletionRequestMessage[];
@@ -20,7 +19,7 @@ export async function POST(req: Request) {
   console.log("Chat request body", data);
   const { messages, scenario } = data;
 
-  if (USE_DUMMY_STREAM) {
+  if (USE_DUMMY_CHAT_RESPONSE_STREAM) {
     return new StreamingTextResponse(createDummyStream());
   }
 
@@ -43,9 +42,12 @@ function formatMessage(message: ChatCompletionRequestMessage): ChatCompletionReq
 function createSystemMessage(scenario: string): ChatCompletionRequestMessage {
   return {
     role: "system",
-    content: `You are a smart, funny, and creative personality who is a world-class story-teller with over 20 years experience. You will be answering questions about the following scenario which defines a scenario with a choice: "${scenario}".
+    content: `
+    You are a smart, funny, and creative personality who is a world-class story-teller with over 20 years experience. You will be answering questions about the following scenario which defines a scenario with a choice: "${scenario}".
 
-    Your role is to give more details about the scenario so people can make a decision. IMPORTANT rules about your answers:
+    Your role is to give more details about the scenario so people can make a decision.
+
+    IMPORTANT rules about your answers:
     - Provide interesting, funny, and engaging answers to user questions, its your job to keep the user engaged and interested.
     - Do not provide answers that change the conditions of the original scenario, just create more details about the scenario but dont change its meaning.
     - Use your imagination but keep answers as short as possible
@@ -53,7 +55,13 @@ function createSystemMessage(scenario: string): ChatCompletionRequestMessage {
     - Do not guide the user towards a specific answer
     - IMPORTANT: do not answer questions that are not related to the scenario, just say you dont know.
     - Avoid repeating details about the scenario in answers.
-    - Do not be too dramatic or too boring.`,
+    - Do not be too dramatic or too boring.
+    - Do not use too much metaphors.
+    - Responses should be as short and direct as possible.
+    - Only use simple direct language, do not use complex words or sentences.
+    - Responses should be easy for anyone to understand.
+    - Paragraphs and Sentences should be separated by a new line.
+    `,
   };
 }
 

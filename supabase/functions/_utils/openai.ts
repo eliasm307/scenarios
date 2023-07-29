@@ -37,7 +37,24 @@ function createGenerateScenariosSystemMessage(): string {
 
   return [
     randomTemplate,
-    `You will be provided with example scenarios separated with "---", please create exactly 3 new scenarios that are a similar format to the examples provided where a person needs to make a difficult choice. Make the scenarios such that a right answer is not obvious and subjective. Please do not copy the examples, but use them as inspiration. Provide the scenarios you suggest separated by "---" and dont include any other content other than the suggested scenarios.`,
+    "",
+    `
+    IMPORTANT RULES:
+    - You will be provided with example scenarios separated with "---", please create exactly 3 new scenarios that are a similar format to the examples provided where a person needs to make a difficult choice.
+    - Make the scenarios such that a right answer is not obvious and subjective.
+    - Please do not copy the examples, but use them as inspiration.
+    - Provide the scenarios you suggest separated by "---" and dont include any other content other than the suggested scenarios.
+    - VERY IMPORTANT paragraphs and sentences in the response should always be separated by a blank line (ie \\n\\n) for example at the end of a sentence after a fullstop or a question mark.
+    - Paragraphs and Sentences should be separated by a gap.
+    - Scenarios should be less about technology and more about personalities, people, and life choices.
+    - Scenarios should be as short as possible, but still be interesting and engaging.
+    - Scenarios should be easy for anyone to understand.
+    - Scenarios should be as short and direct as possible.
+    - Only use simple direct language, do not use complex words or sentences.
+    - Do not use too much metaphors.
+    - Do not be too dramatic or too boring.
+    - Avoid repeating details about the scenario in answers.
+    `,
   ].join("\n\n");
 }
 
@@ -55,15 +72,15 @@ export async function generateScenarios(exampleScenarios: string[]): Promise<str
       ].join("\n"),
     },
   ];
-  console.log("generateScenarios, messages", messages);
+  console.log("generateScenarios, messages", JSON.stringify(messages, null, 2));
 
-  const responseText = await getResponse(messages);
+  const responseText = await getChatResponse(messages);
   const scenarios = responseText
     .split("---")
     .map((s) => s.trim())
     .filter((s) => s);
 
-  console.log("generateScenarios, scenarios", scenarios);
+  console.log("generateScenarios, scenarios", JSON.stringify(scenarios, null, 2));
   return scenarios;
 }
 
@@ -88,28 +105,28 @@ export async function createScenarioImagePrompt(scenario: string): Promise<strin
     },
   ];
 
-  const imagePrompt = await getResponse(messages);
+  const imagePrompt = await getChatResponse(messages);
   console.log("createScenarioImagePrompt, result imagePrompt", imagePrompt);
 
   return imagePrompt;
 }
 
-async function getResponse(messages: ChatCompletionRequestMessage[]): Promise<string> {
+async function getChatResponse(messages: ChatCompletionRequestMessage[]): Promise<string> {
   const response = await openai
     .createChatCompletion({
       ...DEFAULT_CHAT_COMPLETION_REQUEST_CONFIG,
       messages,
     })
     .catch((error) => {
-      console.error("generateScenarios, error", error);
+      console.error("generateScenarios, error", JSON.stringify(error, null, 2));
       throw error;
     });
 
-  console.log("generateScenarios, response", response);
+  console.log("generateScenarios, response", JSON.stringify(response, null, 2));
 
   if (!response.ok) {
     console.error("generateScenarios error", response.status, response.statusText, response);
-    console.error(await response.text());
+    console.error("error response text:", await response.text());
     throw Error("OpenAI request failed");
   }
 

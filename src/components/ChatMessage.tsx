@@ -64,7 +64,7 @@ function ChatMessage({ authorName, messageRow }: Props) {
     >
       <Flex flexDirection='column' width='inherit' gap={2} position='relative'>
         {messageRow.content
-          .split(".")
+          .split("\n")
           .filter((sentence) => sentence.trim())
           .map((sentence) => (
             <Text key={sentence}>{sentence}.</Text>

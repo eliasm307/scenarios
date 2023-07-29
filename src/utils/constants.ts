@@ -1,5 +1,7 @@
 import type { Message } from "ai";
 
+export const USE_DUMMY_CHAT_RESPONSE_STREAM = true;
+
 export const DUMMY_MESSAGES: Message[] = [
   { id: "1", role: "user", content: "hi" },
   {

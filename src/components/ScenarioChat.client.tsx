@@ -7,7 +7,6 @@
 import {
   Box,
   Button,
-  Center,
   Divider,
   Flex,
   Grid,
@@ -25,6 +24,7 @@ import {
   Tabs,
   Tbody,
   Td,
+  Text,
   Textarea,
   VStack,
   useToast,
@@ -465,9 +465,10 @@ export default function ScenarioChat(props: Props) {
         {imageUrl ? (
           <Image src={imageUrl} alt='Scenario image' fill objectFit='contain' />
         ) : (
-          <Center width='100%' height='100%'>
+          <VStack width='100%' marginTop={10} placeContent='center'>
             <Spinner />
-          </Center>
+            <Text>Loading cover image...</Text>
+          </VStack>
         )}
       </Box>
       {messageRows.map((messageRow, i) => {

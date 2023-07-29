@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "target": "es2020",
+
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "forceConsistentCasingInFileNames": true,
+    "noEmit": false,
+    "esModuleInterop": true,
+    "module": "CommonJS",
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "outDir": "out"
+  },
+  "exclude": ["node_modules", "_examples", "supabase", "out"]
+}

@@ -11,7 +11,10 @@
     "postsupabase:gen-types": "prettier --write src/types/supabase.d.ts",
     "supabase:deploy-functions": "supabase functions deploy",
     "supabase:deploy-secrets": "supabase secrets set --env-file ./.env.local",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "build:scripts": "tsc -p ./src/scripts",
+    "script:test-function-calling": "npm run build:scripts && node ./src/scripts/out/function-calling-demo.js",
+    "script:test-eager-scenarios": "npm run build:scripts && node ./src/scripts/out/eager-scenarios.js"
   },
   "dependencies": {
     "@chakra-ui/next-js": "^2.1.4",

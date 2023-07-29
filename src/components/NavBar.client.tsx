@@ -87,7 +87,7 @@ export default function NavBar(flexProps: FlexProps) {
   const userProfileModalDisclosure = useDisclosure();
   const user = useUserContext();
   return (
-    <Flex alignItems='center' px={3} py={2} m={0} gap={3} boxShadow='md' {...flexProps}>
+    <Flex as='nav' alignItems='center' px={3} py={2} m={0} gap={3} boxShadow='md' {...flexProps}>
       <Heading as='h1' flex={1} fontSize='2xl'>
         🔮 Scenarios
       </Heading>

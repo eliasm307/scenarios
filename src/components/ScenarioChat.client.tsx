@@ -388,6 +388,7 @@ function useAiChat({
   if (chat.isLoading) {
     const lastMessage = chat.messages.at(-1);
     if (lastMessage?.role === "assistant") {
+      const timestamp = new Date().toISOString();
       sortedMessageRows = [
         ...sortedMessageRows,
         {
@@ -396,20 +397,22 @@ function useAiChat({
           content: lastMessage.content,
           author_role: lastMessage.role,
           author_id: null,
-          inserted_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
+          inserted_at: timestamp,
+          updated_at: timestamp,
         },
       ];
     }
   }
 
+  const isLocked = isLocallyLocked || !!sessionLockedByUserId;
   return {
     chat: {
       ...chat,
       handleSubmit,
       // should not be used externally, prefer messageRows
       messages: [],
-      isLocked: isLocallyLocked || !!sessionLockedByUserId,
+      isLocked,
+      inputPlaceholderText: isLocked ? "AI typing..." : getPlaceholderText(chat),
     } satisfies UseChatHelpers & Record<string, unknown>,
     messageRows: sortedMessageRows,
     messagesListRef: messagesListRefNotifier,
@@ -432,7 +435,14 @@ export default function ScenarioChat(props: Props) {
   } = useAiChat(props);
 
   const messagesList = (
-    <Flex width='100%' ref={messagesListRef} direction='column' overflow='auto' tabIndex={0}>
+    <Flex
+      className='messages-list'
+      width='100%'
+      ref={messagesListRef}
+      direction='column'
+      overflow='auto'
+      tabIndex={0}
+    >
       {selectedScenarioImageUrl && (
         <Box position='relative' width='100%' minHeight='20rem'>
           <Image src={selectedScenarioImageUrl} alt='Scenario image' fill objectFit='contain' />
@@ -460,26 +470,30 @@ export default function ScenarioChat(props: Props) {
       if (e.key !== "Enter") {
         return;
       }
-      const hasUserInput = !!textAreaRef.current?.value;
       // allow for multiline input, ie shift enter which is not for confirming
       const isConfirmEnter = !e.shiftKey;
       if (isConfirmEnter) {
-        if (hasUserInput && formRef.current) {
-          // prevent new line on submit
-          e.preventDefault();
-          // submit user message only if there is input
+        // prevent new line on submit
+        e.preventDefault();
+        const hasUserInput = !!textAreaRef.current?.value;
+        if (hasUserInput && !chat.isLoading && !chat.isLocked && formRef.current) {
           formRef.current.requestSubmit();
-        } else {
-          // prevent new line on empty input
-          e.preventDefault();
         }
       }
     },
-    [formRef, textAreaRef],
+    [chat.isLoading, chat.isLocked, formRef, textAreaRef],
   );
 
   const controls = (
-    <Flex width='100%' gap={2} p={3} pt={1} pb={{ base: 0, md: 3 }} flexDirection='column'>
+    <Flex
+      className='chat-controls'
+      width='100%'
+      gap={2}
+      p={3}
+      pt={1}
+      pb={{ base: 0, md: 3 }}
+      flexDirection='column'
+    >
       <form ref={formRef} onSubmit={chat.handleSubmit}>
         <Flex gap={2} alignItems='center' flexDirection={{ base: "column", md: "row" }}>
           <Textarea
@@ -488,12 +502,12 @@ export default function ScenarioChat(props: Props) {
             variant='outline'
             ref={textAreaRef}
             resize='none'
-            disabled={chat.isLoading || chat.isLocked}
+            // dont disable as it prevents other users to keep typing while waiting for AI response
             isInvalid={!!chat.error}
             // minHeight='unset'
             // maxHeight='10rem'
             value={chat.input}
-            placeholder={chat.isLocked ? "AI typing..." : getPlaceholderText(chat)}
+            placeholder={chat.inputPlaceholderText}
             onChange={chat.handleInputChange}
             onKeyDown={handleInputKeyDown}
             spellCheck={false}
@@ -521,9 +535,9 @@ export default function ScenarioChat(props: Props) {
                 type='submit'
                 variant='ghost'
                 colorScheme='green'
-                isDisabled={!chat.input || !!props.sessionLockedByUserId}
+                isDisabled={!chat.input || chat.isLoading || chat.isLocked}
               >
-                Send
+                {chat.isLoading && chat.isLocked ? "AI typing..." : "Send"}
               </Button>
             )}
           </Flex>
@@ -533,7 +547,7 @@ export default function ScenarioChat(props: Props) {
   );
 
   const votingPanel = (
-    <VStack gap={3} width='100%' flex={1}>
+    <VStack className='voting-panel' gap={3} width='100%' flex={1}>
       <Heading size='md' width='100%' textAlign='center'>
         I think...
       </Heading>
@@ -559,11 +573,12 @@ export default function ScenarioChat(props: Props) {
 
   const chatPanel = (
     <Grid
+      className='chat-panel'
+      height='100%'
       overflow='hidden'
       gap={1}
       templateRows='1fr auto'
       pt={0}
-      height='100%'
       // width='100%'
       // minWidth='330px'
       // maxWidth='800px'
@@ -577,20 +592,30 @@ export default function ScenarioChat(props: Props) {
 
   // todo show the scenario panel and chat panel as tabs on mobile and side by side on larger screens
   return (
-    <Box height='100%' position='relative' padding={2} my={2} width='100%'>
+    <Box
+      className='scenario-chat'
+      height='100%'
+      overflow='hidden'
+      position='relative'
+      padding={2}
+      my={2}
+      width='100%'
+    >
       <Show above='md'>
         <Grid
           as='section'
           // height='100dvh'
           width='100%'
+          height='100%'
+          overflow='hidden'
           // templateRows='100%'
           templateColumns='1fr 1fr'
           position='absolute'
           inset={0}
           padding={2}
-          gap={2}
+          gap={5}
         >
-          <VStack m={3} gap={5} width='100%' maxHeight='100%'>
+          <VStack m={3} gap={5} width='100%' maxHeight='100%' overflowY='auto'>
             <ScenarioText scenarioText={selectedScenarioText} />
             <Divider />
             {votingPanel}

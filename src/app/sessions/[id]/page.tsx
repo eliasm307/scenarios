@@ -44,7 +44,7 @@ export default async function SessionPage({ params: { id } }: { params: { id: st
       inset={0}
     >
       <NavBar zIndex={2} />
-      <VStack zIndex={1} overflow='hidden'>
+      <VStack as='section' className='game-session-container' zIndex={1} overflow='hidden'>
         <GameSession
           currentUser={currentUser}
           existing={{

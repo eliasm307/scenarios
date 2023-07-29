@@ -52,7 +52,7 @@ serve(async (req) => {
       // make sure scenario image is loaded in outcome selection stage
     } else if (
       newSessionRow.stage === "scenario-outcome-selection" &&
-      !newSessionRow.selected_scenario_image_url
+      !newSessionRow.selected_scenario_image_path
     ) {
       console.log("no scenario image, generating new one");
       if (!newSessionRow.selected_scenario_id) {
@@ -104,16 +104,13 @@ async function generateScenarioImage(scenario: { id: number; text: string }) {
   }
   console.log("uploadImageResponse", uploadImageResponse);
 
-  // todo save the path in the db instead of the url and the client can create the url dynamically with size transformations etc
-  const {
-    data: { publicUrl: publicImageUrl },
-  } = supabaseAdminClient.storage.from("images").getPublicUrl(uploadImageResponse.data.path);
-  console.log("publicImageUrl", publicImageUrl);
+  const imagePath = uploadImageResponse.data.path;
+  console.log("imagePath", imagePath);
 
   await Promise.all([
     supabaseAdminClient
       .from("sessions")
-      .update({ selected_scenario_image_url: publicImageUrl })
+      .update({ selected_scenario_image_path: imagePath })
       .eq("selected_scenario_id", scenario.id)
       .then((response) => {
         if (response.error) {
@@ -126,8 +123,8 @@ async function generateScenarioImage(scenario: { id: number; text: string }) {
       }),
     supabaseAdminClient
       .from("scenarios")
-      .update({ image_url: publicImageUrl, image_prompt: imagePrompt })
-      .eq("selected_scenario_id", scenario.id)
+      .update({ image_path: imagePath, image_prompt: imagePrompt })
+      .eq("id", scenario.id)
       .then((response) => {
         if (response.error) {
           console.error(
@@ -174,7 +171,7 @@ async function generateNewSessionScenarios(sessionId: number) {
   console.log("scenarios stream ended, new scenarios", JSON.stringify(newScenarios, null, 2));
 
   // make sure we are up to date
-  // ! not providing a way for UI to know when this is done, assuming users will wait for scenarios to finising generating
+  // ! not providing a way for UI to know when this is done, assuming users will wait for scenarios to finishing generating
   await updateSessionScenarioOptions({ sessionId, newScenarios });
   console.log("newScenarios", newScenarios);
 }

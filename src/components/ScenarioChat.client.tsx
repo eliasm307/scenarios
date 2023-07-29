@@ -7,6 +7,7 @@
 import {
   Box,
   Button,
+  Center,
   Divider,
   Flex,
   Grid,
@@ -14,6 +15,7 @@ import {
   Radio,
   RadioGroup,
   Show,
+  Spinner,
   Tab,
   TabList,
   TabPanel,
@@ -49,7 +51,7 @@ type Props = {
   sessionLockedByUserId: string | null;
   outcomeVotes: NonNullable<SessionRow["scenario_outcome_votes"]>;
   broadcast: BroadcastFunction;
-  selectedScenarioImageUrl: string | null;
+  selectedScenarioImagePath: string | null;
   existing: {
     messageRows: MessageRow[];
   };
@@ -61,7 +63,7 @@ function useAiChat({
   currentUser,
   sessionLockedByUserId,
   sessionId,
-  selectedScenarioImageUrl,
+  selectedScenarioImagePath,
 }: Props) {
   const toast = useToast();
   const [messageRows, setMessageRows] = useState<MessageRow[]>(existing?.messageRows ?? []);
@@ -419,7 +421,7 @@ function useAiChat({
     textAreaRef,
     formRef,
     selectedScenarioText,
-    selectedScenarioImageUrl,
+    selectedScenarioImagePath,
   };
 }
 
@@ -431,8 +433,24 @@ export default function ScenarioChat(props: Props) {
     messagesListRef,
     textAreaRef,
     selectedScenarioText,
-    selectedScenarioImageUrl,
+    selectedScenarioImagePath,
   } = useAiChat(props);
+
+  const imageUrl = useMemo(() => {
+    if (!selectedScenarioImagePath) {
+      return null;
+    }
+    // console.log("image loader called", { path, width, quality });
+    // type ImageLoaderProps = Parameters<NonNullable<React.ComponentProps<typeof Image>["loader"]>>[0];
+    return getSupabaseClient().storage.from("images").getPublicUrl(selectedScenarioImagePath, {
+      // todo image resizing requires pro plan for now but if it becomes free convert this to an image loader for the Next image component
+      // transform: {
+      //   quality,
+      //   width,
+      //   resize: "contain",
+      // },
+    }).data.publicUrl;
+  }, [selectedScenarioImagePath]);
 
   const messagesList = (
     <Flex
@@ -443,11 +461,15 @@ export default function ScenarioChat(props: Props) {
       overflow='auto'
       tabIndex={0}
     >
-      {selectedScenarioImageUrl && (
-        <Box position='relative' width='100%' minHeight='20rem'>
-          <Image src={selectedScenarioImageUrl} alt='Scenario image' fill objectFit='contain' />
-        </Box>
-      )}
+      <Box position='relative' width='100%' minHeight='20rem'>
+        {imageUrl ? (
+          <Image src={imageUrl} alt='Scenario image' fill objectFit='contain' />
+        ) : (
+          <Center width='100%' height='100%'>
+            <Spinner />
+          </Center>
+        )}
+      </Box>
       {messageRows.map((messageRow, i) => {
         const isLastEntry = !messageRows[i + 1];
         const authorUser = props.users.find((u) => u.id === messageRow.author_id);

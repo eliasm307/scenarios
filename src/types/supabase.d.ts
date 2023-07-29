@@ -50,24 +50,24 @@ export interface Database {
         Row: {
           created_at: string;
           id: number;
+          image_path: string | null;
           image_prompt: string | null;
-          image_url: string | null;
           text: string;
           voted_by_user_ids: string[];
         };
         Insert: {
           created_at?: string;
           id?: number;
+          image_path?: string | null;
           image_prompt?: string | null;
-          image_url?: string | null;
           text: string;
           voted_by_user_ids?: string[];
         };
         Update: {
           created_at?: string;
           id?: number;
+          image_path?: string | null;
           image_prompt?: string | null;
-          image_url?: string | null;
           text?: string;
           voted_by_user_ids?: string[];
         };
@@ -82,7 +82,7 @@ export interface Database {
           scenario_options: string[] | null;
           scenario_outcome_votes: Json;
           selected_scenario_id: number | null;
-          selected_scenario_image_url: string | null;
+          selected_scenario_image_path: string | null;
           selected_scenario_text: string | null;
           stage: string;
         };
@@ -94,7 +94,7 @@ export interface Database {
           scenario_options?: string[] | null;
           scenario_outcome_votes?: Json;
           selected_scenario_id?: number | null;
-          selected_scenario_image_url?: string | null;
+          selected_scenario_image_path?: string | null;
           selected_scenario_text?: string | null;
           stage?: string;
         };
@@ -106,7 +106,7 @@ export interface Database {
           scenario_options?: string[] | null;
           scenario_outcome_votes?: Json;
           selected_scenario_id?: number | null;
-          selected_scenario_image_url?: string | null;
+          selected_scenario_image_path?: string | null;
           selected_scenario_text?: string | null;
           stage?: string;
         };
@@ -169,8 +169,8 @@ export interface Database {
         Returns: {
           created_at: string;
           id: number;
+          image_path: string | null;
           image_prompt: string | null;
-          image_url: string | null;
           text: string;
           voted_by_user_ids: string[];
         }[];

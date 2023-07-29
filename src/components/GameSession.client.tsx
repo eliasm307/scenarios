@@ -362,7 +362,7 @@ export default function GameSession(props: Props): React.ReactElement {
         currentUser={currentUser}
         sessionId={session.id}
         sessionLockedByUserId={session.messaging_locked_by_user_id}
-        selectedScenarioImageUrl={session.selected_scenario_image_url}
+        selectedScenarioImagePath={session.selected_scenario_image_path}
         users={users}
         outcomeVotes={session.scenario_outcome_votes || {}}
         broadcast={broadcast}

@@ -13,6 +13,7 @@ export type SessionUser = {
   isCurrentUser: boolean;
   preferredVoiceName?: string;
   preferredVoiceRate?: number;
+  isTyping?: boolean;
 };
 
 export type BroadcastEventFrom<TAction extends { event: string }> = TAction & {

@@ -165,3 +165,16 @@ export function useSelectedVoiceName() {
     set: setPreferredVoiceName,
   };
 }
+
+// for debugging
+export function useFlipFlop() {
+  const [flipFlop, setFlipFlop] = useState(false);
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setFlipFlop((prev) => !prev);
+    }, 2000);
+    return () => clearInterval(interval);
+  }, []);
+
+  return flipFlop;
+}

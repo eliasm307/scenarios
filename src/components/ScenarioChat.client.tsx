@@ -5,12 +5,14 @@
 "use client";
 
 import {
+  Badge,
   Box,
   Button,
   Center,
   Divider,
   Flex,
   Grid,
+  HStack,
   Heading,
   Radio,
   RadioGroup,
@@ -66,6 +68,7 @@ function useAiChat({
   sessionLockedByUserId,
   sessionId,
   selectedScenarioImagePath,
+  broadcast,
 }: Props) {
   const toast = useToast();
   const [messageRows, setMessageRows] = useState<MessageRow[]>(existing?.messageRows ?? []);
@@ -365,6 +368,71 @@ function useAiChat({
     }
   }, [chat.isLoading]);
 
+  useEffect(() => {
+    let typingTimeoutId: ReturnType<typeof setTimeout> | undefined;
+    let coolingDownTimeoutId: ReturnType<typeof setTimeout> | undefined;
+
+    function handleKeydown() {
+      clearTimeout(typingTimeoutId);
+      typingTimeoutId = setTimeout(() => {
+        broadcast({
+          event: "TypingStateChanged",
+          data: {
+            isTyping: false,
+            userId: currentUser.id,
+          },
+        });
+      }, 3000);
+
+      if (typeof coolingDownTimeoutId === "number") {
+        return;
+      }
+
+      // for rate limiting
+      coolingDownTimeoutId = setTimeout(() => {
+        coolingDownTimeoutId = undefined;
+      }, 250);
+
+      broadcast({
+        event: "TypingStateChanged",
+        data: {
+          isTyping: true,
+          userId: currentUser.id,
+        },
+      });
+    }
+
+    // not implementing coolingDown because it would be impressive if
+    // someone manages to blur and focus so fast to affect rate limiting
+    function handleBlur() {
+      clearTimeout(typingTimeoutId);
+      broadcast({
+        event: "TypingStateChanged",
+        data: {
+          isTyping: false,
+          userId: currentUser.id,
+        },
+      });
+    }
+
+    const textAreaEl = textAreaRef.current;
+    textAreaEl?.addEventListener("keydown", handleKeydown);
+    textAreaEl?.addEventListener("blur", handleBlur);
+
+    return () => {
+      broadcast({
+        event: "TypingStateChanged",
+        data: {
+          isTyping: false, // make sure listeners aren't left hanging with a typing state
+          userId: currentUser.id,
+        },
+      });
+      clearTimeout(typingTimeoutId);
+      textAreaEl?.removeEventListener("keydown", handleKeydown);
+      textAreaEl?.removeEventListener("blur", handleBlur);
+    };
+  }, [broadcast, currentUser.id, textAreaRef]);
+
   // create chat response when user message is added
   useEffect(() => {
     const lastMessage = messageRows.at(-1);
@@ -509,6 +577,8 @@ export default function ScenarioChat(props: Props) {
     [chat.isLoading, chat.isLocked, formRef, textAreaRef],
   );
 
+  const typingUsers = props.users.filter((user) => user.isTyping && !user.isCurrentUser);
+
   const controls = (
     <Flex
       className='chat-controls'
@@ -518,7 +588,17 @@ export default function ScenarioChat(props: Props) {
       pt={1}
       pb={{ base: 0, md: 3 }}
       flexDirection='column'
+      position='relative'
     >
+      <HStack width='100%' alignItems='center' minHeight={5} wrap='wrap'>
+        {typingUsers.map((typingUser) => {
+          return (
+            <Badge key={typingUser.id} colorScheme='gray'>
+              &quot;{typingUser.name}&quot; is typing...
+            </Badge>
+          );
+        })}
+      </HStack>
       <form ref={formRef} onSubmit={chat.handleSubmit}>
         <Flex gap={2} alignItems='center' flexDirection={{ base: "column", md: "row" }}>
           <Textarea
@@ -834,7 +914,6 @@ function OutcomeVotingTable({ users, sessionId, outcomeVotes, currentUser, broad
     ],
   );
 
-  console.log("users", users);
   return (
     <TableContainer>
       <Table variant='unstyled'>

@@ -48,12 +48,23 @@ type LocalAction =
 
 enum BroadcastEventName {
   Toast = "Toast",
+  TypingStateChanged = "TypingStateChanged",
 }
 
-type BroadcastAction = {
-  event: `${BroadcastEventName.Toast}`;
-  data: UseToastOptions;
+type TypingStateChangedPayload = {
+  isTyping: boolean;
+  userId: string;
 };
+
+type BroadcastAction =
+  | {
+      event: `${BroadcastEventName.Toast}`;
+      data: UseToastOptions;
+    }
+  | {
+      event: `${BroadcastEventName.TypingStateChanged}`;
+      data: TypingStateChangedPayload;
+    };
 
 type BroadcastEvent = BroadcastEventFrom<BroadcastAction>;
 
@@ -104,6 +115,18 @@ function reducer(state: State, action: Action): State {
       return { ...state, currentUserHasJoinedSession: action.data };
     }
 
+    case BroadcastEventName.TypingStateChanged: {
+      return {
+        ...state,
+        users: state.users.map((user) => {
+          if (user.id === action.data.userId) {
+            return { ...user, isTyping: action.data.isTyping };
+          }
+          return user;
+        }),
+      };
+    }
+
     default:
       throw new Error(`Unknown action type ${(action as Action).event}`);
   }
@@ -131,6 +154,25 @@ function useLogic({ existing, currentUser }: Props) {
   }, [state]);
 
   const channelRef = useRef<RealtimeChannel>({} as RealtimeChannel);
+
+  const broadcast: BroadcastFunction = useCallback(
+    async (event) => {
+      const result = await channelRef.current.send({
+        ...event,
+        type: REALTIME_LISTEN_TYPES.BROADCAST,
+      });
+      if (result !== "ok") {
+        console.error("broadcast error", result);
+        toast({
+          status: "error",
+          title: "Error sending broadcast message",
+          description: result,
+        });
+      }
+    },
+    [toast],
+  );
+
   useEffect(() => {
     const sessionKey = `Session-${state.session.id}`;
     const supabase = getSupabaseClient();
@@ -252,7 +294,17 @@ function useLogic({ existing, currentUser }: Props) {
         toast(message.data);
         return;
       }
-      throw new Error(`Unknown broadcast event ${message.event}`);
+      if (message.event === BroadcastEventName.TypingStateChanged) {
+        send(message);
+        return;
+      }
+      throw new Error(
+        `Unknown broadcast event "${(message as BroadcastEvent).event}" with data ${JSON.stringify(
+          message,
+          null,
+          2,
+        )}`,
+      );
     }
 
     Object.values(BroadcastEventName).forEach((event) => {
@@ -317,24 +369,6 @@ function useLogic({ existing, currentUser }: Props) {
     const currentUserHasJoined = state.users.some((user) => user.id === currentUser.id);
     send({ event: "currentUserHasJoinedSession", data: currentUserHasJoined });
   }, [currentUser, send, state.currentUserHasJoinedSession, state.users]);
-
-  const broadcast: BroadcastFunction = useCallback(
-    async (event) => {
-      const result = await channelRef.current.send({
-        ...event,
-        type: REALTIME_LISTEN_TYPES.BROADCAST,
-      });
-      if (result !== "ok") {
-        console.error("broadcast error", result);
-        toast({
-          status: "error",
-          title: "Error sending broadcast message",
-          description: result,
-        });
-      }
-    },
-    [toast],
-  );
 
   return {
     currentUser,

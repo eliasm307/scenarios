@@ -590,7 +590,14 @@ export default function ScenarioChat(props: Props) {
       flexDirection='column'
       position='relative'
     >
-      <HStack width='100%' alignItems='center' minHeight={5} wrap='wrap'>
+      <HStack
+        className='chat-typing-indicators'
+        width='100%'
+        alignItems='center'
+        minHeight={5}
+        wrap='wrap'
+      >
+        {(chat.isLocked || chat.isLoading) && <Badge colorScheme='green'>AI is typing...</Badge>}
         {typingUsers.map((typingUser) => {
           return (
             <Badge key={typingUser.id} colorScheme='gray'>

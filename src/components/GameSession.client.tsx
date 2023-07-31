@@ -6,7 +6,7 @@
 
 import React, { useCallback, useEffect, useReducer, useRef } from "react";
 import type { UseToastOptions } from "@chakra-ui/react";
-import { Center, Spinner, Text, useToast } from "@chakra-ui/react";
+import { Center, Spinner, Text } from "@chakra-ui/react";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { REALTIME_LISTEN_TYPES, REALTIME_PRESENCE_LISTEN_EVENTS } from "@supabase/supabase-js";
 import ScenarioSelector from "./ScenarioSelector.client";
@@ -394,7 +394,7 @@ export default function GameSession(props: Props): React.ReactElement {
   if (!currentUserHasJoinedSession) {
     console.log("waiting for user to join session...");
     return (
-      <Center as='section' height='100%'>
+      <Center key='waiting-for-user-to-join' as='section' height='100%'>
         <Spinner />
       </Center>
     );
@@ -402,8 +402,9 @@ export default function GameSession(props: Props): React.ReactElement {
 
   if (users.length < 2) {
     return (
-      <Center as='section' height='100%'>
-        <Text>Waiting for more players to join...</Text>
+      <Center key='waiting for more players' as='section' height='100%' flexDirection='column'>
+        <Text fontSize='2xl'>Waiting for more players to join...</Text>
+        <Text>(Players can join if you give them the link to this page)</Text>
       </Center>
     );
   }
@@ -417,6 +418,7 @@ export default function GameSession(props: Props): React.ReactElement {
 
     return (
       <ScenarioSelector
+        key='scenario-selector'
         scenarioOptions={scenarioOptions}
         optionVotes={session.scenario_option_votes}
         currentUser={currentUser}
@@ -431,15 +433,16 @@ export default function GameSession(props: Props): React.ReactElement {
   if (session.stage === "scenario-outcome-selection") {
     return (
       <ScenarioChat
+        key='scenario-chat'
         selectedScenarioText={session.selected_scenario_text}
         existing={props.existing}
         currentUser={currentUser}
         sessionId={session.id}
-        sessionLockedByUserId={session.messaging_locked_by_user_id}
         selectedScenarioImagePath={session.selected_scenario_image_path}
         users={users}
         outcomeVotes={session.scenario_outcome_votes || {}}
         broadcast={broadcast}
+        aiIsResponding={session.ai_is_responding}
       />
     );
   }
@@ -450,6 +453,7 @@ export default function GameSession(props: Props): React.ReactElement {
     }
     return (
       <OutcomesReveal
+        key='outcomes-reveal'
         sessionId={session.id}
         currentUser={currentUser}
         outcomeVotes={session.scenario_outcome_votes}

@@ -130,28 +130,28 @@ async function generateResponse(newMessageRow: MessageRow) {
       }),
   ]);
 
-  if (createResponseMessageResponse.error) {
-    console.error("error creating response message row", createResponseMessageResponse.error);
-    throw createResponseMessageResponse.error;
-  }
-
   const responseMessageStream = await createScenarioChatResponseStream({
     chatMessages: sessionChatMessages,
     scenario: sessionScenario,
   });
 
-  // only create a response message if everyting went well and we are ready to stream the message
+  // only create a response message if everything went well and we are ready to stream the message
   const createResponseMessageResponse = await supabaseAdminClient
     .from("messages")
     .insert({
       author_id: null,
       author_role: "assistant",
-      ai_model_id: ACTIVE_OPENAI_MODEL,
+      author_ai_model_id: ACTIVE_OPENAI_MODEL,
       content: "",
       session_id: newMessageRow.session_id,
     } satisfies Omit<Required<MessageRow>, "id" | "inserted_at" | "updated_at">)
     .select("id")
     .single();
+
+  if (createResponseMessageResponse.error) {
+    console.error("error creating response message row", createResponseMessageResponse.error);
+    throw createResponseMessageResponse.error;
+  }
 
   try {
     await streamAndPersist({

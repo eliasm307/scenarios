@@ -9,5 +9,7 @@
   "deno.inlayHints.parameterTypes.enabled": true,
   "deno.inlayHints.variableTypes.enabled": true,
   "deno.suggest.completeFunctionCalls": true,
-  "deno.enable": true
+  "deno.enable": true,
+  "deno.lint": true,
+  "deno.unstable": false
 }

@@ -2,6 +2,7 @@
 /* eslint-disable import/no-unresolved */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable no-console */
+
 // Follow this setup guide to integrate the Deno language server with your editor:
 // https://deno.land/manual/getting_started/setup_your_environment
 // This enables autocomplete, go to definition, etc.
@@ -10,33 +11,21 @@
 // see https://supabase.com/docs/guides/functions/auth
 // structuring: https://supabase.com/docs/guides/functions/quickstart#organizing-your-edge-functions
 
-// eslint-disable-next-line import/no-unresolved
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-
 import type { SessionRow, ScenarioRow } from "../../../src/types/databaseRows.ts";
-import { createScenarioImagePrompt, generateScenariosStream } from "../_utils/openai.ts";
-import { supabaseAdminClient } from "../_utils/supabase.ts";
-import { generateImageFromPrompt } from "../_utils/huggingFace.ts";
-
-// eslint-disable-next-line no-console
-console.log("Hello from Functions!");
-
-interface WebhookPayload {
-  type: "INSERT" | "UPDATE" | "DELETE";
-  table: string;
-  record: SessionRow;
-  schema: "public";
-  old_record: null | SessionRow;
-}
+import { isRequestAuthorised, supabaseAdminClient } from "../_utils/supabase.ts";
+import type { GenericWebhookPayload } from "../_utils/types.ts";
+import { ACTIVE_TEXT_TO_IMAGE_MODEL_ID, createImageFromPrompt } from "../_utils/huggingFace.ts";
+import { createScenariosStream } from "../_utils/openai/createScenarios.ts";
+import { createScenarioImagePrompt } from "../_utils/openai/createScenarioImagePrompt.ts";
+import { streamAndPersist } from "../_utils/general.ts";
 
 serve(async (req) => {
   try {
-    const payload: WebhookPayload = await req.json();
-    console.log("handling event payload", payload);
+    const payload: GenericWebhookPayload<SessionRow> = await req.json();
+    console.log("handling session event payload", JSON.stringify(payload, null, 2));
 
-    if (
-      req.headers.get("Authorization") !== `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`
-    ) {
+    if (!isRequestAuthorised(req)) {
       console.log("unauthorized");
       return new Response(JSON.stringify({ message: "unauthorized" }), {
         headers: { "Content-Type": "application/json" },
@@ -71,23 +60,28 @@ serve(async (req) => {
       console.log("nothing to do");
     }
 
-    console.log("done");
+    console.log("done handling session event payload", JSON.stringify(payload, null, 2));
     return new Response(JSON.stringify({ message: "ok" }), {
       headers: { "Content-Type": "application/json" },
       status: 200,
     });
+
+    // handle general webhook errors
   } catch (error) {
     console.error("general webhook error", error);
-    return new Response(JSON.stringify({ error: error.message }), {
-      headers: { "Content-Type": "application/json" },
-      status: 400,
-    });
+    return new Response(
+      JSON.stringify({ error: error instanceof Error ? error.stack : String(error) }),
+      {
+        headers: { "Content-Type": "application/json" },
+        status: 500,
+      },
+    );
   }
 });
 
 async function generateScenarioImage(scenario: { id: number; text: string }) {
   const imagePrompt = await createScenarioImagePrompt(scenario.text);
-  const imageBlob = await generateImageFromPrompt(imagePrompt);
+  const imageBlob = await createImageFromPrompt(imagePrompt);
 
   const uploadImageResponse = await supabaseAdminClient.storage
     .from("images")
@@ -123,7 +117,11 @@ async function generateScenarioImage(scenario: { id: number; text: string }) {
       }),
     supabaseAdminClient
       .from("scenarios")
-      .update({ image_path: imagePath, image_prompt: imagePrompt })
+      .update({
+        image_path: imagePath,
+        image_prompt: imagePrompt,
+        image_creator_ai_model_id: ACTIVE_TEXT_TO_IMAGE_MODEL_ID,
+      })
       .eq("id", scenario.id)
       .then((response) => {
         if (response.error) {
@@ -151,41 +149,28 @@ async function generateNewSessionScenarios(sessionId: number) {
   console.log("exampleScenarios", exampleScenarios);
 
   console.log("generating scenarios");
-  const newScenariosStream = await generateScenariosStream(exampleScenarios);
+  const newScenariosStream = await createScenariosStream(exampleScenarios);
   console.log("newScenariosStream", newScenariosStream);
 
-  let newScenarios: string[] = [];
-
-  console.log("creating session update interval");
-  let count = 1;
-  const intervalId = setInterval(async () => {
-    console.log("session update interval call", count++);
-    await updateSessionScenarioOptions({ sessionId, newScenarios });
-  }, 100);
-
-  console.log("starting scenarios stream");
-  for await (const scenarios of newScenariosStream) {
-    newScenarios = scenarios;
-  }
-  clearInterval(intervalId);
-  console.log("scenarios stream ended, new scenarios", JSON.stringify(newScenarios, null, 2));
-
-  // make sure we are up to date
-  // ! not providing a way for UI to know when this is done, assuming users will wait for scenarios to finishing generating
-  await updateSessionScenarioOptions({ sessionId, newScenarios });
-  console.log("newScenarios", newScenarios);
+  await streamAndPersist({
+    persistenceEntityName: "session",
+    streamValueName: "new session scenario options",
+    stream: newScenariosStream,
+    persistLatestValue: (latestScenarios) =>
+      latestScenarios && updateSessionScenarioOptions({ sessionId, latestScenarios }),
+  });
 }
 
 async function updateSessionScenarioOptions({
   sessionId,
-  newScenarios,
+  latestScenarios,
 }: {
   sessionId: number;
-  newScenarios: string[];
+  latestScenarios: string[];
 }) {
   const updateSessionResponse = await supabaseAdminClient
     .from("sessions")
-    .update({ scenario_options: newScenarios, scenario_option_votes: {} })
+    .update({ scenario_options: latestScenarios, scenario_option_votes: {} })
     .match({ id: sessionId });
 
   if (updateSessionResponse.error) {

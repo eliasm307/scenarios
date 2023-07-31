@@ -84,7 +84,6 @@ export interface Database {
           ai_is_responding: boolean;
           created_at: string;
           id: number;
-          messaging_locked_by_user_id: string | null;
           scenario_option_votes: Json;
           scenario_options: string[] | null;
           scenario_outcome_votes: Json;
@@ -97,7 +96,6 @@ export interface Database {
           ai_is_responding?: boolean;
           created_at?: string;
           id?: number;
-          messaging_locked_by_user_id?: string | null;
           scenario_option_votes?: Json;
           scenario_options?: string[] | null;
           scenario_outcome_votes?: Json;
@@ -110,7 +108,6 @@ export interface Database {
           ai_is_responding?: boolean;
           created_at?: string;
           id?: number;
-          messaging_locked_by_user_id?: string | null;
           scenario_option_votes?: Json;
           scenario_options?: string[] | null;
           scenario_outcome_votes?: Json;
@@ -120,12 +117,6 @@ export interface Database {
           stage?: string;
         };
         Relationships: [
-          {
-            foreignKeyName: "sessions_messaging_locked_by_user_id_fkey";
-            columns: ["messaging_locked_by_user_id"];
-            referencedRelation: "users";
-            referencedColumns: ["id"];
-          },
           {
             foreignKeyName: "sessions_selected_scenario_id_fkey";
             columns: ["selected_scenario_id"];

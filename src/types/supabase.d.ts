@@ -5,6 +5,7 @@ export interface Database {
     Tables: {
       messages: {
         Row: {
+          author_ai_model_id: string | null;
           author_id: string | null;
           author_role: string;
           content: string;
@@ -14,6 +15,7 @@ export interface Database {
           updated_at: string;
         };
         Insert: {
+          author_ai_model_id?: string | null;
           author_id?: string | null;
           author_role: string;
           content: string;
@@ -23,6 +25,7 @@ export interface Database {
           updated_at?: string;
         };
         Update: {
+          author_ai_model_id?: string | null;
           author_id?: string | null;
           author_role?: string;
           content?: string;
@@ -50,6 +53,7 @@ export interface Database {
         Row: {
           created_at: string;
           id: number;
+          image_creator_ai_model_id: string | null;
           image_path: string | null;
           image_prompt: string | null;
           text: string;
@@ -58,6 +62,7 @@ export interface Database {
         Insert: {
           created_at?: string;
           id?: number;
+          image_creator_ai_model_id?: string | null;
           image_path?: string | null;
           image_prompt?: string | null;
           text: string;
@@ -66,6 +71,7 @@ export interface Database {
         Update: {
           created_at?: string;
           id?: number;
+          image_creator_ai_model_id?: string | null;
           image_path?: string | null;
           image_prompt?: string | null;
           text?: string;
@@ -75,6 +81,7 @@ export interface Database {
       };
       sessions: {
         Row: {
+          ai_is_responding: boolean;
           created_at: string;
           id: number;
           messaging_locked_by_user_id: string | null;
@@ -87,6 +94,7 @@ export interface Database {
           stage: string;
         };
         Insert: {
+          ai_is_responding?: boolean;
           created_at?: string;
           id?: number;
           messaging_locked_by_user_id?: string | null;
@@ -99,6 +107,7 @@ export interface Database {
           stage?: string;
         };
         Update: {
+          ai_is_responding?: boolean;
           created_at?: string;
           id?: number;
           messaging_locked_by_user_id?: string | null;
@@ -172,6 +181,7 @@ export interface Database {
         Returns: {
           created_at: string;
           id: number;
+          image_creator_ai_model_id: string | null;
           image_path: string | null;
           image_prompt: string | null;
           text: string;

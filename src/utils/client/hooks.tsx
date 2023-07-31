@@ -3,7 +3,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useToast } from "@chakra-ui/react";
+import type { UseToastOptions } from "@chakra-ui/react";
+import { useToast as useToastOriginal } from "@chakra-ui/react";
 import { useUserContext } from "../../app/providers";
 import LocalStorage from "./LocalStorage";
 
@@ -28,7 +29,7 @@ function stopSpeaking() {
 export function useVoiceSynthesis() {
   const { userProfile } = useUserContext();
   const selectedVoiceName = useSelectedVoiceName();
-  const toast = useToast();
+  const toast = useCustomToast();
   const rate = userProfile.preferred_reading_rate ?? 1;
 
   // todo fix this so it can adjust if voices change, however how do they change?
@@ -177,4 +178,24 @@ export function useFlipFlop() {
   }, []);
 
   return flipFlop;
+}
+
+function createToastId(options: UseToastOptions): string {
+  return `${options.title || ""}-${options.description || ""}`;
+}
+
+export function useCustomToast(hookOptions?: UseToastOptions) {
+  const toast = useToastOriginal(hookOptions);
+
+  return (options: UseToastOptions) => {
+    const id = createToastId(options);
+    const isActive = toast.isActive(id);
+    if (isActive) {
+      return; // prevent duplicate toasts
+    }
+    toast({
+      id,
+      ...options,
+    });
+  };
 }

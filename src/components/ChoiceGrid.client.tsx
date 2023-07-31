@@ -49,7 +49,7 @@ function ChoiceCard({ text, onSelect, isSelected, content }: ChoiceConfig) {
         placeContent='center'
       >
         {content ?? (
-          <Text align='center' marginTop='auto' display='block'>
+          <Text align='center' margin='auto' display='block'>
             {text}
           </Text>
         )}

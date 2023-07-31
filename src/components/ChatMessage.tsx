@@ -12,6 +12,13 @@ function ChatMessage({ authorName, messageRow }: Props) {
   const senderAvatarSrc = isUser ? "" : "/assets/openai.png";
   if (messageRow.author_role === "assistant") {
     authorName = "AI";
+
+    const isNotGpt4 =
+      messageRow.author_ai_model_id && !messageRow.author_ai_model_id?.startsWith("gpt-4");
+    if (isNotGpt4) {
+      // just so we know when we are not using GPT 4
+      authorName += ` (${messageRow.author_ai_model_id})`;
+    }
   }
 
   const headerRow = (

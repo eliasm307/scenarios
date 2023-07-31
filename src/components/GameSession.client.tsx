@@ -1,3 +1,4 @@
+/* eslint-disable functional-core/purity */
 /* eslint-disable no-console */
 // example https://github.com/supabase/realtime/blob/main/demo/pages/%5B...slug%5D.tsx
 // example https://github.com/supabase/supabase/blob/master/examples/slack-clone/nextjs-slack-clone/lib/Store.js
@@ -133,6 +134,75 @@ function reducer(state: State, action: Action): State {
   }
 }
 
+function useThrottledBroadcast({
+  channelRef,
+}: {
+  channelRef: React.MutableRefObject<RealtimeChannel>;
+}): BroadcastFunction {
+  const toast = useCustomToast();
+  const broadcastQueueRef = useRef<BroadcastAction[]>([]);
+  const broadcastIntervalIdRef = useRef<number | null>(null);
+
+  return useCallback(
+    async (event) => {
+      console.log("broadcast event request received", event, {
+        currentQueue: broadcastQueueRef.current,
+        currentIntervalId: broadcastIntervalIdRef.current,
+      });
+
+      broadcastQueueRef.current.push(event);
+      if (typeof broadcastIntervalIdRef.current === "number") {
+        console.log("broadcast interval already running");
+        return; // interval already running
+      }
+      console.log("broadcast interval not running, starting");
+
+      // setup a new interval
+      broadcastIntervalIdRef.current = window.setInterval(async () => {
+        const nextEvent = broadcastQueueRef.current.shift();
+        console.log("broadcast interval tick", {
+          nextEvent,
+          currentQueue: broadcastQueueRef.current,
+        });
+        if (!broadcastQueueRef.current?.length) {
+          console.log("broadcast queue empty, clearing interval");
+          // no more scheduled events to send
+          if (broadcastIntervalIdRef.current) {
+            window.clearInterval(broadcastIntervalIdRef.current);
+          }
+          broadcastIntervalIdRef.current = null;
+        }
+
+        if (!nextEvent) {
+          console.warn("no next event, skipping");
+          return;
+        }
+
+        console.log("broadcasting event", nextEvent);
+        const result = await channelRef.current
+          .send({
+            ...nextEvent,
+            type: REALTIME_LISTEN_TYPES.BROADCAST,
+          })
+          .catch((error) => {
+            console.error("broadcast error", { event: nextEvent, error });
+          });
+
+        if (result !== "ok") {
+          console.error("broadcast error", { event: nextEvent, result });
+          toast({
+            status: "error",
+            title: "Error sending broadcast message",
+            description: result || "",
+          });
+        }
+        console.log("broadcast event sent", nextEvent);
+      }, 100);
+    },
+    [channelRef, toast],
+  );
+}
+
 function useLogic({ existing, currentUser }: Props) {
   const toast = useCustomToast();
   const [state, send] = useReducer(reducer, null, () => {
@@ -156,23 +226,10 @@ function useLogic({ existing, currentUser }: Props) {
 
   const channelRef = useRef<RealtimeChannel>({} as RealtimeChannel);
 
-  const broadcast: BroadcastFunction = useCallback(
-    async (event) => {
-      const result = await channelRef.current.send({
-        ...event,
-        type: REALTIME_LISTEN_TYPES.BROADCAST,
-      });
-      if (result !== "ok") {
-        console.error("broadcast error", result);
-        toast({
-          status: "error",
-          title: "Error sending broadcast message",
-          description: result,
-        });
-      }
-    },
-    [toast],
-  );
+  // todo update this to prevent rate limiting implicitly
+  const broadcast = useThrottledBroadcast({
+    channelRef,
+  });
 
   useEffect(() => {
     const sessionKey = `Session-${state.session.id}`;

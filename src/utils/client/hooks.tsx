@@ -187,15 +187,18 @@ function createToastId(options: UseToastOptions): string {
 export function useCustomToast(hookOptions?: UseToastOptions) {
   const toast = useToastOriginal(hookOptions);
 
-  return (options: UseToastOptions) => {
-    const id = createToastId(options);
-    const isActive = toast.isActive(id);
-    if (isActive) {
-      return; // prevent duplicate toasts
-    }
-    toast({
-      id,
-      ...options,
-    });
-  };
+  return useCallback(
+    (options: UseToastOptions) => {
+      const id = createToastId(options);
+      const isActive = toast.isActive(id);
+      if (isActive) {
+        return; // prevent duplicate toasts
+      }
+      toast({
+        id,
+        ...options,
+      });
+    },
+    [toast],
+  );
 }

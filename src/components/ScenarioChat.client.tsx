@@ -30,11 +30,8 @@ import {
   Text,
   Textarea,
   VStack,
-  useToast,
 } from "@chakra-ui/react";
-import type { Message } from "ai";
 import type { UseChatHelpers } from "ai/react";
-import { useChat } from "ai/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { REALTIME_LISTEN_TYPES } from "@supabase/supabase-js";
 import Image from "next/image";
@@ -42,7 +39,7 @@ import ChatMessage from "./ChatMessage";
 import { getSupabaseClient } from "../utils/client/supabase";
 import type { SessionRow, MessageRow, SessionUser } from "../types";
 import APIClient from "../utils/client/APIClient";
-import { isTruthy, messageRowToChatMessage } from "../utils/general";
+import { isTruthy } from "../utils/general";
 import ScenarioText from "./ScenarioText";
 import type { BroadcastFunction } from "./GameSession.client";
 import ReadOutLoudButton from "./ReadOutLoudButton";
@@ -53,10 +50,10 @@ type Props = {
   currentUser: SessionUser;
   users: SessionUser[];
   sessionId: number;
-  sessionLockedByUserId: string | null;
   outcomeVotes: NonNullable<SessionRow["scenario_outcome_votes"]>;
   broadcast: BroadcastFunction;
   selectedScenarioImagePath: string | null;
+  aiIsResponding: boolean;
   existing: {
     messageRows: MessageRow[];
   };
@@ -66,130 +63,60 @@ function useAiChat({
   existing,
   selectedScenarioText,
   currentUser,
-  sessionLockedByUserId,
   sessionId,
   selectedScenarioImagePath,
   broadcast,
+  aiIsResponding,
 }: Props) {
-  const toast = useToast();
-  const [messageRows, setMessageRows] = useState<MessageRow[]>(existing?.messageRows ?? []);
+  const toast = useCustomToast();
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const messagesListRef = useRef<HTMLDivElement>(null);
-  const [isLocallyLocked, setIsLocallyLocked] = useState(false);
-
-  const unlockSessionMessaging = useCallback(async () => {
-    if (sessionLockedByUserId !== currentUser.id) {
-      return; // locked by someone else, cant unlock
-    }
-    const errorToastConfig = await APIClient.sessions.unlockMessaging(sessionId);
-    if (errorToastConfig) {
-      toast(errorToastConfig);
-    } else {
-      setIsLocallyLocked(false);
-    }
-  }, [currentUser.id, sessionId, sessionLockedByUserId, toast]);
-
-  const lockSessionMessaging = useCallback(async () => {
-    if (sessionLockedByUserId) {
-      return; // already locked
-    }
-    const errorToastConfig = await APIClient.sessions.lockMessaging({
-      sessionId,
-      lockedByUserId: currentUser.id,
-    });
-    if (errorToastConfig) {
-      toast(errorToastConfig);
-    } else {
-      setIsLocallyLocked(true);
-    }
-  }, [currentUser.id, sessionId, sessionLockedByUserId, toast]);
-
-  const chat = useChat({
-    initialMessages: existing?.messageRows.map(messageRowToChatMessage), // || DUMMY_MESSAGES,
-    body: { scenario: selectedScenarioText },
-    async onResponse(response) {
-      // ie the start of a request response stream
-      console.log("useAiChat:onResponse", response);
-      await lockSessionMessaging();
-    },
-    async onFinish(message) {
-      console.log("useAiChat:onFinish", message);
-      const errorToastConfigs = await Promise.all([
-        unlockSessionMessaging(),
-        APIClient.messages.add({
-          session_id: sessionId,
-          content: message.content,
-          author_role: "assistant",
-          author_id: null,
-        }),
-      ]);
-
-      // todo move toasts to APIClient
-      errorToastConfigs.filter(isTruthy).forEach(toast);
-    },
-    async onError(error) {
-      void unlockSessionMessaging();
-      console.error("useAiChat:onError", error);
-      toast({
-        title: "Error generating response",
-        description: error instanceof Error ? error.message : String(error),
-        status: "error",
-      });
-    },
-  });
-  const chatRef = useRef<UseChatHelpers>(chat);
-  useEffect(() => {
-    chatRef.current = chat;
-  }, [chat]);
+  const [messageRows, setMessageRows] = useState<MessageRow[]>(existing?.messageRows ?? []);
+  const [inputValue, setInputValue] = useState("");
+  const [error] = useState<Error | null>(null); // todo is this required?
+  const isLoading = messageRows.at(-1)?.author_role === "user"; // ie the response is loading
 
   const handleSubmit: UseChatHelpers["handleSubmit"] = useCallback(
     async (e) => {
       e.preventDefault(); // need to prevent this here as the event gets handled synchronously before our promises below resolve
-      const content = chatRef.current.input;
-      chatRef.current.setInput("");
+      const content = inputValue.trim();
       if (!content) {
         return;
       }
+      setInputValue("");
 
       const potentialErrorToastConfigs = await Promise.all([
-        lockSessionMessaging(),
-        // this will trigger message insert listeners which will update UI
+        // this will trigger message insert edge function to respond from db
         APIClient.messages.add({
           session_id: sessionId,
           content,
-          author_role: "user" as Message["role"],
+          author_role: "user",
           author_id: currentUser.id,
-        }),
+        } satisfies Omit<MessageRow, "id" | "inserted_at" | "updated_at" | "author_ai_model_id">),
       ]);
 
       const errorToastConfigs = potentialErrorToastConfigs.filter(isTruthy);
       if (errorToastConfigs.some(isTruthy)) {
         errorToastConfigs.forEach(toast);
-        await unlockSessionMessaging();
       }
     },
-    [currentUser.id, lockSessionMessaging, sessionId, toast, unlockSessionMessaging],
+    [currentUser.id, inputValue, sessionId, toast],
   );
 
-  const messagesListRefNotifier = useCallback(
-    (node: HTMLDivElement | null) => {
-      if (node) {
-        // @ts-expect-error [setting to readonly allowed]
-        messagesListRef.current = node;
-        // this is to force a re-render when the ref changes
-        chat.setMessages([...chat.messages]);
-      }
-    },
-    [chat],
-  );
+  const messagesListRefNotifier = useCallback((node: HTMLDivElement | null) => {
+    if (node) {
+      // @ts-expect-error [setting to readonly allowed]
+      messagesListRef.current = node;
+      // this is to force a re-render when the ref changes
+      setMessageRows((currentMessageRows) => [...currentMessageRows]);
+    }
+  }, []);
 
   const messageRowsRef = useRef<MessageRow[]>(messageRows);
-  const unlockSessionMessagingRef = useRef(unlockSessionMessaging);
   useEffect(() => {
     messageRowsRef.current = messageRows;
-    unlockSessionMessagingRef.current = unlockSessionMessaging;
-  }, [messageRows, unlockSessionMessaging]);
+  }, [messageRows]);
 
   useEffect(() => {
     const supabase = getSupabaseClient();
@@ -205,58 +132,17 @@ function useAiChat({
         },
         async (payload) => {
           if (payload.eventType === "INSERT") {
-            console.log("useAiChat: messages insert subscription event payload", payload);
-            const newMessageRow = payload.new;
-            const localChatAlreadyHasMessage = chatRef.current.messages.some(
-              (m) => String(m.id) === String(newMessageRow.id),
-            );
-            if (localChatAlreadyHasMessage) {
-              console.log("useAiChat: local chat already has message, ignoring", newMessageRow);
-              return;
-            }
+            setMessageRows((currentMessageRows) => [...currentMessageRows, payload.new]);
 
-            setMessageRows((currentMessageRows) => {
-              if (newMessageRow.author_role === "assistant") {
-                void unlockSessionMessagingRef.current();
-
-                const lastMessage = currentMessageRows.at(-1);
-                if (lastMessage?.author_role === "assistant") {
-                  currentMessageRows = currentMessageRows.slice(0, -1);
-                }
-              }
-
-              return [...currentMessageRows, newMessageRow];
-            });
+            // handle update (e.g. AI streaming)
           } else if (payload.eventType === "UPDATE") {
-            console.log("useAiChat: messages update subscription event payload", payload);
             const updatedMessageRow = payload.new;
-
-            const foundLocalMessageRow = messageRowsRef.current.find(
-              (localMessageRow) => String(localMessageRow.id) === String(updatedMessageRow.id),
-            );
-            if (!foundLocalMessageRow) {
-              console.warn("useAiChat: local message row not found, ignoring", updatedMessageRow);
-              return;
-            }
-
-            const messageRowShouldBeUpdated =
-              updatedMessageRow.content.length > foundLocalMessageRow?.content.length;
-            if (!messageRowShouldBeUpdated) {
-              console.log("useAiChat: message row should not be updated, ignoring", {
-                updatedMessageRow,
-                localMessageRow: foundLocalMessageRow,
-              });
-              return;
-            }
-
             setMessageRows((localMessageRows) => {
               return localMessageRows.map((localMessageRow) => {
-                if (String(localMessageRow.id) !== String(updatedMessageRow.id)) {
-                  return localMessageRow;
+                if (String(localMessageRow.id) === String(updatedMessageRow.id)) {
+                  return updatedMessageRow;
                 }
-                return updatedMessageRow.content.length > localMessageRow.content.length
-                  ? updatedMessageRow
-                  : localMessageRow;
+                return localMessageRow;
               });
             });
           }
@@ -270,104 +156,17 @@ function useAiChat({
     };
   }, [sessionId]);
 
-  // todo handle streaming messages from assistant to all users in session
-  // useEffect(() => {
-  //   const lastChatMessage = chat.messages.at(-1);
-  //   if (lastChatMessage?.role !== "assistant") {
-  //     return;
-  //   }
-
-  //   let lastMessageRow = messageRows.at(-1);
-  //   const localAssistantChatMessageIsUpToDate =
-  //     lastMessageRow?.author_role === "assistant" &&
-  //     lastMessageRow?.content === lastChatMessage.content;
-  //   if (localAssistantChatMessageIsUpToDate) {
-  //     return;
-  //   }
-
-  //   if (lastChatMessage.content.length < (lastMessageRow?.content.length ?? 0)) {
-  //     return console.warn(
-  //       "useAiChat:local assistant message is shorter than DB message, ignoring",
-  //       {
-  //         lastChatMessage,
-  //         lastMessageRow,
-  //         messageRows,
-  //         chatMessages: chat.messages,
-  //       },
-  //     );
-  //   }
-
-  //   debugger;
-
-  //   // persist assistant message to DB
-  //   console.log("useAiChat:upsert assistant message", {
-  //     lastChatMessage,
-  //     lastMessageRow,
-  //     messageRows,
-  //     chatMessages: chat.messages,
-  //   });
-  //   // void getSupabaseClient()
-  //   //   .from("messages")
-  //   //   .upsert({
-  //   //     id: -sessionId,
-  //   //     session_id: sessionId,
-  //   //     content: lastChatMessage.content,
-  //   //     author_role: lastChatMessage.role,
-  //   //     author_id: null,
-  //   //     updated_at: new Date().toISOString(),
-  //   //   })
-  //   //   .then((response) => {
-  //   //     console.log("useAiChat:upsert response", response);
-
-  //   //     if (response.error) {
-  //   //       console.error("useAiChat:upsert error", response);
-  //   //     }
-  //   //   });
-
-  //   // todo share streaming with session users, ie write this to DB
-  //   setMessageRows((currentMessageRows) => {
-  //     lastMessageRow = currentMessageRows.at(-1);
-  //     if (lastMessageRow?.author_role === "assistant") {
-  //       // update last assistant message
-  //       currentMessageRows = currentMessageRows.slice(0, -1);
-  //     }
-
-  //     return [
-  //       ...currentMessageRows,
-  //       // add assistant message being currently streamed
-  //       {
-  //         id: -sessionId,
-  //         session_id: sessionId,
-  //         content: lastChatMessage.content,
-  //         author_role: lastChatMessage.role,
-  //         author_id: null,
-  //         inserted_at: new Date().toISOString(),
-  //         updated_at: new Date().toISOString(),
-  //       } satisfies MessageRow,
-  //     ];
-  //   });
-  // }, [chat.messages, messageRows, sessionId]);
-
-  useEffect(() => {
-    // if we re-mount it means the session can be unlocked
-    void unlockSessionMessaging();
-    return () => {
-      void unlockSessionMessaging();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- prevent unlocking on re-render
-  }, []);
-
   useAutoScrolling({
-    messages: chat.messages,
+    messages: messageRows,
     messagesListEl: messagesListRef.current,
   });
 
-  // focus on input when chat is ready
+  // focus on input when chat is ready for user input
   useEffect(() => {
-    if (!chat.isLoading) {
+    if (!isLoading || !aiIsResponding) {
       textAreaRef.current?.focus();
     }
-  }, [chat.isLoading]);
+  }, [isLoading, aiIsResponding]);
 
   useEffect(() => {
     let typingTimeoutId: ReturnType<typeof setTimeout> | undefined;
@@ -434,18 +233,7 @@ function useAiChat({
     };
   }, [broadcast, currentUser.id, textAreaRef]);
 
-  // create chat response when user message is added
-  useEffect(() => {
-    const lastMessage = messageRows.at(-1);
-    if (lastMessage?.author_id === currentUser.id) {
-      console.log("useAiChat: last message is from user, loading ai response...", lastMessage);
-      chatRef.current.setMessages(messageRows.map(messageRowToChatMessage));
-      // reload after a tick to ensure the chat is ready
-      setTimeout(() => chatRef.current.reload(), 0);
-    }
-  }, [chatRef, currentUser.id, messageRows]);
-
-  let sortedMessageRows = useMemo(() => {
+  const sortedMessageRows = useMemo(() => {
     return [...messageRows].sort((rowA, rowB) => {
       const dateA = new Date(rowA.updated_at);
       const dateB = new Date(rowB.updated_at);
@@ -457,36 +245,21 @@ function useAiChat({
     throw new Error("selectedScenarioText is required");
   }
 
-  // show locally streamed assistant message
-  if (chat.isLoading) {
-    const lastMessage = chat.messages.at(-1);
-    if (lastMessage?.role === "assistant") {
-      const timestamp = new Date().toISOString();
-      sortedMessageRows = [
-        ...sortedMessageRows,
-        {
-          id: -sessionId,
-          session_id: sessionId,
-          content: lastMessage.content,
-          author_role: lastMessage.role,
-          author_id: null,
-          inserted_at: timestamp,
-          updated_at: timestamp,
-        },
-      ];
-    }
-  }
-
-  const isLocked = isLocallyLocked || !!sessionLockedByUserId;
   return {
     chat: {
-      ...chat,
       handleSubmit,
       // should not be used externally, prefer messageRows
       messages: [],
-      isLocked,
-      inputPlaceholderText: isLocked ? "AI typing..." : getPlaceholderText(chat),
-    } satisfies UseChatHelpers & Record<string, unknown>,
+      isLocked: aiIsResponding,
+      isLoading: aiIsResponding,
+      inputPlaceholderText: aiIsResponding
+        ? "AI typing..."
+        : getPlaceholderText({ isLoading, error: !!error }),
+      input: inputValue,
+      handleInputChange: (e: React.ChangeEvent<HTMLTextAreaElement>) =>
+        setInputValue(e.target.value),
+      error,
+    },
     messageRows: sortedMessageRows,
     messagesListRef: messagesListRefNotifier,
     textAreaRef,
@@ -637,10 +410,10 @@ export default function ScenarioChat(props: Props) {
                 variant='ghost'
                 colorScheme='orange'
                 // leftIcon={<Spinner />}
-                onClick={chat.stop}
+                // onClick={chat.stop} // todo can we make this work? what if the client can set the ai_is_typing to false and the server will stop the ai?
                 isLoading
               >
-                Stop
+                {/* Stop */}
               </Button>
             ) : (
               <Button
@@ -774,7 +547,7 @@ function useAutoScrolling({
   messages,
   messagesListEl,
 }: {
-  messages: readonly Message[];
+  messages: readonly MessageRow[];
   messagesListEl: HTMLElement | null;
 }) {
   // scroll to bottom on load
@@ -813,7 +586,7 @@ function useAutoScrolling({
       return;
     }
 
-    const lastMessageSentByUser = messages.at(-1)?.role === "user";
+    const lastMessageSentByUser = messages.at(-1)?.author_role === "user";
     if (lastMessageSentByUser || shouldAutoScroll.current) {
       scrollToBottom(messagesListEl);
     }
@@ -825,7 +598,7 @@ function scrollToBottom(scrollableEl: HTMLElement) {
   scrollableEl.scrollTop = scrollableEl.scrollHeight;
 }
 
-function getPlaceholderText(chat: UseChatHelpers): string {
+function getPlaceholderText(chat: { isLoading: boolean; error: boolean }): string {
   if (chat.isLoading) {
     return "Thinking 🤔...";
   }
@@ -852,7 +625,7 @@ function overallOutcomeVotingIsComplete({
 }
 
 function OutcomeVotingTable({ users, sessionId, outcomeVotes, currentUser, broadcast }: Props) {
-  const toast = useToast();
+  const toast = useCustomToast();
   const outcomeVotesForCurrentUser = outcomeVotes[currentUser.id];
 
   const handleVoteChange = useCallback(

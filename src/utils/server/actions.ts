@@ -42,6 +42,7 @@ export async function invokeResetSessionAction(
   sessionId: number,
 ): Promise<undefined | UseToastOptions[]> {
   console.log("resetSessionAction invoked");
+  // todo handle transition in edge function
   const supabase = getSupabaseServer(cookies);
   const errors = await Promise.all([
     resetSessionRow({ supabase, sessionId }),
@@ -95,6 +96,7 @@ export async function invokeMoveSessionToOutcomeSelectionStageAction({
     // scenario already exists, this should only happen in dev
   }
 
+  // todo handle transition in edge function
   const response = await supabase
     .from("sessions")
     .update({
@@ -104,7 +106,11 @@ export async function invokeMoveSessionToOutcomeSelectionStageAction({
       scenario_option_votes: {},
       scenario_outcome_votes: {},
       messaging_locked_by_user_id: null,
-    } satisfies Partial<SessionRow>)
+      ai_is_responding: false,
+    } satisfies Omit<
+      SessionRow,
+      "id" | "created_at" | "scenario_options" | "selected_scenario_image_path"
+    >)
     .eq("id", sessionId);
 
   if (response.error) {
@@ -121,6 +127,7 @@ async function resetSessionRow({
   sessionId: number;
   supabase: SupabaseClient;
 }): Promise<UseToastOptions | undefined> {
+  // todo handle transition in edge function
   const response = await supabase
     .from("sessions")
     .update({
@@ -132,6 +139,7 @@ async function resetSessionRow({
       selected_scenario_text: null,
       selected_scenario_image_path: null,
       selected_scenario_id: null,
+      ai_is_responding: false,
     } satisfies Required<Omit<SessionRow, "id" | "created_at">>)
     .eq("id", sessionId);
 

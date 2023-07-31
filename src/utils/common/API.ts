@@ -58,38 +58,6 @@ export default class API {
         return { status: "error", title, description: result.error.message };
       }
     },
-
-    lockMessaging: async ({
-      sessionId,
-      lockedByUserId,
-    }: {
-      sessionId: number;
-      lockedByUserId: string;
-    }): Promise<void | UseToastOptions> => {
-      const response = await this.supabase
-        .from("sessions")
-        .update({ messaging_locked_by_user_id: lockedByUserId })
-        .eq("id", sessionId);
-
-      if (response.error) {
-        const title = "Error locking session";
-        console.error(title, response.error);
-        return { status: "error", title, description: response.error.message };
-      }
-    },
-
-    unlockMessaging: async (sessionId: number): Promise<void | UseToastOptions> => {
-      const response = await this.supabase
-        .from("sessions")
-        .update({ messaging_locked_by_user_id: null })
-        .eq("id", sessionId);
-
-      if (response.error) {
-        const title = "Error un-locking session";
-        console.error(title, response.error);
-        return { status: "error", title, description: response.error.message };
-      }
-    },
   };
 
   messages = {

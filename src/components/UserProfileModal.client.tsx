@@ -48,6 +48,12 @@ export default function UserProfileModal({ disclosure: { isOpen, onClose } }: Pr
   const [readingDemoText, setReadingDemoText] = useState(
     "This is a test of the reading out loud system.",
   );
+  const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
+
+  useEffect(() => {
+    // for SSR but assuming this doesnt change for now
+    setAvailableVoices(getAvailableVoices());
+  }, []);
 
   useEffect(() => {
     if (preferredVoiceNamePersisted.value) {
@@ -143,10 +149,11 @@ export default function UserProfileModal({ disclosure: { isOpen, onClose } }: Pr
             <Select
               required
               title='Select to change reading voice'
+              aria-label='Select to change reading voice'
               value={tempVoiceName || undefined}
               onChange={(e) => setPreferredVoiceNameTemp(e.target.value)}
             >
-              {getAvailableVoices().map((voice) => (
+              {availableVoices.map((voice) => (
                 <option key={voice.name} value={voice.name} aria-label={voice.name}>
                   {voice.name}
                 </option>

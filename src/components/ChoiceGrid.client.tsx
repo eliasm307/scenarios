@@ -22,7 +22,7 @@ export default function ChoiceGrid({ choices }: { choices: ChoiceConfig[] }): Re
       p={3}
     >
       {choices.map((choiceConfig) => (
-        <ChoiceCard key={choiceConfig.text} {...choiceConfig} />
+        <ChoiceCard key={choiceConfig.text + String(choiceConfig.isSelected)} {...choiceConfig} />
       ))}
     </Grid>
   );

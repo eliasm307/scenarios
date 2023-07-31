@@ -43,7 +43,7 @@ import { isTruthy } from "../utils/general";
 import ScenarioText from "./ScenarioText";
 import type { BroadcastFunction } from "./GameSession.client";
 import ReadOutLoudButton from "./ReadOutLoudButton";
-import { useCustomToast } from "../utils/client/hooks";
+import { useCustomToast, useElementRefNotifier } from "../utils/client/hooks";
 
 type Props = {
   selectedScenarioText: string | null;
@@ -76,6 +76,7 @@ function useAiChat({
   const [inputValue, setInputValue] = useState("");
   const [error] = useState<Error | null>(null); // todo is this required?
   const isLoading = messageRows.at(-1)?.author_role === "user"; // ie the response is loading
+  const isLocked = aiIsResponding;
 
   const handleSubmit: UseChatHelpers["handleSubmit"] = useCallback(
     async (e) => {
@@ -104,14 +105,8 @@ function useAiChat({
     [currentUser.id, inputValue, sessionId, toast],
   );
 
-  const messagesListRefNotifier = useCallback((node: HTMLDivElement | null) => {
-    if (node) {
-      // @ts-expect-error [setting to readonly allowed]
-      messagesListRef.current = node;
-      // this is to force a re-render when the ref changes
-      setMessageRows((currentMessageRows) => [...currentMessageRows]);
-    }
-  }, []);
+  const messagesListRefNotifier = useElementRefNotifier(messagesListRef);
+  const textAreaRefNotifier = useElementRefNotifier(textAreaRef);
 
   const messageRowsRef = useRef<MessageRow[]>(messageRows);
   useEffect(() => {
@@ -220,18 +215,39 @@ function useAiChat({
     textAreaEl?.addEventListener("blur", handleBlur);
 
     return () => {
-      broadcast({
-        event: "TypingStateChanged",
-        data: {
-          isTyping: false, // make sure listeners aren't left hanging with a typing state
-          userId: currentUser.id,
-        },
-      });
+      if (typingTimeoutId) {
+        broadcast({
+          event: "TypingStateChanged",
+          data: {
+            isTyping: false, // make sure listeners aren't left hanging with a typing state
+            userId: currentUser.id,
+          },
+        });
+      }
       clearTimeout(typingTimeoutId);
       textAreaEl?.removeEventListener("keydown", handleKeydown);
       textAreaEl?.removeEventListener("blur", handleBlur);
     };
   }, [broadcast, currentUser.id, textAreaRef]);
+
+  const handleInputKeyDown = useCallback(
+    async (e: React.KeyboardEvent) => {
+      if (e.key !== "Enter") {
+        return;
+      }
+      // allow for multiline input, ie shift enter which is not for confirming
+      const isConfirmEnter = !e.shiftKey;
+      if (isConfirmEnter) {
+        // prevent new line on submit
+        e.preventDefault();
+        const hasUserInput = !!textAreaRef.current?.value;
+        if (hasUserInput && !isLoading && !isLocked && formRef.current) {
+          formRef.current.requestSubmit();
+        }
+      }
+    },
+    [isLoading, isLocked, formRef, textAreaRef],
+  );
 
   const sortedMessageRows = useMemo(() => {
     return [...messageRows].sort((rowA, rowB) => {
@@ -250,8 +266,8 @@ function useAiChat({
       handleSubmit,
       // should not be used externally, prefer messageRows
       messages: [],
-      isLocked: aiIsResponding,
-      isLoading: aiIsResponding,
+      isLocked,
+      isLoading,
       inputPlaceholderText: aiIsResponding
         ? "AI typing..."
         : getPlaceholderText({ isLoading, error: !!error }),
@@ -259,10 +275,11 @@ function useAiChat({
       handleInputChange: (e: React.ChangeEvent<HTMLTextAreaElement>) =>
         setInputValue(e.target.value),
       error,
+      handleInputKeyDown,
     },
     messageRows: sortedMessageRows,
     messagesListRef: messagesListRefNotifier,
-    textAreaRef,
+    textAreaRef: textAreaRefNotifier,
     formRef,
     selectedScenarioText,
     selectedScenarioImagePath,
@@ -332,25 +349,6 @@ export default function ScenarioChat(props: Props) {
     </Flex>
   );
 
-  const handleInputKeyDown = useCallback(
-    async (e: React.KeyboardEvent) => {
-      if (e.key !== "Enter") {
-        return;
-      }
-      // allow for multiline input, ie shift enter which is not for confirming
-      const isConfirmEnter = !e.shiftKey;
-      if (isConfirmEnter) {
-        // prevent new line on submit
-        e.preventDefault();
-        const hasUserInput = !!textAreaRef.current?.value;
-        if (hasUserInput && !chat.isLoading && !chat.isLocked && formRef.current) {
-          formRef.current.requestSubmit();
-        }
-      }
-    },
-    [chat.isLoading, chat.isLocked, formRef, textAreaRef],
-  );
-
   const typingUsers = props.users.filter((user) => user.isTyping && !user.isCurrentUser);
 
   const controls = (
@@ -395,7 +393,7 @@ export default function ScenarioChat(props: Props) {
             value={chat.input}
             placeholder={chat.inputPlaceholderText}
             onChange={chat.handleInputChange}
-            onKeyDown={handleInputKeyDown}
+            onKeyDown={chat.handleInputKeyDown}
             spellCheck={false}
             // make sure inline grammarly popup is off, its annoying and not really needed here
             data-gramm='false'

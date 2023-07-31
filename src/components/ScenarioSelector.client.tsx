@@ -206,14 +206,14 @@ export default function ScenarioSelector(props: Props): React.ReactElement {
                 onSelect: () => handleVote(optionId),
                 isSelected: optionVotes[currentUser.id] === optionId,
                 content: (
-                  <Box key={text.trim() || optionId}>
+                  <Box key={`${text.trim() || optionId}-container`}>
                     {text.trim() ? (
                       <OptionContent
+                        key={text}
                         optionId={optionId}
                         optionVotes={optionVotes}
                         text={text}
                         users={users}
-                        key={text}
                       />
                     ) : (
                       <Center

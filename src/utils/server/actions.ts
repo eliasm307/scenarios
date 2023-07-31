@@ -105,7 +105,6 @@ export async function invokeMoveSessionToOutcomeSelectionStageAction({
       selected_scenario_id: scenarioId,
       scenario_option_votes: {},
       scenario_outcome_votes: {},
-      messaging_locked_by_user_id: null,
       ai_is_responding: false,
     } satisfies Omit<
       SessionRow,
@@ -132,7 +131,6 @@ async function resetSessionRow({
     .from("sessions")
     .update({
       stage: "scenario-selection",
-      messaging_locked_by_user_id: null,
       scenario_option_votes: {},
       scenario_options: [], // will trigger new scenario options to be generated
       scenario_outcome_votes: {},

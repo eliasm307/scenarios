@@ -102,7 +102,9 @@ export default function NavBar(flexProps: FlexProps) {
           <MobileNavBarItems userContext={user} onEditProfile={userProfileModalDisclosure.onOpen} />
         </Show>
       </Flex>
-      <UserProfileModal disclosure={userProfileModalDisclosure} />
+      {userProfileModalDisclosure.isOpen && (
+        <UserProfileModal disclosure={userProfileModalDisclosure} />
+      )}
     </Flex>
   );
 }

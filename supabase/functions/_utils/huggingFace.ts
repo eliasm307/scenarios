@@ -5,14 +5,16 @@ import { HfInference } from "https://esm.sh/@huggingface/inference@2.6.1";
 
 const inference = new HfInference(Deno.env.get("HUGGING_FACE_ACCESS_TOKEN"));
 
-export async function generateImageFromPrompt(prompt: string): Promise<Blob> {
+// "stabilityai/stable-diffusion-xl-base-0.9", // inference api has issues atm
+export const ACTIVE_TEXT_TO_IMAGE_MODEL_ID = "stabilityai/stable-diffusion-2-1";
+
+export async function createImageFromPrompt(prompt: string): Promise<Blob> {
   console.log("generateImageFromPrompt:", prompt);
   try {
     // see https://huggingface.co/docs/huggingface.js/inference/classes/HfInference#texttoimage
     const blob = await inference.textToImage(
       {
-        // model: "stabilityai/stable-diffusion-xl-base-0.9", // inference api has issues atm
-        model: "stabilityai/stable-diffusion-2-1",
+        model: ACTIVE_TEXT_TO_IMAGE_MODEL_ID,
         inputs: prompt,
         // "High-resolution and emotionally stirring image of a conflicted singer, torn between the sparkle of an enticing record deal and the looming shadow of artistry's compromise, sparking heated debates on music forums and rising rapidly on Artstation's trending list.",
         parameters: {

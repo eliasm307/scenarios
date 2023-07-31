@@ -46,6 +46,7 @@ import { isTruthy, messageRowToChatMessage } from "../utils/general";
 import ScenarioText from "./ScenarioText";
 import type { BroadcastFunction } from "./GameSession.client";
 import ReadOutLoudButton from "./ReadOutLoudButton";
+import { useCustomToast } from "../utils/client/hooks";
 
 type Props = {
   selectedScenarioText: string | null;

@@ -1,11 +1,12 @@
 "use client";
 
-import { Box, Button, Divider, HStack, Heading, Text, VStack, useToast } from "@chakra-ui/react";
+import { Box, Button, Divider, HStack, Heading, Text, VStack } from "@chakra-ui/react";
 import { useCallback, useMemo } from "react";
 import type { SessionRow, SessionUser } from "../types";
 import ScenarioText from "./ScenarioText";
 import type { BroadcastFunction } from "./GameSession.client";
 import { invokeResetSessionAction } from "../utils/server/actions";
+import { useCustomToast } from "../utils/client/hooks";
 
 type Props = {
   currentUser: SessionUser;
@@ -24,7 +25,7 @@ export default function OutcomesReveal({
   scenarioText,
   broadcast,
 }: Props): React.ReactElement {
-  const toast = useToast();
+  const toast = useCustomToast();
   const results = useMemo((): UserVotesResult[] => {
     return users
       .map((voterUser) => {

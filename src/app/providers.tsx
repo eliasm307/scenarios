@@ -1,11 +1,12 @@
 "use client";
 
 import { CacheProvider } from "@chakra-ui/next-js";
-import { ChakraProvider, useToast } from "@chakra-ui/react";
+import { ChakraProvider } from "@chakra-ui/react";
 import type { User } from "@supabase/auth-helpers-nextjs";
 import { createContext, useContext, useMemo, useState } from "react";
 import APIClient from "../utils/client/APIClient";
 import type { UserProfileRow } from "../types";
+import { useCustomToast } from "../utils/client/hooks";
 
 export function CommonProviders({ children }: { children: React.ReactNode }) {
   return (
@@ -40,7 +41,7 @@ export function UserProvider({
   initialProfile: UserProfile;
 }) {
   const [userProfile, setProfile] = useState<UserProfile>(initialProfile);
-  const toast = useToast();
+  const toast = useCustomToast();
 
   const value = useMemo(
     () =>

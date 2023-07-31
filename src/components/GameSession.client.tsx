@@ -20,6 +20,7 @@ import type {
   UserProfileRow,
 } from "../types";
 import OutcomesReveal from "./OutcomesReveal.client";
+import { useCustomToast } from "../utils/client/hooks";
 
 type State = {
   users: SessionUser[];
@@ -133,7 +134,7 @@ function reducer(state: State, action: Action): State {
 }
 
 function useLogic({ existing, currentUser }: Props) {
-  const toast = useToast();
+  const toast = useCustomToast();
   const [state, send] = useReducer(reducer, null, () => {
     return {
       users: [],

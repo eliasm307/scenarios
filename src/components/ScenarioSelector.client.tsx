@@ -13,7 +13,6 @@ import {
   Spinner,
   Text,
   VStack,
-  useToast,
 } from "@chakra-ui/react";
 import { useCallback, useState } from "react";
 import APIClient from "../utils/client/APIClient";
@@ -24,6 +23,7 @@ import type { BroadcastFunction } from "./GameSession.client";
 import { invokeMoveSessionToOutcomeSelectionStageAction } from "../utils/server/actions";
 import ScenarioText from "./ScenarioText";
 import ReadOutLoudButton from "./ReadOutLoudButton";
+import { useCustomToast } from "../utils/client/hooks";
 
 function getMajorityVoteId<T>(arr: T[]): T | null {
   const itemToOccurrenceCountMap = arr.reduce((acc, item) => {
@@ -56,7 +56,7 @@ function useLogic({
   optionVotes,
   broadcast,
 }: Props) {
-  const toast = useToast();
+  const toast = useCustomToast();
   const [isLoading, setIsLoading] = useState(false);
 
   const handleVote = useCallback(

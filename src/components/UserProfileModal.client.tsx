@@ -12,7 +12,6 @@ import {
   FormErrorMessage,
   Input,
   FormLabel,
-  useToast,
   Select,
   Slider,
   SliderFilledTrack,
@@ -27,7 +26,7 @@ import type { ChangeEvent, FormEvent } from "react";
 import { useCallback, useEffect, useState } from "react";
 import type { ChakraDisclosure } from "../types";
 import { useUserContext } from "../app/providers";
-import { useSelectedVoiceName, getAvailableVoices } from "../utils/client/hooks";
+import { useSelectedVoiceName, getAvailableVoices, useCustomToast } from "../utils/client/hooks";
 import ReadOutLoudButton from "./ReadOutLoudButton";
 
 type Props = {
@@ -37,7 +36,7 @@ type Props = {
 export default function UserProfileModal({ disclosure: { isOpen, onClose } }: Props) {
   const [hasChanged, setHasChanged] = useState(false);
   const [state, setState] = useState<"idle-initial" | "idle-changed" | "loading">("idle-initial");
-  const toast = useToast();
+  const toast = useCustomToast();
   const [userNameValidationMessage, setUserNameValidationMessage] = useState("");
   const userContext = useUserContext();
   const [userName, setUserName] = useState(userContext.userProfile.user_name);

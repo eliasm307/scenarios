@@ -50,7 +50,10 @@ export function useVoiceSynthesis() {
   const voices = useAvailableVoices();
 
   const speak = useCallback(
-    (text: string, options?: { overrideVoiceName?: string; overrideReadingRate?: number }) => {
+    (
+      text: string,
+      options?: { overrideVoiceName?: string | null; overrideReadingRate?: number },
+    ) => {
       return new Promise<void>((resolve, reject) => {
         if (getSpeechSynthesis().speaking) {
           stopSpeaking();

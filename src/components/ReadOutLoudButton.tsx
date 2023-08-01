@@ -36,7 +36,7 @@ export default function ReadOutLoudButton({
   overrideReadingRate,
 }: {
   text: string;
-  overrideVoiceName?: string;
+  overrideVoiceName?: string | null;
   overrideReadingRate?: number;
 }) {
   const voice = useVoiceSynthesis();

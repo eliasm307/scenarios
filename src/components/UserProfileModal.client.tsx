@@ -44,11 +44,10 @@ export default function UserProfileModal({ disclosure: { isOpen, onClose } }: Pr
     userContext.userProfile.preferred_reading_rate || 1,
   );
   const preferredVoiceNamePersisted = useSelectedVoiceName();
-  const [tempVoiceName, setPreferredVoiceNameTemp] = useState<string>();
+  const [tempVoiceName, setPreferredVoiceNameTemp] = useState<string | null>();
   const [readingDemoText, setReadingDemoText] = useState(
     "This is a test of the reading out loud system.",
   );
-  const voices = useAvailableVoices();
 
   useEffect(() => {
     if (preferredVoiceNamePersisted.value) {
@@ -123,6 +122,8 @@ export default function UserProfileModal({ disclosure: { isOpen, onClose } }: Pr
       handleError,
     ],
   );
+
+  const voices = useAvailableVoices();
 
   const isValid = !!userName && !userNameValidationMessage;
 

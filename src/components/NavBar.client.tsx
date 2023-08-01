@@ -1,6 +1,6 @@
 "use client";
 
-import { Spacer, type FlexProps } from "@chakra-ui/react";
+import { Spacer, type FlexProps, Tooltip } from "@chakra-ui/react";
 
 import Image from "next/image";
 import Link from "next/link";
@@ -18,7 +18,7 @@ import {
   Button,
   Box,
 } from "./ChakraUI.client";
-import { HamburgerIcon } from "./Icons";
+import { HamburgerIcon, SettingsIcon } from "./Icons";
 import UserProfileModal from "./UserProfileModal.client";
 import type { UserContext } from "../app/providers";
 import { useUserContext } from "../app/providers";
@@ -40,9 +40,11 @@ function SignOutMenuItem() {
 
 function UpdateProfileButton({ onEditProfile, userContext }: NavBarItemsProps) {
   return (
-    <Button onClick={onEditProfile} variant='outline'>
-      {userContext.userProfile.user_name}
-    </Button>
+    <Tooltip label='Click to Edit User Settings' aria-label='Click to Edit User Settings'>
+      <Button leftIcon={<SettingsIcon />} onClick={onEditProfile} variant='outline'>
+        {userContext.userProfile.user_name}
+      </Button>
+    </Tooltip>
   );
 }
 

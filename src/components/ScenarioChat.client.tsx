@@ -75,8 +75,7 @@ function useAiChat({
   const [messageRows, setMessageRows] = useState<MessageRow[]>(existing?.messageRows ?? []);
   const [inputValue, setInputValue] = useState("");
   const [error] = useState<Error | null>(null); // todo is this required?
-  const isLoading = messageRows.at(-1)?.author_role === "user"; // ie the response is loading
-  const isLocked = aiIsResponding;
+  const isLoading = messageRows.at(-1)?.author_role === "user" || aiIsResponding; // ie the response is loading
 
   const handleSubmit: UseChatHelpers["handleSubmit"] = useCallback(
     async (e) => {
@@ -241,12 +240,12 @@ function useAiChat({
         // prevent new line on submit
         e.preventDefault();
         const hasUserInput = !!textAreaRef.current?.value;
-        if (hasUserInput && !isLoading && !isLocked && formRef.current) {
+        if (hasUserInput && !isLoading && formRef.current) {
           formRef.current.requestSubmit();
         }
       }
     },
-    [isLoading, isLocked, formRef, textAreaRef],
+    [isLoading, formRef, textAreaRef],
   );
 
   const sortedMessageRows = useMemo(() => {
@@ -257,6 +256,22 @@ function useAiChat({
     });
   }, [messageRows]);
 
+  const selectedScenarioImageUrl = useMemo(() => {
+    if (!selectedScenarioImagePath) {
+      return null;
+    }
+    // console.log("image loader called", { path, width, quality });
+    // type ImageLoaderProps = Parameters<NonNullable<React.ComponentProps<typeof Image>["loader"]>>[0];
+    return getSupabaseClient().storage.from("images").getPublicUrl(selectedScenarioImagePath, {
+      // todo image resizing requires pro plan for now but if it becomes free convert this to an image loader for the Next image component
+      // transform: {
+      //   quality,
+      //   width,
+      //   resize: "contain",
+      // },
+    }).data.publicUrl;
+  }, [selectedScenarioImagePath]);
+
   if (!selectedScenarioText) {
     throw new Error("selectedScenarioText is required");
   }
@@ -266,8 +281,6 @@ function useAiChat({
       handleSubmit,
       // should not be used externally, prefer messageRows
       messages: [],
-      // todo only have one isLoading flag
-      isLocked,
       isLoading,
       inputPlaceholderText: aiIsResponding
         ? "AI typing..."
@@ -284,6 +297,7 @@ function useAiChat({
     formRef,
     selectedScenarioText,
     selectedScenarioImagePath,
+    selectedScenarioImageUrl,
   };
 }
 
@@ -295,24 +309,8 @@ export default function ScenarioChat(props: Props) {
     messagesListRef,
     textAreaRef,
     selectedScenarioText,
-    selectedScenarioImagePath,
+    selectedScenarioImageUrl,
   } = useAiChat(props);
-
-  const imageUrl = useMemo(() => {
-    if (!selectedScenarioImagePath) {
-      return null;
-    }
-    // console.log("image loader called", { path, width, quality });
-    // type ImageLoaderProps = Parameters<NonNullable<React.ComponentProps<typeof Image>["loader"]>>[0];
-    return getSupabaseClient().storage.from("images").getPublicUrl(selectedScenarioImagePath, {
-      // todo image resizing requires pro plan for now but if it becomes free convert this to an image loader for the Next image component
-      // transform: {
-      //   quality,
-      //   width,
-      //   resize: "contain",
-      // },
-    }).data.publicUrl;
-  }, [selectedScenarioImagePath]);
 
   const messagesList = (
     <Flex
@@ -324,8 +322,8 @@ export default function ScenarioChat(props: Props) {
       tabIndex={0}
     >
       <Box position='relative' width='100%' minHeight='20rem'>
-        {imageUrl ? (
-          <Image src={imageUrl} alt='Scenario image' fill objectFit='contain' />
+        {selectedScenarioImageUrl ? (
+          <Image src={selectedScenarioImageUrl} alt='Scenario image' fill objectFit='contain' />
         ) : (
           <VStack width='100%' marginTop={10} placeContent='center'>
             <Spinner />
@@ -370,7 +368,7 @@ export default function ScenarioChat(props: Props) {
         minHeight={5}
         wrap='wrap'
       >
-        {(chat.isLocked || chat.isLoading) && <Badge colorScheme='green'>AI is typing...</Badge>}
+        {chat.isLoading && <Badge colorScheme='green'>AI is typing...</Badge>}
         {typingUsers.map((typingUser) => {
           return (
             <Badge key={typingUser.id} colorScheme='gray'>
@@ -420,9 +418,9 @@ export default function ScenarioChat(props: Props) {
                 type='submit'
                 variant='ghost'
                 colorScheme='green'
-                isDisabled={!chat.input || chat.isLoading || chat.isLocked}
+                isDisabled={!chat.input || chat.isLoading}
               >
-                {chat.isLoading && chat.isLocked ? "AI typing..." : "Send"}
+                {chat.isLoading ? "AI typing..." : "Send"}
               </Button>
             )}
           </Flex>

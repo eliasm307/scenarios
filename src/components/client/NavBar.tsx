@@ -5,6 +5,7 @@ import { Spacer, type FlexProps, Tooltip } from "@chakra-ui/react";
 import Image from "next/image";
 import Link from "next/link";
 import {
+  // todo replace with useBreakpointValue
   Show,
   Flex,
   Heading,
@@ -22,7 +23,7 @@ import { HamburgerIcon, SettingsIcon } from "../Icons";
 import UserProfileModal from "./UserProfileModal";
 import type { UserContext } from "../../app/providers";
 import { useUserContext } from "../../app/providers";
-import IconSvg from "./assets/emoji_u1f52e.svg";
+import IconSvg from "../assets/emoji_u1f52e.svg";
 import { Path } from "../../utils/client/constants";
 
 type NavBarItemsProps = {

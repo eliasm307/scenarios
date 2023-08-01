@@ -11,7 +11,6 @@ import { Center, Spinner, Text } from "@chakra-ui/react";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { REALTIME_LISTEN_TYPES, REALTIME_PRESENCE_LISTEN_EVENTS } from "@supabase/supabase-js";
 import ScenarioSelector from "./ScenarioSelector";
-import ScenarioChat from "./ScenarioChat";
 import { getSupabaseClient } from "../../utils/client/supabase";
 import type {
   BroadcastEventFrom,
@@ -22,6 +21,7 @@ import type {
 } from "../../types";
 import OutcomesReveal from "./OutcomesReveal";
 import { useCustomToast } from "../../utils/client/hooks";
+import ScenarioChatContainer from "./ScenarioChat.container";
 
 type State = {
   users: SessionUser[];
@@ -75,7 +75,7 @@ export type BroadcastFunction = (event: BroadcastAction) => void;
 type Action = LocalAction | BroadcastAction;
 
 function reducer(state: State, action: Action): State {
-  console.log("GameSession reducer action received", action.event, { state, action });
+  console.log("GameSession event:", action.event, "->", { state, action });
   if (typeof action.data === "undefined") {
     throw new Error(
       `Action "${(action as Action).event}" payload is "${typeof (action as Action).data}"`,
@@ -489,7 +489,7 @@ export default function GameSession(props: Props): React.ReactElement {
 
   if (session.stage === "scenario-outcome-selection") {
     return (
-      <ScenarioChat
+      <ScenarioChatContainer
         key='scenario-chat'
         selectedScenarioText={session.selected_scenario_text}
         existing={props.existing}

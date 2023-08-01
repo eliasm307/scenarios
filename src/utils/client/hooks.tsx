@@ -2,8 +2,7 @@
 
 "use client";
 
-import type { MutableRefObject } from "react";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import type { UseToastOptions } from "@chakra-ui/react";
 import { useToast as useToastOriginal } from "@chakra-ui/react";
 import { useUserContext } from "../../app/providers";
@@ -217,11 +216,10 @@ export function useCustomToast(hookOptions?: UseToastOptions) {
 /**
  * Causes a re-render when a ref is attached to an element
  */
-export function useElementRefNotifier<TElement = HTMLElement>(
-  ref: MutableRefObject<TElement | null>,
-) {
+export function useElement<TElement = HTMLElement>() {
   const [, setFlag] = useState(false);
-  return useCallback(
+  const ref = useRef<TElement | null>(null);
+  const notify = useCallback(
     (node: TElement | null) => {
       if (node) {
         ref.current = node;
@@ -231,4 +229,9 @@ export function useElementRefNotifier<TElement = HTMLElement>(
     },
     [ref],
   );
+
+  return {
+    element: ref.current,
+    ref: notify,
+  };
 }

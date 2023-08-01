@@ -8,7 +8,7 @@ export const getSupabaseClient = () => {
       realtime: {
         log_level: "debug",
         timeout: 15 * 60 * 1000,
-        heartbeatIntervalMs: 5 * 60 * 1000,
+        heartbeatIntervalMs: 1 * 60 * 1000,
       },
     },
   });

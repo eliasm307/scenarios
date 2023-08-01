@@ -16,7 +16,6 @@ import {
   Heading,
   Radio,
   RadioGroup,
-  Show,
   Spinner,
   Tab,
   TabList,
@@ -30,295 +29,39 @@ import {
   Text,
   Textarea,
   VStack,
+  useBreakpointValue,
 } from "@chakra-ui/react";
-import type { UseChatHelpers } from "ai/react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { REALTIME_LISTEN_TYPES } from "@supabase/supabase-js";
+import { useCallback, useEffect, useRef } from "react";
 import Image from "next/image";
 import ChatMessage from "../ChatMessage";
-import { getSupabaseClient } from "../../utils/client/supabase";
-import type { SessionRow, MessageRow, SessionUser } from "../../types";
-import APIClient from "../../utils/client/APIClient";
-import { isTruthy } from "../../utils/general";
+import type { MessageRow, SessionUser } from "../../types";
 import ScenarioText from "../ScenarioText";
-import type { BroadcastFunction } from "./GameSession";
 import ReadOutLoudButton from "../ReadOutLoudButton";
-import { useCustomToast, useElementRefNotifier } from "../../utils/client/hooks";
+import { useElement } from "../../utils/client/hooks";
+import type { ScenarioChatViewProps } from "./ScenarioChat.container";
 
-type Props = {
-  selectedScenarioText: string | null;
-  currentUser: SessionUser;
-  users: SessionUser[];
-  sessionId: number;
-  outcomeVotes: NonNullable<SessionRow["scenario_outcome_votes"]>;
-  broadcast: BroadcastFunction;
-  selectedScenarioImagePath: string | null;
-  aiIsResponding: boolean;
-  existing: {
-    messageRows: MessageRow[];
-  };
-};
-
-function useAiChat({
-  existing,
-  selectedScenarioText,
-  currentUser,
-  sessionId,
-  selectedScenarioImagePath,
-  broadcast,
-  aiIsResponding,
-}: Props) {
-  const toast = useCustomToast();
-  const textAreaRef = useRef<HTMLTextAreaElement>(null);
-  const formRef = useRef<HTMLFormElement>(null);
-  const messagesListRef = useRef<HTMLDivElement>(null);
-  const [messageRows, setMessageRows] = useState<MessageRow[]>(existing?.messageRows ?? []);
-  const [inputValue, setInputValue] = useState("");
-  const [error] = useState<Error | null>(null); // todo is this required?
-  const isLoading = messageRows.at(-1)?.author_role === "user" || aiIsResponding; // ie an AI response is loading
-
-  const handleSubmit: UseChatHelpers["handleSubmit"] = useCallback(
-    async (e) => {
-      e.preventDefault(); // need to prevent this here as the event gets handled synchronously before our promises below resolve
-      const content = inputValue.trim();
-      if (!content) {
-        return;
-      }
-      setInputValue("");
-
-      const potentialErrorToastConfigs = await Promise.all([
-        // this will trigger message insert edge function to respond from db
-        APIClient.messages.add({
-          session_id: sessionId,
-          content,
-          author_role: "user",
-          author_id: currentUser.id,
-        } satisfies Omit<MessageRow, "id" | "inserted_at" | "updated_at" | "author_ai_model_id">),
-      ]);
-
-      const errorToastConfigs = potentialErrorToastConfigs.filter(isTruthy);
-      if (errorToastConfigs.some(isTruthy)) {
-        errorToastConfigs.forEach(toast);
-      }
-    },
-    [currentUser.id, inputValue, sessionId, toast],
-  );
-
-  const messagesListRefNotifier = useElementRefNotifier(messagesListRef);
-  const textAreaRefNotifier = useElementRefNotifier(textAreaRef);
-
-  const messageRowsRef = useRef<MessageRow[]>(messageRows);
-  useEffect(() => {
-    messageRowsRef.current = messageRows;
-  }, [messageRows]);
-
-  useEffect(() => {
-    const supabase = getSupabaseClient();
-    const subscription = supabase
-      .channel(`session:${sessionId}`)
-      .on<MessageRow>(
-        REALTIME_LISTEN_TYPES.POSTGRES_CHANGES,
-        {
-          schema: "public",
-          table: "messages",
-          event: "*",
-          filter: `session_id=eq.${sessionId}`,
-        },
-        async (payload) => {
-          if (payload.eventType === "INSERT") {
-            setMessageRows((currentMessageRows) => [...currentMessageRows, payload.new]);
-
-            // handle update (e.g. AI streaming)
-          } else if (payload.eventType === "UPDATE") {
-            const updatedMessageRow = payload.new;
-            setMessageRows((localMessageRows) => {
-              return localMessageRows.map((localMessageRow) => {
-                if (String(localMessageRow.id) === String(updatedMessageRow.id)) {
-                  return updatedMessageRow;
-                }
-                return localMessageRow;
-              });
-            });
-          }
-        },
-      )
-      .subscribe();
-
-    return () => {
-      console.log("useAiChat:unsubscribe");
-      void supabase.removeChannel(subscription);
-    };
-  }, [sessionId]);
+function ChatPanel({ selectedScenarioImageUrl, messageRows, users, chat }: ScenarioChatViewProps) {
+  const messagesList = useElement<HTMLDivElement>();
+  const textArea = useElement<HTMLTextAreaElement>();
+  const form = useElement<HTMLFormElement>();
 
   // focus on input when chat is ready for user input
   useEffect(() => {
-    if (!isLoading) {
-      textAreaRef.current?.focus();
+    if (!chat.isLoading) {
+      textArea.element?.focus();
     }
-  }, [isLoading]);
-
-  useEffect(() => {
-    const textAreaEl = textAreaRef.current;
-    if (!textAreaEl) {
-      return;
-    }
-
-    let typingTimeoutId: ReturnType<typeof setTimeout> | undefined;
-    let coolingDownTimeoutId: ReturnType<typeof setTimeout> | undefined;
-
-    function handleKeydown() {
-      clearTimeout(typingTimeoutId);
-      typingTimeoutId = setTimeout(() => {
-        broadcast({
-          event: "TypingStateChanged",
-          data: {
-            isTyping: false,
-            userId: currentUser.id,
-          },
-        });
-      }, 3000);
-
-      if (typeof coolingDownTimeoutId === "number") {
-        return;
-      }
-
-      // for rate limiting
-      coolingDownTimeoutId = setTimeout(() => {
-        coolingDownTimeoutId = undefined;
-      }, 250);
-
-      broadcast({
-        event: "TypingStateChanged",
-        data: {
-          isTyping: true,
-          userId: currentUser.id,
-        },
-      });
-    }
-
-    // not implementing coolingDown because it would be impressive if
-    // someone manages to blur and focus so fast to affect rate limiting
-    function handleBlur() {
-      clearTimeout(typingTimeoutId);
-      broadcast({
-        event: "TypingStateChanged",
-        data: {
-          isTyping: false,
-          userId: currentUser.id,
-        },
-      });
-    }
-
-    textAreaEl.addEventListener("keydown", handleKeydown);
-    textAreaEl.addEventListener("blur", handleBlur);
-
-    return () => {
-      clearTimeout(typingTimeoutId);
-      textAreaEl.removeEventListener("keydown", handleKeydown);
-      textAreaEl.removeEventListener("blur", handleBlur);
-      if (typingTimeoutId) {
-        broadcast({
-          event: "TypingStateChanged",
-          data: {
-            isTyping: false, // make sure listeners aren't left hanging with a typing state
-            userId: currentUser.id,
-          },
-        });
-      }
-    };
-  }, [broadcast, currentUser.id, textAreaRef]);
-
-  const handleInputKeyDown = useCallback(
-    async (e: React.KeyboardEvent) => {
-      if (e.key !== "Enter") {
-        return;
-      }
-      // allow for multiline input, ie shift enter which is not for confirming
-      const isConfirmEnter = !e.shiftKey;
-      if (isConfirmEnter) {
-        // prevent new line on submit
-        e.preventDefault();
-        const hasUserInput = !!textAreaRef.current?.value;
-        if (hasUserInput && !isLoading && formRef.current) {
-          formRef.current.requestSubmit();
-        }
-      }
-    },
-    [isLoading, formRef, textAreaRef],
-  );
-
-  const sortedMessageRows = useMemo(() => {
-    return [...messageRows].sort((rowA, rowB) => {
-      const dateA = new Date(rowA.updated_at);
-      const dateB = new Date(rowB.updated_at);
-      return dateA.getTime() - dateB.getTime();
-    });
-  }, [messageRows]);
-
-  const selectedScenarioImageUrl = useMemo(() => {
-    if (!selectedScenarioImagePath) {
-      return null;
-    }
-    // console.log("image loader called", { path, width, quality });
-    // type ImageLoaderProps = Parameters<NonNullable<React.ComponentProps<typeof Image>["loader"]>>[0];
-    return getSupabaseClient().storage.from("images").getPublicUrl(selectedScenarioImagePath, {
-      // todo image resizing requires pro plan for now but if it becomes free convert this to an image loader for the Next image component
-      // transform: {
-      //   quality,
-      //   width,
-      //   resize: "contain",
-      // },
-    }).data.publicUrl;
-  }, [selectedScenarioImagePath]);
-
-  if (!selectedScenarioText) {
-    throw new Error("selectedScenarioText is required");
-  }
-
-  return {
-    chat: {
-      handleSubmit,
-      isLoading,
-      inputPlaceholderText: getPlaceholderText({ isLoading, hasError: !!error }),
-      input: inputValue,
-      handleInputChange: (e: React.ChangeEvent<HTMLTextAreaElement>) =>
-        setInputValue(e.target.value),
-      error,
-      handleInputKeyDown,
-    },
-    messageRows: sortedMessageRows,
-    messagesListEl: messagesListRef.current,
-    messagesListRef: messagesListRefNotifier,
-    textAreaRef: textAreaRefNotifier,
-    formRef,
-    selectedScenarioText,
-    selectedScenarioImagePath,
-    selectedScenarioImageUrl,
-  };
-}
-
-export default function ScenarioChat(props: Props) {
-  const {
-    chat,
-    messageRows,
-    formRef,
-    messagesListRef,
-    messagesListEl,
-    textAreaRef,
-    selectedScenarioText,
-    selectedScenarioImageUrl,
-  } = useAiChat(props);
+  }, [chat.isLoading, textArea.element]);
 
   useAutoScrolling({
     messages: messageRows,
-    messagesListEl,
+    messagesListEl: messagesList.element,
   });
 
-  const messagesList = (
+  const messagesListNode = (
     <Flex
       className='messages-list'
       width='100%'
-      ref={messagesListRef}
+      ref={messagesList.ref}
       direction='column'
       overflow='auto'
       tabIndex={0}
@@ -335,7 +78,7 @@ export default function ScenarioChat(props: Props) {
       </Box>
       {messageRows.map((messageRow, i) => {
         const isLastEntry = !messageRows[i + 1];
-        const authorUser = props.users.find((u) => u.id === messageRow.author_id);
+        const authorUser = users.find((u) => u.id === messageRow.author_id);
         return (
           <Box key={`message-${messageRow.id}`}>
             <ChatMessage messageRow={messageRow} authorName={authorUser?.name || "..."} />
@@ -350,9 +93,9 @@ export default function ScenarioChat(props: Props) {
     </Flex>
   );
 
-  const typingUsers = props.users.filter((user) => user.isTyping && !user.isCurrentUser);
+  const typingUsers = users.filter((user) => user.isTyping && !user.isCurrentUser);
 
-  const controls = (
+  const controlsNode = (
     <Flex
       className='chat-controls'
       width='100%'
@@ -379,27 +122,24 @@ export default function ScenarioChat(props: Props) {
           );
         })}
       </HStack>
-      <form ref={formRef} onSubmit={chat.handleSubmit}>
+      <form ref={form.ref} onSubmit={chat.handleSubmit}>
         <Flex gap={2} alignItems='center' flexDirection={{ base: "column", md: "row" }}>
           <Textarea
             width='100%'
             flex={1}
             variant='outline'
-            ref={textAreaRef}
+            ref={textArea.ref}
             resize='none'
             // dont disable as it prevents other users to keep typing while waiting for AI response
-            isInvalid={!!chat.error}
+            isInvalid={chat.hasError}
             // minHeight='unset'
             // maxHeight='10rem'
-            value={chat.input}
-            placeholder={chat.inputPlaceholderText}
-            onChange={chat.handleInputChange}
-            onKeyDown={chat.handleInputKeyDown}
             spellCheck={false}
             // make sure inline grammarly popup is off, its annoying and not really needed here
             data-gramm='false'
             data-gramm_editor='false'
             data-enable-grammarly='false'
+            {...chat.inputProps}
           />
           <Flex gap='inherit' width={{ base: "100%", md: "unset" }} justifyContent='space-evenly'>
             {chat.isLoading ? (
@@ -420,7 +160,7 @@ export default function ScenarioChat(props: Props) {
                 type='submit'
                 variant='ghost'
                 colorScheme='green'
-                isDisabled={!chat.input || chat.isLoading}
+                isDisabled={!chat.allowsSubmitting}
               >
                 {chat.isLoading ? "AI typing..." : "Send"}
               </Button>
@@ -431,7 +171,23 @@ export default function ScenarioChat(props: Props) {
     </Flex>
   );
 
-  const votingPanel = (
+  return (
+    <Grid
+      className='chat-panel'
+      height='100%'
+      overflow='hidden'
+      gap={1}
+      templateRows='1fr auto'
+      pt={0}
+    >
+      {messagesListNode}
+      {controlsNode}
+    </Grid>
+  );
+}
+
+function VotingPanel(props: ScenarioChatViewProps) {
+  return (
     <VStack className='voting-panel' gap={3} width='100%' flex={1}>
       <Heading size='md' width='100%' textAlign='center'>
         I think...
@@ -455,27 +211,68 @@ export default function ScenarioChat(props: Props) {
         })}
     </VStack>
   );
+}
 
-  const chatPanel = (
+function DesktopScenarioChat(props: ScenarioChatViewProps) {
+  return (
     <Grid
-      className='chat-panel'
+      as='section'
+      // height='100dvh'
+      width='100%'
       height='100%'
       overflow='hidden'
-      gap={1}
-      templateRows='1fr auto'
-      pt={0}
-      // width='100%'
-      // minWidth='330px'
-      // maxWidth='800px'
-      // margin='auto'
-      // height='inherit'
+      // templateRows='100%'
+      templateColumns='1fr 1fr'
+      position='absolute'
+      inset={0}
+      padding={2}
+      gap={5}
     >
-      {messagesList}
-      {controls}
+      <VStack m={3} gap={5} width='100%' maxHeight='100%' overflowY='auto'>
+        <ScenarioText scenarioText={props.selectedScenarioText} />
+        <Center>
+          <ReadOutLoudButton text={props.selectedScenarioText} />
+        </Center>
+        <Divider />
+        <VotingPanel {...props} />
+      </VStack>
+      <ChatPanel {...props} />
     </Grid>
   );
+}
 
-  // todo show the scenario panel and chat panel as tabs on mobile and side by side on larger screens
+function MobileScenarioChat(props: ScenarioChatViewProps) {
+  return (
+    <Tabs
+      isFitted
+      variant='enclosed'
+      height='100%'
+      display='flex'
+      flexDirection='column'
+      overflow='hidden'
+    >
+      <TabList mb='1em'>
+        <Tab>Scenario</Tab>
+        <Tab>Vote</Tab>
+        <Tab>Chat</Tab>
+      </TabList>
+      <TabPanels flex={1} overflow='hidden'>
+        <TabPanel height='100%' overflow='auto'>
+          <ScenarioText scenarioText={props.selectedScenarioText} />
+        </TabPanel>
+        <TabPanel height='100%' overflow='auto'>
+          <VotingPanel {...props} />
+        </TabPanel>
+        <TabPanel height='100%' overflow='hidden'>
+          <ChatPanel {...props} />
+        </TabPanel>
+      </TabPanels>
+    </Tabs>
+  );
+}
+
+export default function ScenarioChat(props: ScenarioChatViewProps) {
+  const isDesktopSize = useBreakpointValue({ base: false, md: true });
   return (
     <Box
       className='scenario-chat'
@@ -486,58 +283,7 @@ export default function ScenarioChat(props: Props) {
       my={2}
       width='100%'
     >
-      <Show above='md'>
-        <Grid
-          as='section'
-          // height='100dvh'
-          width='100%'
-          height='100%'
-          overflow='hidden'
-          // templateRows='100%'
-          templateColumns='1fr 1fr'
-          position='absolute'
-          inset={0}
-          padding={2}
-          gap={5}
-        >
-          <VStack m={3} gap={5} width='100%' maxHeight='100%' overflowY='auto'>
-            <ScenarioText scenarioText={selectedScenarioText} />
-            <Center>
-              <ReadOutLoudButton text={selectedScenarioText} />
-            </Center>
-            <Divider />
-            {votingPanel}
-          </VStack>
-          {chatPanel}
-        </Grid>
-      </Show>
-      <Show below='md'>
-        <Tabs
-          isFitted
-          variant='enclosed'
-          height='100%'
-          display='flex'
-          flexDirection='column'
-          overflow='hidden'
-        >
-          <TabList mb='1em'>
-            <Tab>Scenario</Tab>
-            <Tab>Vote</Tab>
-            <Tab>Chat</Tab>
-          </TabList>
-          <TabPanels flex={1} overflow='hidden'>
-            <TabPanel height='100%' overflow='auto'>
-              <ScenarioText scenarioText={selectedScenarioText} />
-            </TabPanel>
-            <TabPanel height='100%' overflow='auto'>
-              {votingPanel}
-            </TabPanel>
-            <TabPanel height='100%' overflow='hidden'>
-              {chatPanel}
-            </TabPanel>
-          </TabPanels>
-        </Tabs>
-      </Show>
+      {isDesktopSize ? <DesktopScenarioChat {...props} /> : <MobileScenarioChat {...props} />}
     </Box>
   );
 }
@@ -597,103 +343,11 @@ function scrollToBottom(scrollableEl: HTMLElement) {
   scrollableEl.scrollTop = scrollableEl.scrollHeight;
 }
 
-function getPlaceholderText(chat: { isLoading: boolean; hasError: boolean }): string {
-  if (chat.isLoading) {
-    return "AI is typing...";
-  }
-  if (chat.hasError) {
-    return "An error occurred 😢";
-  }
-  return "Ask me anything about the scenario 😀";
-}
-
-function overallOutcomeVotingIsComplete({
-  outcomeVotes,
+function OutcomeVotingTable({
   users,
-}: {
-  users: SessionUser[];
-  outcomeVotes: SessionRow["scenario_outcome_votes"];
-}) {
-  const userVotesForEachUser = Object.values(outcomeVotes);
-  return (
-    userVotesForEachUser.length === users.length &&
-    userVotesForEachUser.every((userVotes) => {
-      return Object.keys(userVotes || {}).length === users.length;
-    })
-  );
-}
-
-function OutcomeVotingTable({ users, sessionId, outcomeVotes, currentUser, broadcast }: Props) {
-  const toast = useCustomToast();
-  const outcomeVotesForCurrentUser = outcomeVotes[currentUser.id];
-
-  const handleVoteChange = useCallback(
-    async ({ voteForUserId, newVote }: { voteForUserId: string; newVote: "true" | "false" }) => {
-      const outcomeVoteFromCurrentUser = newVote === "true";
-      const voteTargetUser = users.find((user) => user.id === voteForUserId);
-      console.log("outcomeVoteFromCurrentUser", voteTargetUser?.name, outcomeVoteFromCurrentUser);
-      let errorToastConfig = await APIClient.sessions.voteForUserOutcome({
-        session_id: sessionId,
-        vote_by_user_id: currentUser.id,
-        vote_for_user_id: voteForUserId,
-        outcome: outcomeVoteFromCurrentUser,
-      });
-      console.log("outcomeVoteFromCurrentUser errorToastConfig", errorToastConfig);
-      if (errorToastConfig) {
-        toast(errorToastConfig);
-        return;
-      }
-
-      const updatedOutcomeVotes = {
-        ...outcomeVotes,
-        [currentUser.id]: {
-          ...outcomeVotesForCurrentUser,
-          [voteForUserId]: outcomeVoteFromCurrentUser,
-        },
-      };
-
-      if (!overallOutcomeVotingIsComplete({ users, outcomeVotes: updatedOutcomeVotes })) {
-        const userOutcomeVotingIsComplete =
-          Object.values(updatedOutcomeVotes[currentUser.id] || {}).length === users.length;
-        if (userOutcomeVotingIsComplete) {
-          broadcast({
-            event: "Toast",
-            data: {
-              title: `"${currentUser.name}" has finished voting!`,
-              status: "success",
-            },
-          });
-        }
-        return;
-      }
-      console.log("voting complete");
-
-      broadcast({
-        event: "Toast",
-        data: {
-          title: "Voting Complete",
-          description: "All votes are in!",
-          status: "success",
-        },
-      });
-
-      errorToastConfig = await APIClient.sessions.moveToOutcomeRevealStage(sessionId);
-      if (errorToastConfig) {
-        toast(errorToastConfig);
-      }
-    },
-    [
-      sessionId,
-      currentUser.id,
-      currentUser.name,
-      outcomeVotes,
-      outcomeVotesForCurrentUser,
-      users,
-      broadcast,
-      toast,
-    ],
-  );
-
+  outcomeVotesForCurrentUser,
+  handleVoteChange,
+}: ScenarioChatViewProps) {
   return (
     <TableContainer>
       <Table variant='unstyled'>

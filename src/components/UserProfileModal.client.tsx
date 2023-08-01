@@ -26,7 +26,7 @@ import type { ChangeEvent, FormEvent } from "react";
 import { useCallback, useEffect, useState } from "react";
 import type { ChakraDisclosure } from "../types";
 import { useUserContext } from "../app/providers";
-import { useSelectedVoiceName, getAvailableVoices, useCustomToast } from "../utils/client/hooks";
+import { useSelectedVoiceName, useAvailableVoices, useCustomToast } from "../utils/client/hooks";
 import ReadOutLoudButton from "./ReadOutLoudButton";
 
 type Props = {
@@ -48,12 +48,7 @@ export default function UserProfileModal({ disclosure: { isOpen, onClose } }: Pr
   const [readingDemoText, setReadingDemoText] = useState(
     "This is a test of the reading out loud system.",
   );
-  const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
-
-  useEffect(() => {
-    // for SSR but assuming this doesnt change for now
-    setAvailableVoices(getAvailableVoices());
-  }, []);
+  const voices = useAvailableVoices();
 
   useEffect(() => {
     if (preferredVoiceNamePersisted.value) {
@@ -147,13 +142,14 @@ export default function UserProfileModal({ disclosure: { isOpen, onClose } }: Pr
           <FormControl>
             <FormLabel>Reading Voice</FormLabel>
             <Select
+              key={voices.length}
               required
               title='Select to change reading voice'
               aria-label='Select to change reading voice'
               value={tempVoiceName || undefined}
               onChange={(e) => setPreferredVoiceNameTemp(e.target.value)}
             >
-              {availableVoices.map((voice) => (
+              {voices.map((voice) => (
                 <option key={voice.name} value={voice.name} aria-label={voice.name}>
                   {voice.name}
                 </option>

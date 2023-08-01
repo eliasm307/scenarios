@@ -10,10 +10,10 @@ import { useUserContext } from "../../app/providers";
 import LocalStorage from "./LocalStorage";
 
 // todo handle browsers that dont support this
-const getSynth = () => window.speechSynthesis;
+const getSpeechSynthesis = () => window.speechSynthesis;
 
-export function getAvailableVoices() {
-  const foundVoices = getSynth()
+function getAvailableVoices() {
+  const foundVoices = getSpeechSynthesis()
     .getVoices()
     .filter((voice) => voice.default || voice.lang.startsWith("en-"))
     .sort(function (voiceA, voiceB) {
@@ -23,8 +23,23 @@ export function getAvailableVoices() {
   return foundVoices;
 }
 
+export function useAvailableVoices() {
+  const [voices, setVoices] = useState(getAvailableVoices());
+  useEffect(() => {
+    function initVoices() {
+      setVoices(getAvailableVoices());
+    }
+
+    getSpeechSynthesis().addEventListener("voiceschanged", initVoices);
+    return () => {
+      getSpeechSynthesis().removeEventListener("voiceschanged", initVoices);
+    };
+  }, []);
+  return voices;
+}
+
 function stopSpeaking() {
-  getSynth().cancel();
+  getSpeechSynthesis().cancel();
 }
 
 export function useVoiceSynthesis() {
@@ -32,30 +47,18 @@ export function useVoiceSynthesis() {
   const selectedVoiceName = useSelectedVoiceName();
   const toast = useCustomToast();
   const rate = userProfile.preferred_reading_rate ?? 1;
-
-  // todo fix this so it can adjust if voices change, however how do they change?
-  // useEffect(() => {
-  //   function initVoices() {
-  //     setVoices(getAvailableVoices());
-  //   }
-
-  //   getSynth().addEventListener("voiceschanged", initVoices);
-  //   return () => {
-  //     getSynth().removeEventListener("voiceschanged", initVoices);
-  //   };
-  // }, []);
+  const voices = useAvailableVoices();
 
   const speak = useCallback(
     (text: string, options?: { overrideVoiceName?: string; overrideReadingRate?: number }) => {
-      return new Promise((resolve, reject) => {
-        if (getSynth().speaking) {
+      return new Promise<void>((resolve, reject) => {
+        if (getSpeechSynthesis().speaking) {
           stopSpeaking();
         }
         if (!selectedVoiceName.value) {
           throw new Error("No voice selected");
         }
         const utterance = new SpeechSynthesisUtterance(text);
-        const voices = getAvailableVoices();
         if (options?.overrideVoiceName) {
           const customVoice = voices.find((voice) => voice.name === options.overrideVoiceName);
           if (!customVoice) {
@@ -82,17 +85,28 @@ export function useVoiceSynthesis() {
         utterance.rate = options?.overrideReadingRate ?? rate;
 
         // NOTE: assuming this gets called on synth#cancel
-        utterance.onend = resolve;
+        utterance.onend = () => resolve();
+
         // todo use this to highlight words as they are spoken
         // utterance.onboundary;
-        utterance.onerror = (e) => {
-          console.error("utterance.onerror", e);
-          reject(e);
+
+        utterance.onerror = (event) => {
+          if ((["interrupted", "canceled"] as SpeechSynthesisErrorCode[]).includes(event.error)) {
+            resolve(); // cancelling/stopping is not an error
+            return;
+          }
+          console.error("utterance.onerror", event);
+          toast({
+            title: "Reading Out Loud Error",
+            description: event.error,
+          });
+          reject(event);
         };
-        getSynth().speak(utterance);
+
+        getSpeechSynthesis().speak(utterance);
       });
     },
-    [rate, selectedVoiceName.value, toast],
+    [rate, selectedVoiceName.value, toast, voices],
   );
 
   return {
@@ -109,15 +123,14 @@ export function useVoiceSynthesis() {
 function createStorageKey(userId: string, key: "preferred_voice_name"): string {
   return `${userId}-${key}`;
 }
-function getCurrentVoiceName(currentUserId: string) {
+function getCurrentVoiceName(currentUserId: string, availableVoices: SpeechSynthesisVoice[]) {
   const key = createStorageKey(currentUserId, "preferred_voice_name");
   let persistedValue = LocalStorage.getItem(key);
   if (!persistedValue) {
-    const foundVoices = getAvailableVoices();
     const defaultVoice =
-      foundVoices.find((voice) => voice.default) ||
+      availableVoices.find((voice) => voice.default) ||
       // select the first english voice as a fallback (is it possible not to have a default?)
-      foundVoices.find((voice) => voice.lang === "en-US");
+      availableVoices.find((voice) => voice.lang === "en-US");
 
     persistedValue = defaultVoice?.name || null;
     if (persistedValue) {
@@ -131,17 +144,11 @@ function getCurrentVoiceName(currentUserId: string) {
 export function useSelectedVoiceName() {
   const [preferredVoiceName, setPreferredVoiceName] = useState<string | null>();
   const { user } = useUserContext();
+  const availableVoices = useAvailableVoices();
 
   useEffect(() => {
-    function handleVoicesChange() {
-      setPreferredVoiceName(getCurrentVoiceName(user.id));
-    }
-
-    getSynth().addEventListener("voiceschanged", handleVoicesChange);
-    return () => {
-      getSynth().removeEventListener("voiceschanged", handleVoicesChange);
-    };
-  }, [user.id]);
+    setPreferredVoiceName(getCurrentVoiceName(user.id, availableVoices));
+  }, [user.id, availableVoices]);
 
   useEffect(() => {
     if (preferredVoiceName) {
@@ -150,7 +157,7 @@ export function useSelectedVoiceName() {
   }, [user.id, preferredVoiceName]);
 
   useEffect(() => {
-    setPreferredVoiceName(getCurrentVoiceName(user.id));
+    setPreferredVoiceName(getCurrentVoiceName(user.id, availableVoices));
     const key = createStorageKey(user.id, "preferred_voice_name");
 
     function handleStorageChange(newValue: string) {
@@ -160,7 +167,7 @@ export function useSelectedVoiceName() {
     return () => {
       LocalStorage.removeEventListener(key, handleStorageChange);
     };
-  }, [user.id]);
+  }, [user.id, availableVoices]);
 
   return {
     value: preferredVoiceName,

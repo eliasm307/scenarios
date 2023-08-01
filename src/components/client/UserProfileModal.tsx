@@ -24,10 +24,10 @@ import {
 } from "@chakra-ui/react";
 import type { ChangeEvent, FormEvent } from "react";
 import { useCallback, useEffect, useState } from "react";
-import type { ChakraDisclosure } from "../types";
-import { useUserContext } from "../app/providers";
-import { useSelectedVoiceName, useAvailableVoices, useCustomToast } from "../utils/client/hooks";
-import ReadOutLoudButton from "./ReadOutLoudButton";
+import type { ChakraDisclosure } from "../../types";
+import { useUserContext } from "../../app/providers";
+import { useSelectedVoiceName, useAvailableVoices, useCustomToast } from "../../utils/client/hooks";
+import ReadOutLoudButton from "../ReadOutLoudButton";
 
 type Props = {
   disclosure: ChakraDisclosure;

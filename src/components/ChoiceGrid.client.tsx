@@ -1,7 +1,5 @@
 /* eslint-disable no-console */
 
-"use client";
-
 import { Card, CardBody, Grid, Text } from "@chakra-ui/react";
 import type { ReactElement } from "react";
 

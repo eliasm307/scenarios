@@ -17,13 +17,13 @@ import {
   useDisclosure,
   Button,
   Box,
-} from "./ChakraUI.client";
-import { HamburgerIcon, SettingsIcon } from "./Icons";
-import UserProfileModal from "./UserProfileModal.client";
-import type { UserContext } from "../app/providers";
-import { useUserContext } from "../app/providers";
+} from "./ChakraUI";
+import { HamburgerIcon, SettingsIcon } from "../Icons";
+import UserProfileModal from "./UserProfileModal";
+import type { UserContext } from "../../app/providers";
+import { useUserContext } from "../../app/providers";
 import IconSvg from "./assets/emoji_u1f52e.svg";
-import { Path } from "../utils/client/constants";
+import { Path } from "../../utils/client/constants";
 
 type NavBarItemsProps = {
   onEditProfile?: () => void;

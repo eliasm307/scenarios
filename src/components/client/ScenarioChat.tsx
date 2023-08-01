@@ -35,15 +35,15 @@ import type { UseChatHelpers } from "ai/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { REALTIME_LISTEN_TYPES } from "@supabase/supabase-js";
 import Image from "next/image";
-import ChatMessage from "./ChatMessage";
-import { getSupabaseClient } from "../utils/client/supabase";
-import type { SessionRow, MessageRow, SessionUser } from "../types";
-import APIClient from "../utils/client/APIClient";
-import { isTruthy } from "../utils/general";
-import ScenarioText from "./ScenarioText";
-import type { BroadcastFunction } from "./GameSession.client";
-import ReadOutLoudButton from "./ReadOutLoudButton";
-import { useCustomToast, useElementRefNotifier } from "../utils/client/hooks";
+import ChatMessage from "../ChatMessage";
+import { getSupabaseClient } from "../../utils/client/supabase";
+import type { SessionRow, MessageRow, SessionUser } from "../../types";
+import APIClient from "../../utils/client/APIClient";
+import { isTruthy } from "../../utils/general";
+import ScenarioText from "../ScenarioText";
+import type { BroadcastFunction } from "./GameSession";
+import ReadOutLoudButton from "../ReadOutLoudButton";
+import { useCustomToast, useElementRefNotifier } from "../../utils/client/hooks";
 
 type Props = {
   selectedScenarioText: string | null;

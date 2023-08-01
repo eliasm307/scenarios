@@ -2,11 +2,11 @@
 
 import { Box, Button, Divider, HStack, Heading, Text, VStack } from "@chakra-ui/react";
 import { useCallback, useMemo } from "react";
-import type { SessionRow, SessionUser } from "../types";
-import ScenarioText from "./ScenarioText";
-import type { BroadcastFunction } from "./GameSession.client";
-import { invokeResetSessionAction } from "../utils/server/actions";
-import { useCustomToast } from "../utils/client/hooks";
+import type { SessionRow, SessionUser } from "../../types";
+import ScenarioText from "../ScenarioText";
+import type { BroadcastFunction } from "./GameSession";
+import { invokeResetSessionAction } from "../../utils/server/actions";
+import { useCustomToast } from "../../utils/client/hooks";
 
 type Props = {
   currentUser: SessionUser;

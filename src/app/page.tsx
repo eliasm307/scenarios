@@ -1,5 +1,5 @@
-import { Heading, VStack } from "../components/ChakraUI.client";
-import HomeOptions from "../components/HomeOptions.client";
+import { Heading, VStack } from "../components/client/ChakraUI";
+import HomeOptions from "../components/client/HomeOptions";
 
 export default function Home() {
   return (

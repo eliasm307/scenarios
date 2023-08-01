@@ -10,18 +10,18 @@ import type { UseToastOptions } from "@chakra-ui/react";
 import { Center, Spinner, Text } from "@chakra-ui/react";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { REALTIME_LISTEN_TYPES, REALTIME_PRESENCE_LISTEN_EVENTS } from "@supabase/supabase-js";
-import ScenarioSelector from "./ScenarioSelector.client";
-import ScenarioChat from "./ScenarioChat.client";
-import { getSupabaseClient } from "../utils/client/supabase";
+import ScenarioSelector from "./ScenarioSelector";
+import ScenarioChat from "./ScenarioChat";
+import { getSupabaseClient } from "../../utils/client/supabase";
 import type {
   BroadcastEventFrom,
   MessageRow,
   SessionRow,
   SessionUser,
   UserProfileRow,
-} from "../types";
-import OutcomesReveal from "./OutcomesReveal.client";
-import { useCustomToast } from "../utils/client/hooks";
+} from "../../types";
+import OutcomesReveal from "./OutcomesReveal";
+import { useCustomToast } from "../../utils/client/hooks";
 
 type State = {
   users: SessionUser[];

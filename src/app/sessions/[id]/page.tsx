@@ -3,9 +3,9 @@ import "server-only";
 
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { Grid, VStack } from "../../../components/ChakraUI.client";
-import NavBar from "../../../components/NavBar.client";
-import GameSession from "../../../components/GameSession.client";
+import { Grid, VStack } from "../../../components/client/ChakraUI";
+import NavBar from "../../../components/client/NavBar";
+import GameSession from "../../../components/client/GameSession";
 import APIServer from "../../../utils/server/APIServer";
 import type { MessageRow } from "../../../types";
 

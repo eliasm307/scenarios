@@ -15,15 +15,15 @@ import {
   VStack,
 } from "@chakra-ui/react";
 import { useCallback, useState } from "react";
-import APIClient from "../utils/client/APIClient";
-import type { ChoiceConfig } from "./ChoiceGrid.client";
-import ChoiceGrid from "./ChoiceGrid.client";
-import type { SessionRow, SessionUser } from "../types";
-import type { BroadcastFunction } from "./GameSession.client";
-import { invokeMoveSessionToOutcomeSelectionStageAction } from "../utils/server/actions";
-import ScenarioText from "./ScenarioText";
-import ReadOutLoudButton from "./ReadOutLoudButton";
-import { useCustomToast } from "../utils/client/hooks";
+import APIClient from "../../utils/client/APIClient";
+import type { ChoiceConfig } from "../ChoiceGrid.client";
+import ChoiceGrid from "../ChoiceGrid.client";
+import type { SessionRow, SessionUser } from "../../types";
+import type { BroadcastFunction } from "./GameSession";
+import { invokeMoveSessionToOutcomeSelectionStageAction } from "../../utils/server/actions";
+import ScenarioText from "../ScenarioText";
+import ReadOutLoudButton from "../ReadOutLoudButton";
+import { useCustomToast } from "../../utils/client/hooks";
 
 function getMajorityVoteId<T>(arr: T[]): T | null {
   const itemToOccurrenceCountMap = arr.reduce((acc, item) => {

@@ -75,7 +75,7 @@ function useAiChat({
   const [messageRows, setMessageRows] = useState<MessageRow[]>(existing?.messageRows ?? []);
   const [inputValue, setInputValue] = useState("");
   const [error] = useState<Error | null>(null); // todo is this required?
-  const isLoading = messageRows.at(-1)?.author_role === "user" || aiIsResponding; // ie the response is loading
+  const isLoading = messageRows.at(-1)?.author_role === "user" || aiIsResponding; // ie an AI response is loading
 
   const handleSubmit: UseChatHelpers["handleSubmit"] = useCallback(
     async (e) => {
@@ -150,19 +150,19 @@ function useAiChat({
     };
   }, [sessionId]);
 
-  useAutoScrolling({
-    messages: messageRows,
-    messagesListEl: messagesListRef.current,
-  });
-
   // focus on input when chat is ready for user input
   useEffect(() => {
-    if (!isLoading || !aiIsResponding) {
+    if (!isLoading) {
       textAreaRef.current?.focus();
     }
-  }, [isLoading, aiIsResponding]);
+  }, [isLoading]);
 
   useEffect(() => {
+    const textAreaEl = textAreaRef.current;
+    if (!textAreaEl) {
+      return;
+    }
+
     let typingTimeoutId: ReturnType<typeof setTimeout> | undefined;
     let coolingDownTimeoutId: ReturnType<typeof setTimeout> | undefined;
 
@@ -209,11 +209,13 @@ function useAiChat({
       });
     }
 
-    const textAreaEl = textAreaRef.current;
-    textAreaEl?.addEventListener("keydown", handleKeydown);
-    textAreaEl?.addEventListener("blur", handleBlur);
+    textAreaEl.addEventListener("keydown", handleKeydown);
+    textAreaEl.addEventListener("blur", handleBlur);
 
     return () => {
+      clearTimeout(typingTimeoutId);
+      textAreaEl.removeEventListener("keydown", handleKeydown);
+      textAreaEl.removeEventListener("blur", handleBlur);
       if (typingTimeoutId) {
         broadcast({
           event: "TypingStateChanged",
@@ -223,9 +225,6 @@ function useAiChat({
           },
         });
       }
-      clearTimeout(typingTimeoutId);
-      textAreaEl?.removeEventListener("keydown", handleKeydown);
-      textAreaEl?.removeEventListener("blur", handleBlur);
     };
   }, [broadcast, currentUser.id, textAreaRef]);
 
@@ -279,12 +278,8 @@ function useAiChat({
   return {
     chat: {
       handleSubmit,
-      // should not be used externally, prefer messageRows
-      messages: [],
       isLoading,
-      inputPlaceholderText: aiIsResponding
-        ? "AI typing..."
-        : getPlaceholderText({ isLoading, error: !!error }),
+      inputPlaceholderText: getPlaceholderText({ isLoading, hasError: !!error }),
       input: inputValue,
       handleInputChange: (e: React.ChangeEvent<HTMLTextAreaElement>) =>
         setInputValue(e.target.value),
@@ -292,6 +287,7 @@ function useAiChat({
       handleInputKeyDown,
     },
     messageRows: sortedMessageRows,
+    messagesListEl: messagesListRef.current,
     messagesListRef: messagesListRefNotifier,
     textAreaRef: textAreaRefNotifier,
     formRef,
@@ -307,10 +303,16 @@ export default function ScenarioChat(props: Props) {
     messageRows,
     formRef,
     messagesListRef,
+    messagesListEl,
     textAreaRef,
     selectedScenarioText,
     selectedScenarioImageUrl,
   } = useAiChat(props);
+
+  useAutoScrolling({
+    messages: messageRows,
+    messagesListEl,
+  });
 
   const messagesList = (
     <Flex
@@ -595,11 +597,11 @@ function scrollToBottom(scrollableEl: HTMLElement) {
   scrollableEl.scrollTop = scrollableEl.scrollHeight;
 }
 
-function getPlaceholderText(chat: { isLoading: boolean; error: boolean }): string {
+function getPlaceholderText(chat: { isLoading: boolean; hasError: boolean }): string {
   if (chat.isLoading) {
-    return "Thinking 🤔...";
+    return "AI is typing...";
   }
-  if (chat.error) {
+  if (chat.hasError) {
     return "An error occurred 😢";
   }
   return "Ask me anything about the scenario 😀";

@@ -266,6 +266,7 @@ function useAiChat({
       handleSubmit,
       // should not be used externally, prefer messageRows
       messages: [],
+      // todo only have one isLoading flag
       isLocked,
       isLoading,
       inputPlaceholderText: aiIsResponding

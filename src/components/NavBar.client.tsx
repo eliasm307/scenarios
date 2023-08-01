@@ -1,7 +1,9 @@
 "use client";
 
-import type { FlexProps } from "@chakra-ui/react";
+import { Spacer, type FlexProps } from "@chakra-ui/react";
 
+import Image from "next/image";
+import Link from "next/link";
 import {
   Show,
   Flex,
@@ -14,11 +16,14 @@ import {
   IconButton,
   useDisclosure,
   Button,
+  Box,
 } from "./ChakraUI.client";
 import { HamburgerIcon } from "./Icons";
 import UserProfileModal from "./UserProfileModal.client";
 import type { UserContext } from "../app/providers";
 import { useUserContext } from "../app/providers";
+import IconSvg from "./assets/emoji_u1f52e.svg";
+import { Path } from "../utils/client/constants";
 
 type NavBarItemsProps = {
   onEditProfile?: () => void;
@@ -86,11 +91,19 @@ function MobileNavBarItems(config: NavBarItemsProps) {
 export default function NavBar(flexProps: FlexProps) {
   const userProfileModalDisclosure = useDisclosure();
   const user = useUserContext();
+
+  // todo use a hook instead so everything isnt rendered
   return (
     <Flex as='nav' alignItems='center' px={3} py={2} m={0} gap={3} boxShadow='md' {...flexProps}>
-      <Heading as='h1' flex={1} fontSize='2xl'>
-        🔮 Scenarios
-      </Heading>
+      <Link href={Path.Home}>
+        <Heading as='h1' fontSize='2xl' display='flex' alignItems='center' gap={2}>
+          <Box position='relative' width='2rem' height='2rem'>
+            <Image fill src={IconSvg} alt='React Logo' />
+          </Box>
+          Scenarios
+        </Heading>
+      </Link>
+      <Spacer flex={1} />
       <Flex gap='inherit'>
         <Show above='md'>
           <DesktopNavBarItems

@@ -39,6 +39,31 @@ export default function OutcomesReveal({
       .sort((a, b) => b.correctGuessesCount - a.correctGuessesCount);
   }, [users, outcomeVotes]);
 
+  const correctGuessCountToMedalEmojiMap = useMemo(() => {
+    const sortedCounts = [...new Set(results.map((result) => result.correctGuessesCount))].sort(
+      (a, b) => b - a,
+    );
+
+    function getMedalEmoji(index: number) {
+      switch (index) {
+        case 0:
+          return "🥇";
+        case 1:
+          return "🥈";
+        case 2:
+          return "🥉";
+        default:
+          return "";
+      }
+    }
+
+    return Object.fromEntries(
+      sortedCounts.map((count, i) => {
+        return [count, getMedalEmoji(i)];
+      }),
+    );
+  }, [results]);
+
   return (
     <VStack spacing={3} mt={5} mb={10} height='stretch' overflow='auto' width='100%' gap={5}>
       <Box maxWidth='30rem' textAlign='center'>
@@ -54,12 +79,13 @@ export default function OutcomesReveal({
       <Divider />
       <Heading>Who is on the Podium?</Heading>
       <ResponsiveGrid>
-        {results.map((result, i) => {
+        {results.map((result) => {
           return (
             <VStack key={result.user.id} gap={0}>
               <Heading as='h3' size='md' mb={2} width='100%' textAlign='center'>
                 <Text as='span' fontSize='2rem'>
-                  {getMedalEmoji(i)}
+                  {/* ie users with the same count get the same medal */}
+                  {correctGuessCountToMedalEmojiMap[result.correctGuessesCount]}
                 </Text>{" "}
                 &quot;{result.user.name}&quot; <br />
               </Heading>
@@ -77,19 +103,6 @@ export default function OutcomesReveal({
       </Button>
     </VStack>
   );
-}
-
-function getMedalEmoji(index: number) {
-  switch (index) {
-    case 0:
-      return "🥇";
-    case 1:
-      return "🥈";
-    case 2:
-      return "🥉";
-    default:
-      return "";
-  }
 }
 
 function ResponsiveGrid({ children }: React.PropsWithChildren) {

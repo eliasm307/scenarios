@@ -150,18 +150,21 @@ async function generateResponse(newMessageRow: MessageRow) {
     getUsersRequest.data.map((userProfile) => [userProfile.user_id, userProfile.user_name]),
   );
 
-  const sessionChatMessages = messageRows.map(messageRowToChatMessage).map((chatMessage, i) => {
-    if (chatMessage.role === "user") {
-      const userId = messageRows[i].author_id;
-      if (userId) {
-        chatMessage.name = userIdToNameMap.get(userId);
+  const sessionChatMessagesWithAuthorNames = messageRows
+    .map(messageRowToChatMessage)
+    .map((chatMessage, i) => {
+      if (chatMessage.role === "user") {
+        const userId = messageRows[i].author_id;
+        const userName = userId && userIdToNameMap.get(userId);
+        if (userName) {
+          chatMessage.content = `${userName}: ${chatMessage.content}`;
+        }
       }
-    }
-    return chatMessage;
-  });
+      return chatMessage;
+    });
 
   const responseMessageStream = await createScenarioChatResponseStream({
-    chatMessages: sessionChatMessages,
+    chatMessages: sessionChatMessagesWithAuthorNames,
     scenario: sessionScenario,
   });
 

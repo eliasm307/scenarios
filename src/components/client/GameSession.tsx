@@ -19,7 +19,7 @@ import type {
   SessionUser,
   UserProfileRow,
 } from "../../types";
-import OutcomesReveal from "./OutcomesReveal";
+import OutcomesRevealContainer from "./OutcomesReveal.container";
 import { useCustomToast } from "../../utils/client/hooks";
 import ScenarioChatContainer from "./ScenarioChat.container";
 
@@ -509,7 +509,7 @@ export default function GameSession(props: Props): React.ReactElement {
       throw new Error("Missing selected_scenario_text");
     }
     return (
-      <OutcomesReveal
+      <OutcomesRevealContainer
         key='outcomes-reveal'
         sessionId={session.id}
         currentUser={currentUser}

@@ -1,5 +1,8 @@
 import type { Message } from "ai";
 
+export const POSITIVE_OUTCOME_EMOJI = "👍🏾";
+export const NEGATIVE_OUTCOME_EMOJI = "🙅🏾‍♂️";
+
 export const USE_DUMMY_CHAT_RESPONSE_STREAM = true;
 
 export const DUMMY_MESSAGES: Message[] = [

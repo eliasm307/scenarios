@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react";
+import { action } from "@storybook/addon-actions";
 // import { within, userEvent } from "@storybook/testing-library";
 
 import Page from "./ScenarioChat";
@@ -7,22 +8,18 @@ import { DUMMY_MESSAGES } from "../../utils/constants";
 
 const meta = {
   component: Page,
-  parameters: {
-    // More on how to position stories at: https://storybook.js.org/docs/react/configure/story-layout
-    layout: "fullscreen",
-  },
   args: {
     chat: {
       allowsSubmitting: true,
       error: null,
-      handleSubmit: async () => {},
+      handleSubmit: async () => action("handleSubmit")(),
       hasError: false,
       inputProps: {
-        onChange: () => {},
-        onKeyDown: async () => {},
-        onBlur: () => {},
+        onChange: action("input:onChange"),
+        onKeyDown: async () => action("input:onKeyDown")(),
+        onBlur: action("input:onBlur"),
         placeholder: "Type a message...",
-        value: "",
+        value: "", // todo container shouldnt be controlling UI control, this means UI doesnt work standalone
       },
       isLoading: false,
     },

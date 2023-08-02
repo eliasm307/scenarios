@@ -13,6 +13,7 @@ import { useCallback } from "react";
 import type { SessionUser } from "../../types";
 import type { ScenarioChatViewProps } from "./ScenarioChat.container";
 import { useIsLargeScreen } from "../../utils/client/hooks";
+import { POSITIVE_OUTCOME_EMOJI, NEGATIVE_OUTCOME_EMOJI } from "../../utils/constants";
 
 type Props = ScenarioChatViewProps & {
   isFullWidth?: boolean;
@@ -91,13 +92,13 @@ function UserOutcomeVotingRow({
 
   const positiveRadioNode = (
     <Radio colorScheme='green' value='true'>
-      👍🏾 would do it
+      {POSITIVE_OUTCOME_EMOJI} would do it
     </Radio>
   );
 
   const negativeRadioNode = (
     <Radio colorScheme='red' value='false'>
-      🙅🏾‍♂️ would not do it
+      {NEGATIVE_OUTCOME_EMOJI} would not do it
     </Radio>
   );
 

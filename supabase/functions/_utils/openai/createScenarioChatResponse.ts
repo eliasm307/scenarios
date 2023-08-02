@@ -60,7 +60,7 @@ function createScenarioChatSystemMessage(scenario: string): ChatMessage {
 
     Your role is to give more details about the scenario so people can make a decision.
 
-    IMPORTANT rules about your answers:
+    IMPORTANT rules and information about your answers:
     - Provide interesting, funny, and engaging answers to user questions, its your job to keep the user engaged and interested.
     - Do not provide answers that change the conditions of the original scenario, just create more details about the scenario but dont change its meaning.
     - Use your imagination but keep answers as short as possible
@@ -74,6 +74,7 @@ function createScenarioChatSystemMessage(scenario: string): ChatMessage {
     - Only use simple direct language, do not use complex words or sentences.
     - Responses should be easy for anyone to understand.
     - Paragraphs and Sentences should be separated by a new line.
+    - You will be speaking with multiple users at the same time so you can refer to users by name when responding to their questions to make it clear who you are addressing.
     `,
   };
 }

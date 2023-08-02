@@ -15,6 +15,7 @@ import { messageRowToChatMessage } from "../_utils/pure.ts";
 import { createScenarioChatResponseStream } from "../_utils/openai/createScenarioChatResponse.ts";
 import { streamAndPersist } from "../_utils/general.ts";
 import { ACTIVE_OPENAI_MODEL } from "../_utils/openai/general.ts";
+import { isTruthy } from "../../../src/utils/general.ts";
 
 serve(async (req) => {
   try {
@@ -89,7 +90,7 @@ async function setAiIsResponding({
 async function generateResponse(newMessageRow: MessageRow) {
   console.log("generating response for message", JSON.stringify(newMessageRow, null, 2));
 
-  const [sessionChatMessages, sessionScenario] = await Promise.all([
+  const [messageRows, sessionScenario] = await Promise.all([
     supabaseAdminClient
       .from("messages")
       .select("*")
@@ -100,12 +101,12 @@ async function generateResponse(newMessageRow: MessageRow) {
           console.error("error fetching session messages", response.error);
           throw response.error;
         }
-        const sessionMessageRows = response.data as MessageRow[];
+        const messageRowsData = response.data as MessageRow[];
         console.log(
           `fetched session ${newMessageRow.session_id} messages:`,
-          JSON.stringify(sessionMessageRows, null, 2),
+          JSON.stringify(messageRowsData, null, 2),
         );
-        return sessionMessageRows.map(messageRowToChatMessage);
+        return messageRowsData;
       }),
     supabaseAdminClient
       .from("sessions")
@@ -129,6 +130,35 @@ async function generateResponse(newMessageRow: MessageRow) {
         return scenario;
       }),
   ]);
+
+  const userIds = new Set(
+    messageRows
+      .filter((messageRow) => messageRow.author_role === "user")
+      .map((messageRow) => messageRow.author_id)
+      .filter(isTruthy),
+  );
+  const getUsersRequest = await supabaseAdminClient
+    .from("user_profiles")
+    .select("user_id, user_name")
+    .in("user_id", [...userIds]);
+  if (getUsersRequest.error) {
+    console.error("error fetching users", getUsersRequest.error);
+    throw getUsersRequest.error;
+  }
+
+  const userIdToNameMap = new Map(
+    getUsersRequest.data.map((userProfile) => [userProfile.user_id, userProfile.user_name]),
+  );
+
+  const sessionChatMessages = messageRows.map(messageRowToChatMessage).map((chatMessage, i) => {
+    if (chatMessage.role === "user") {
+      const userId = messageRows[i].author_id;
+      if (userId) {
+        chatMessage.name = userIdToNameMap.get(userId);
+      }
+    }
+    return chatMessage;
+  });
 
   const responseMessageStream = await createScenarioChatResponseStream({
     chatMessages: sessionChatMessages,

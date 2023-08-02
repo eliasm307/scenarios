@@ -10,10 +10,10 @@ import {
   Radio,
 } from "@chakra-ui/react";
 import { useCallback } from "react";
-import type { SessionUser } from "../../types";
+import type { SessionUser } from "../../../types";
 import type { ScenarioChatViewProps } from "./ScenarioChat.container";
-import { useIsLargeScreen } from "../../utils/client/hooks";
-import { POSITIVE_OUTCOME_EMOJI, NEGATIVE_OUTCOME_EMOJI } from "../../utils/constants";
+import { useIsLargeScreen } from "../../../utils/client/hooks";
+import { POSITIVE_OUTCOME_EMOJI, NEGATIVE_OUTCOME_EMOJI } from "../../../utils/constants";
 
 type Props = ScenarioChatViewProps & {
   isFullWidth?: boolean;

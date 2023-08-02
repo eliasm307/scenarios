@@ -16,12 +16,12 @@ import {
   Tabs,
   VStack,
 } from "@chakra-ui/react";
-import ScenarioText from "../ScenarioText";
-import ReadOutLoudButton from "../ReadOutLoudButton";
+import ScenarioText from "../../ScenarioText";
+import ReadOutLoudButton from "../../ReadOutLoudButton";
 import type { ScenarioChatViewProps } from "./ScenarioChat.container";
 import ChatPanel from "./ScenarioChatPanel";
 import VotingPanel from "./ScenarioChatVotingPanel";
-import { useIsLargeScreen } from "../../utils/client/hooks";
+import { useIsLargeScreen } from "../../../utils/client/hooks";
 
 function ScenarioTextPanel({ scenarioText }: { scenarioText: string }) {
   return (

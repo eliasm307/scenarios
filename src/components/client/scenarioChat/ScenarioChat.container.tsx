@@ -6,13 +6,13 @@ import { REALTIME_LISTEN_TYPES } from "@supabase/supabase-js";
 import type { FormEvent } from "react";
 import { useRef, useState, useCallback, useEffect, useMemo } from "react";
 import type { TextareaProps } from "@chakra-ui/react";
-import type { SessionUser, SessionRow, MessageRow } from "../../types";
-import { useCustomToast } from "../../utils/client/hooks";
-import { getSupabaseClient } from "../../utils/client/supabase";
-import { isTruthy } from "../../utils/general";
-import type { BroadcastFunction } from "./GameSession";
+import type { SessionUser, SessionRow, MessageRow } from "../../../types";
+import { useCustomToast } from "../../../utils/client/hooks";
+import { getSupabaseClient } from "../../../utils/client/supabase";
+import { isTruthy } from "../../../utils/general";
+import type { BroadcastFunction } from "../GameSession";
 import ScenarioChat from "./ScenarioChat";
-import APIClient from "../../utils/client/APIClient";
+import APIClient from "../../../utils/client/APIClient";
 
 type Props = {
   selectedScenarioText: string | null;

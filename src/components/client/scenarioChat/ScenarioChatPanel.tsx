@@ -13,10 +13,10 @@ import {
 } from "@chakra-ui/react";
 import { useEffect, useRef } from "react";
 import Image from "next/image";
-import { useElement } from "../../utils/client/hooks";
-import ChatMessage from "../ChatMessage";
+import { useElement } from "../../../utils/client/hooks";
+import ChatMessage from "../../ChatMessage";
 import type { ScenarioChatViewProps } from "./ScenarioChat.container";
-import type { MessageRow } from "../../types";
+import type { MessageRow } from "../../../types";
 
 export default function ChatPanel({
   selectedScenarioImageUrl,

@@ -3,8 +3,8 @@ import { action } from "@storybook/addon-actions";
 // import { within, userEvent } from "@storybook/testing-library";
 
 import Page from "./ScenarioChat";
-import type { MessageRow } from "../../types";
-import { DUMMY_MESSAGES } from "../../utils/constants";
+import type { MessageRow } from "../../../types";
+import { DUMMY_MESSAGES } from "../../../utils/constants";
 
 const meta = {
   component: Page,

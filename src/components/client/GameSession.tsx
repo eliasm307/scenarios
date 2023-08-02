@@ -10,7 +10,7 @@ import type { UseToastOptions } from "@chakra-ui/react";
 import { Center, Spinner, Text } from "@chakra-ui/react";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { REALTIME_LISTEN_TYPES, REALTIME_PRESENCE_LISTEN_EVENTS } from "@supabase/supabase-js";
-import ScenarioSelector from "./ScenarioSelector";
+import ScenarioSelectorContainer from "./ScenarioSelector.container";
 import { getSupabaseClient } from "../../utils/client/supabase";
 import type {
   BroadcastEventFrom,
@@ -21,7 +21,7 @@ import type {
 } from "../../types";
 import OutcomesRevealContainer from "./OutcomesReveal.container";
 import { useCustomToast } from "../../utils/client/hooks";
-import ScenarioChatContainer from "./ScenarioChat.container";
+import ScenarioChatContainer from "./scenarioChat/ScenarioChat.container";
 
 type State = {
   users: SessionUser[];
@@ -474,7 +474,7 @@ export default function GameSession(props: Props): React.ReactElement {
     }
 
     return (
-      <ScenarioSelector
+      <ScenarioSelectorContainer
         key='scenario-selector'
         scenarioOptions={scenarioOptions}
         optionVotes={session.scenario_option_votes}

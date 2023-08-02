@@ -1,11 +1,11 @@
 /* eslint-disable react/no-unused-prop-types */
-/* eslint-disable no-console */
 
 "use client";
 
 import {
   Badge,
   Box,
+  Button,
   Center,
   Divider,
   HStack,
@@ -14,165 +14,26 @@ import {
   Text,
   VStack,
 } from "@chakra-ui/react";
-import { useCallback, useState } from "react";
-import APIClient from "../../utils/client/APIClient";
+import { useState } from "react";
 import type { ChoiceConfig } from "../ChoiceGrid.client";
 import ChoiceGrid from "../ChoiceGrid.client";
 import type { SessionRow, SessionUser } from "../../types";
-import type { BroadcastFunction } from "./GameSession";
-import { invokeMoveSessionToOutcomeSelectionStageAction } from "../../utils/server/actions";
 import ScenarioText from "../ScenarioText";
 import ReadOutLoudButton from "../ReadOutLoudButton";
-import { useCustomToast } from "../../utils/client/hooks";
+import type { ScenarioSelectorViewProps } from "./ScenarioSelector.container";
 
-function getMajorityVoteId<T>(arr: T[]): T | null {
-  const itemToOccurrenceCountMap = arr.reduce((acc, item) => {
-    const count = acc.get(item) ?? 0;
-    acc.set(item, count + 1);
-    return acc;
-  }, new Map<T, number>());
-
-  const maxItemEntry = [...itemToOccurrenceCountMap.entries()].reduce((entryA, entryB) => {
-    return (entryB[1] > entryA[1] ? entryB : entryA) as [T, number];
-  })[0];
-
-  const maxCounts = [...itemToOccurrenceCountMap.values()].filter(
-    (count) => count === itemToOccurrenceCountMap.get(maxItemEntry),
-  );
-
-  if (maxCounts.length > 1) {
-    // There are multiple items with the same max count, so there is no most frequent item
-    return null;
-  }
-
-  return maxItemEntry as T;
-}
-
-function useLogic({
-  selectedOptionId: sessionId,
+export default function ScenarioSelector({
+  isLoading,
   users,
   currentUser,
-  scenarioOptions,
   optionVotes,
-  broadcast,
-}: Props) {
-  const toast = useCustomToast();
-  const [isLoading, setIsLoading] = useState(false);
-
-  const handleVote = useCallback(
-    async (optionId: number) => {
-      const newOptionVotes = { ...optionVotes, [currentUser.id]: optionId };
-      const voteIds = Object.values(newOptionVotes);
-      const votingComplete = voteIds.length === users.length;
-      if (!votingComplete) {
-        // updating option votes is pretty quick so dont show loading state unless it takes a noticeable amount of time
-        const timeoutId = setTimeout(() => setIsLoading(true), 1000);
-        console.log("voting not complete, updating option votes...", { newOptionVotes, users });
-        const errorToastConfig = await APIClient.sessions.voteForScenarioOption({
-          user_id: currentUser.id,
-          option_id: optionId,
-          session_id: sessionId,
-        });
-
-        if (errorToastConfig) {
-          toast(errorToastConfig);
-        }
-
-        clearTimeout(timeoutId);
-        setIsLoading(false);
-        return;
-      }
-
-      setIsLoading(true);
-      const majorityVoteId = getMajorityVoteId(voteIds);
-      const majorityNotReached = majorityVoteId === null;
-      const majorityVoteIdIsReset = majorityVoteId === -1;
-      if (majorityNotReached || majorityVoteIdIsReset) {
-        console.log("no winning vote resetting options...");
-
-        broadcast({
-          event: "Toast",
-          data: {
-            title: "Re-generating Options",
-            description: "No majority vote, creating new options...",
-            status: "info",
-          },
-        });
-
-        // reset votes and options
-        const errorToastConfig = await APIClient.sessions.generateNewScenarioOptions(sessionId);
-        if (errorToastConfig) {
-          toast(errorToastConfig);
-        }
-        setIsLoading(false);
-        return;
-      }
-
-      const winningScenarioText = scenarioOptions[majorityVoteId];
-      if (!winningScenarioText) {
-        throw Error(`No winning scenario at index ${majorityVoteId}`);
-      }
-
-      broadcast({
-        event: "Toast",
-        data: {
-          title: "Scenario Voting Complete",
-          description: `The majority has voted for a scenario to play!`,
-          status: "success",
-        },
-      });
-
-      const userIdsThatVotedForWinningScenario = Object.entries(newOptionVotes)
-        .filter(([, voteOptionId]) => voteOptionId === majorityVoteId)
-        .map(([userId]) => userId);
-
-      const errorToastConfig = await invokeMoveSessionToOutcomeSelectionStageAction({
-        scenarioText: winningScenarioText,
-        userIdsThatVotedForScenario: userIdsThatVotedForWinningScenario,
-        sessionId,
-      });
-      if (errorToastConfig) {
-        toast(errorToastConfig);
-      }
-
-      setIsLoading(false);
-    },
-    [broadcast, currentUser.id, optionVotes, scenarioOptions, sessionId, toast, users],
-  );
-
-  return {
-    handleVote,
-    isLoading,
-    users,
-    currentUser,
-    optionVotes,
-    scenarioOptions,
-  };
-}
-
-type Props = {
-  users: SessionUser[];
-  currentUser: SessionUser;
-  /**
-   * The index of the scenario option voted for by the current user.
-   * If the current user has not voted, this will be `null`.
-   * If the current user has voted to reset the options, this will be `-1`.
-   */
-  voteId: number | null;
-  selectedOptionId: number;
-  scenarioOptions: string[];
-  optionVotes: SessionRow["scenario_option_votes"];
-  broadcast: BroadcastFunction;
-};
-
-export default function ScenarioSelector(props: Props): React.ReactElement {
-  const { isLoading, users, currentUser, optionVotes, scenarioOptions, handleVote } =
-    useLogic(props);
-
-  console.log({ scenarioOptions: [...scenarioOptions] });
+  scenarioOptions,
+  handleVote: persistChoice,
+}: ScenarioSelectorViewProps): React.ReactElement {
+  const [localSelectedOptionId, setSelectedOptionId] = useState<number | null>(null);
+  const hasPersistedSelection = typeof optionVotes[currentUser.id] === "number";
 
   if (isLoading) {
-    console.log("scenario selector loading...");
     return (
       <Center as='section' height='100%' display='flex' flexDirection='column' gap={3}>
         <Spinner fontSize='2xl' />
@@ -184,7 +45,7 @@ export default function ScenarioSelector(props: Props): React.ReactElement {
   return (
     <VStack as='section' m={3} height='100%'>
       <Heading textAlign='center'>Vote for a Scenario to Play!</Heading>
-      <HStack>
+      <HStack wrap='wrap'>
         <span>Users waiting to vote: </span>
         {users
           .filter((user) => {
@@ -197,23 +58,25 @@ export default function ScenarioSelector(props: Props): React.ReactElement {
             </Badge>
           ))}
       </HStack>
-      <Box key={scenarioOptions.join("+")} overflow='auto' pb={6} flex={1}>
+      <VStack key={scenarioOptions.join("+")} overflow='auto' pb={6} flex={1} gap={4}>
         <ChoiceGrid
           choices={[
-            ...scenarioOptions.map(
-              (text, optionId): ChoiceConfig => ({
+            ...scenarioOptions.map((text, optionId): ChoiceConfig => {
+              const isSelected = optionVotes[currentUser.id] === optionId;
+              return {
                 text,
-                onSelect: () => handleVote(optionId),
-                isSelected: optionVotes[currentUser.id] === optionId,
+                isSelected,
                 content: (
                   <Box key={`${text.trim() || optionId}-container`}>
                     {text.trim() ? (
                       <OptionContent
-                        key={text}
+                        key={text + optionId}
                         optionId={optionId}
                         optionVotes={optionVotes}
                         text={text}
                         users={users}
+                        handleSelect={() => setSelectedOptionId(optionId)}
+                        isSelected={isSelected}
                       />
                     ) : (
                       <Center
@@ -230,25 +93,40 @@ export default function ScenarioSelector(props: Props): React.ReactElement {
                     )}
                   </Box>
                 ),
-              }),
-            ),
+              };
+            }),
             {
               content: (
                 <OptionContent
+                  key='new'
                   optionId={-1}
                   optionVotes={optionVotes}
                   notReadable
                   text='🆕 Vote to generate new scenarios'
                   users={users}
-                  key='new'
+                  handleSelect={() => setSelectedOptionId(-1)}
+                  isSelected={optionVotes[currentUser.id] === -1}
                 />
               ),
-              onSelect: () => handleVote(-1),
-              isSelected: optionVotes[currentUser.id] === null,
+              isSelected: optionVotes[currentUser.id] === -1,
             },
           ]}
         />
-      </Box>
+        {hasPersistedSelection ? (
+          <Button p={5} colorScheme='gray' isDisabled>
+            Waiting for Other Players to Vote...
+          </Button>
+        ) : (
+          <Button
+            p={5}
+            colorScheme={hasPersistedSelection ? "gray" : "green"}
+            isDisabled={hasPersistedSelection}
+            onClick={() => persistChoice(localSelectedOptionId)}
+          >
+            I&apos;m Ready for the Next Stage
+          </Button>
+        )}
+      </VStack>
     </VStack>
   );
 }
@@ -259,17 +137,21 @@ function OptionContent({
   optionVotes,
   text,
   notReadable,
+  handleSelect,
+  isSelected,
 }: {
   users: SessionUser[];
   optionId: number;
   optionVotes: SessionRow["scenario_option_votes"];
   text: string;
   notReadable?: boolean;
+  handleSelect: () => void;
+  isSelected: boolean;
 }) {
   return (
     <VStack height='100%' width='100%'>
       <HStack minHeight={10} width='100%'>
-        <HStack flex={1}>
+        <HStack flex={1} wrap='wrap'>
           <Text>Votes:</Text>
           {users
             .filter((user) => {
@@ -291,6 +173,15 @@ function OptionContent({
           <Box>
             <ReadOutLoudButton text={text} />
           </Box>
+        )}
+        {isSelected ? (
+          <Button colorScheme='gray' key={`${optionId}-selected`} isDisabled>
+            Selected
+          </Button>
+        ) : (
+          <Button colorScheme='green' key={`${optionId}-unselected`} onClick={handleSelect}>
+            Select
+          </Button>
         )}
       </HStack>
       <Divider my={3} width='100%' />

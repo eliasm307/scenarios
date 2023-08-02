@@ -36,7 +36,7 @@ export type SessionRow = ExtendRowData<
      * @key UserId
      * @key Index (0-based) of the user's vote (where -1 means voting to skip)
      */
-    scenario_option_votes: Record<string, number>;
+    scenario_option_votes: Record<string, number | null | undefined>;
     /**
      * @key UserId
      * @value A map of User IDs to whether the user thinks that user will say yes or no to the scenario

@@ -1,6 +1,6 @@
 import { Tooltip, IconButton } from "@chakra-ui/react";
 import { useState, useCallback, useEffect } from "react";
-import { SoundIcon, StopIcon } from "./Icons";
+import { SoundIcon, StopSoundIcon } from "./Icons";
 import { useSelectedVoiceName, useVoiceSynthesis } from "../utils/client/hooks";
 import { useUserContext } from "../app/providers";
 
@@ -22,7 +22,8 @@ function StopReadingOutLoudButton({ onClick }: { onClick: () => void }) {
     <Tooltip label='Stop reading out loud' aria-label='Stop reading out loud'>
       <IconButton
         key='stop'
-        icon={<StopIcon />}
+        colorScheme='yellow'
+        icon={<StopSoundIcon fontSize='1.5rem' />}
         aria-label='Stop reading out loud'
         onClick={onClick}
       />

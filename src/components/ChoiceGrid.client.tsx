@@ -6,7 +6,7 @@ import type { ReactElement } from "react";
 export type ChoiceConfig = {
   text?: string;
   content?: ReactElement;
-  onSelect: () => void;
+  onSelect?: () => void;
   isSelected?: boolean;
 };
 
@@ -16,6 +16,7 @@ export default function ChoiceGrid({ choices }: { choices: ChoiceConfig[] }): Re
       className='choice-grid'
       fontSize='2xl'
       templateColumns={{ base: "1fr", md: "1fr 1fr" }}
+      width='100%'
       gap={3}
       p={3}
     >
@@ -32,11 +33,8 @@ function ChoiceCard({ text, onSelect, isSelected, content }: ChoiceConfig) {
       className='choice-card'
       minHeight='10rem'
       shadow='lg'
-      onClick={() => {
-        console.log("clicked", text);
-        onSelect();
-      }}
-      _hover={{ outline: "5px solid gray", cursor: "pointer" }}
+      onClick={onSelect}
+      _hover={onSelect ? { outline: "5px solid gray", cursor: "pointer" } : {}}
       style={isSelected ? { outline: "5px solid green" } : undefined}
     >
       <CardBody

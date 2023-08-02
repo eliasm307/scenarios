@@ -1,5 +1,5 @@
 /* eslint-disable no-console */
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import type { SessionUser, SessionRow } from "../../types";
 import { useCustomToast } from "../../utils/client/hooks";
 import { invokeMoveSessionToOutcomeSelectionStageAction } from "../../utils/server/actions";
@@ -17,8 +17,10 @@ function useLogic({
 }: Props) {
   const toast = useCustomToast();
   const [isLoading, setIsLoading] = useState(false);
+  const [localSelection, setSelection] = useState<number | null>(null);
+  const hasPersistedSelection = typeof optionVotes[currentUser.id] === "number";
 
-  const handleVote = useCallback(
+  const persistChoice = useCallback(
     async (optionId: number | null) => {
       const newOptionVotes = { ...optionVotes, [currentUser.id]: optionId };
       const voteIds = Object.values(newOptionVotes);
@@ -100,13 +102,35 @@ function useLogic({
     [broadcast, currentUser.id, optionVotes, scenarioOptions, sessionId, toast, users],
   );
 
+  const handleCurrentUserReadyForNextStage = useCallback(
+    () => persistChoice(localSelection),
+    [localSelection, persistChoice],
+  );
+
+  useEffect(() => {
+    if (hasPersistedSelection) {
+      // only start persisting local changes once the user has said they are ready for next stage
+      void persistChoice(localSelection);
+    }
+  }, [hasPersistedSelection, localSelection, persistChoice]);
+
+  const usersWaitingToVote = useMemo(() => {
+    return users.filter((user) => {
+      const hasNotVoted = typeof optionVotes[user.id] === "undefined";
+      return hasNotVoted;
+    });
+  }, [users, optionVotes]);
+
   return {
-    handleVote,
+    usersWaitingToVote,
+    handleCurrentUserReadyForNextStage,
+    setSelection,
     isLoading,
     users,
     currentUser,
     optionVotes,
     scenarioOptions,
+    isCurrentUserReadyForNextStage: hasPersistedSelection,
   };
 }
 

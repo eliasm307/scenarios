@@ -14,13 +14,14 @@ import {
   Text,
   VStack,
 } from "@chakra-ui/react";
-import { useState } from "react";
+import { useMemo } from "react";
 import type { ChoiceConfig } from "../ChoiceGrid.client";
 import ChoiceGrid from "../ChoiceGrid.client";
 import type { SessionRow, SessionUser } from "../../types";
 import ScenarioText from "../ScenarioText";
 import ReadOutLoudButton from "../ReadOutLoudButton";
 import type { ScenarioSelectorViewProps } from "./ScenarioSelector.container";
+import ReadyForNextStageButton from "./ReadyForNextStageButton";
 
 export default function ScenarioSelector({
   isLoading,
@@ -28,11 +29,11 @@ export default function ScenarioSelector({
   currentUser,
   optionVotes,
   scenarioOptions,
-  handleVote: persistChoice,
+  handleCurrentUserReadyForNextStage,
+  setSelection,
+  usersWaitingToVote,
+  isCurrentUserReadyForNextStage,
 }: ScenarioSelectorViewProps): React.ReactElement {
-  const [localSelectedOptionId, setSelectedOptionId] = useState<number | null>(null);
-  const hasPersistedSelection = typeof optionVotes[currentUser.id] === "number";
-
   if (isLoading) {
     return (
       <Center as='section' height='100%' display='flex' flexDirection='column' gap={3}>
@@ -47,16 +48,11 @@ export default function ScenarioSelector({
       <Heading textAlign='center'>Vote for a Scenario to Play!</Heading>
       <HStack wrap='wrap'>
         <span>Users waiting to vote: </span>
-        {users
-          .filter((user) => {
-            const hasNotVoted = typeof optionVotes[user.id] === "undefined";
-            return hasNotVoted;
-          })
-          .map((user) => (
-            <Badge key={user.id} colorScheme={user.isCurrentUser ? "green" : "gray"}>
-              {user.isCurrentUser ? "Me" : user.name}
-            </Badge>
-          ))}
+        {usersWaitingToVote.map((user) => (
+          <Badge key={user.id} colorScheme={user.isCurrentUser ? "green" : "gray"}>
+            {user.isCurrentUser ? "Me" : user.name}
+          </Badge>
+        ))}
       </HStack>
       <VStack key={scenarioOptions.join("+")} overflow='auto' pb={6} flex={1} gap={4}>
         <ChoiceGrid
@@ -75,7 +71,7 @@ export default function ScenarioSelector({
                         optionVotes={optionVotes}
                         text={text}
                         users={users}
-                        handleSelect={() => setSelectedOptionId(optionId)}
+                        handleSelect={() => setSelection(optionId)}
                         isSelected={isSelected}
                       />
                     ) : (
@@ -104,7 +100,7 @@ export default function ScenarioSelector({
                   notReadable
                   text='🆕 Vote to generate new scenarios'
                   users={users}
-                  handleSelect={() => setSelectedOptionId(-1)}
+                  handleSelect={() => setSelection(-1)}
                   isSelected={optionVotes[currentUser.id] === -1}
                 />
               ),
@@ -112,20 +108,10 @@ export default function ScenarioSelector({
             },
           ]}
         />
-        {hasPersistedSelection ? (
-          <Button p={5} colorScheme='gray' isDisabled>
-            Waiting for Other Players to Vote...
-          </Button>
-        ) : (
-          <Button
-            p={5}
-            colorScheme={hasPersistedSelection ? "gray" : "green"}
-            isDisabled={hasPersistedSelection}
-            onClick={() => persistChoice(localSelectedOptionId)}
-          >
-            I&apos;m Ready for the Next Stage
-          </Button>
-        )}
+        <ReadyForNextStageButton
+          isReady={isCurrentUserReadyForNextStage}
+          handleReady={handleCurrentUserReadyForNextStage}
+        />
       </VStack>
     </VStack>
   );
@@ -148,26 +134,30 @@ function OptionContent({
   handleSelect: () => void;
   isSelected: boolean;
 }) {
+  const usersThatVotedForThis = useMemo(
+    () =>
+      users.filter((user) => {
+        const hasVoted = optionVotes[user.id] === optionId;
+        return hasVoted;
+      }),
+    [optionId, optionVotes, users],
+  );
+
   return (
     <VStack height='100%' width='100%'>
       <HStack minHeight={10} width='100%'>
         <HStack flex={1} wrap='wrap'>
           <Text>Votes:</Text>
-          {users
-            .filter((user) => {
-              const hasVoted = optionVotes[user.id] === optionId;
-              return hasVoted;
-            })
-            .map((user) => (
-              <Badge
-                maxHeight={10}
-                fontSize='lg'
-                key={user.id}
-                colorScheme={user.isCurrentUser ? "green" : "gray"}
-              >
-                {user.isCurrentUser ? "Me" : user.name}
-              </Badge>
-            ))}
+          {usersThatVotedForThis.map((user) => (
+            <Badge
+              maxHeight={10}
+              fontSize='lg'
+              key={user.id}
+              colorScheme={user.isCurrentUser ? "green" : "gray"}
+            >
+              {user.isCurrentUser ? "Me" : user.name}
+            </Badge>
+          ))}
         </HStack>
         {!notReadable && (
           <Box>

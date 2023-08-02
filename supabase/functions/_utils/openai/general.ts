@@ -32,6 +32,8 @@ const DEFAULT_CHAT_COMPLETION_REQUEST_CONFIG = {
   presence_penalty: 0.5,
 } satisfies Partial<CreateChatCompletionRequest>;
 
+const TIMEOUT_MS = 10_000;
+
 /**
  * @remark Yields the latest full message on each iteration.
  */
@@ -51,18 +53,47 @@ export async function createGeneralChatResponseStream(
 
   console.log("createGeneralChatResponseStream, stream", stream);
 
+  function handleTimeout() {
+    console.error(
+      `createGeneralChatResponseStream, timeout after ${TIMEOUT_MS}ms: request config`,
+      JSON.stringify(DEFAULT_CHAT_COMPLETION_REQUEST_CONFIG, null, 2),
+      "input messages",
+      JSON.stringify(messages, null, 2),
+    );
+    streamReader.releaseLock();
+    stream.cancel();
+
+    throw Error(`createGeneralChatResponseStream, timeout after ${TIMEOUT_MS}ms`);
+  }
+
   let content = "";
   return {
     [Symbol.asyncIterator]() {
       return {
         async next(): Promise<IteratorResult<string, string>> {
+          const timeoutId = setTimeout(handleTimeout, TIMEOUT_MS);
+
           const { value: rawChunk, done } = await streamReader.read();
+
+          clearTimeout(timeoutId);
+
           if (done) {
             console.log("createGeneralChatResponseStream, done", content);
             streamReader.releaseLock();
           }
           content += decoder.decode(rawChunk);
           return { value: content, done };
+        },
+        throw(error: Error): Promise<never> {
+          console.error("createGeneralChatResponseStream, error", error);
+          streamReader.releaseLock();
+          stream.cancel();
+          throw error;
+        },
+        return(): Promise<IteratorResult<string, string>> {
+          console.log("createGeneralChatResponseStream, return");
+          streamReader.releaseLock();
+          return Promise.resolve({ value: content, done: true });
         },
       };
     },

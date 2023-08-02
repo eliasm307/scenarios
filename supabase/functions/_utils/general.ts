@@ -16,13 +16,27 @@ export async function streamAndPersist<StreamOutput>({
   let persistedValue: StreamOutput | undefined;
 
   console.log(`creating "${persistenceEntityName}" update interval`);
-  let count = 1;
+  let count = 0;
   const intervalId = setInterval(async () => {
-    console.log(`"${persistenceEntityName}" update interval call`, count++);
+    console.log(
+      `"${persistenceEntityName}" update interval call`,
+      count++,
+      "since last stream value received",
+    );
+
     if (latestValue && latestValue !== persistedValue) {
+      count = 0;
       // only persist if we have a new value from the stream
       await persistLatestValue(latestValue);
       persistedValue = latestValue;
+    } else if (count > 600) {
+      const errorMessage = `"${persistenceEntityName}" update interval timeout with last value: ${JSON.stringify(
+        latestValue,
+        null,
+        2,
+      )}`;
+      console.error(errorMessage);
+      throw new Error(errorMessage);
     }
   }, 100);
 

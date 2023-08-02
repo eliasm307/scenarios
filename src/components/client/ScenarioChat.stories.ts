@@ -114,6 +114,7 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {};
 
+// todo add tests
 // More on interaction testing: https://storybook.js.org/docs/react/writing-tests/interaction-testing
 // export const LoggedIn: Story = {
 // play: async ({ canvasElement }) => {

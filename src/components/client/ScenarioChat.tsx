@@ -25,7 +25,7 @@ import { useIsLargeScreen } from "../../utils/client/hooks";
 
 function ScenarioTextPanel({ scenarioText }: { scenarioText: string }) {
   return (
-    <VStack mr={3}>
+    <VStack mr={3} gap={5}>
       <ScenarioText scenarioText={scenarioText} />
       <Center>
         <ReadOutLoudButton text={scenarioText} />

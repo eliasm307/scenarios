@@ -17,7 +17,7 @@
     "script:test-function-calling": "npm run build:scripts && node ./src/scripts/out/function-calling-demo.js",
     "script:test-eager-scenarios": "npm run build:scripts && node ./src/scripts/out/eager-scenarios.js",
     "script:test-eager-scenarios-edge": "npm run build:scripts && node ./src/scripts/out/eager-scenarios-edge.js",
-    "storybook": "storybook dev -p 6006",
+    "storybook": "storybook dev -p 6006 --no-open",
     "build-storybook": "storybook build"
   },
   "dependencies": {
@@ -57,6 +57,7 @@
     "@types/json-schema": "^7.0.12",
     "@typescript-eslint/eslint-plugin": "^5.62.0",
     "@typescript-eslint/parser": "^5.62.0",
+    "babel-plugin-react-require": "^4.0.1",
     "dotenv": "^16.3.1",
     "eslint-plugin-storybook": "^0.6.13",
     "openai": "^4.0.0-beta.6",

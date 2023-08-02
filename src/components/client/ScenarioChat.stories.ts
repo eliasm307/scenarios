@@ -87,6 +87,24 @@ const meta = {
         isCurrentUser: false,
         relativeName: "John Smith",
       },
+      {
+        id: "4",
+        name: "Jane Smith",
+        isCurrentUser: false,
+        relativeName: "Jane Smith",
+      },
+      {
+        id: "5",
+        name: "John Connor",
+        isCurrentUser: false,
+        relativeName: "John Connor",
+      },
+      {
+        id: "6",
+        name: "Jane Connor",
+        isCurrentUser: false,
+        relativeName: "Jane Connor",
+      },
     ],
   },
 } satisfies Meta<typeof Page>;
@@ -94,19 +112,15 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const Default: Story = {
-  args: {
-    ...meta.args,
-  },
-};
+export const Default: Story = {};
 
 // More on interaction testing: https://storybook.js.org/docs/react/writing-tests/interaction-testing
-export const LoggedIn: Story = {
-  // play: async ({ canvasElement }) => {
-  //   const canvas = within(canvasElement);
-  //   const loginButton = await canvas.getByRole("button", {
-  //     name: /Log in/i,
-  //   });
-  //   await userEvent.click(loginButton);
-  // },
-};
+// export const LoggedIn: Story = {
+// play: async ({ canvasElement }) => {
+//   const canvas = within(canvasElement);
+//   const loginButton = await canvas.getByRole("button", {
+//     name: /Log in/i,
+//   });
+//   await userEvent.click(loginButton);
+// },
+// };

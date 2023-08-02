@@ -5,8 +5,6 @@ import { Spacer, type FlexProps, Tooltip } from "@chakra-ui/react";
 import Image from "next/image";
 import Link from "next/link";
 import {
-  // todo replace with useBreakpointValue
-  Show,
   Flex,
   Heading,
   useColorMode,
@@ -25,6 +23,7 @@ import type { UserContext } from "../../app/providers";
 import { useUserContext } from "../../app/providers";
 import IconSvg from "../assets/emoji_u1f52e.svg";
 import { Path } from "../../utils/client/constants";
+import { useIsLargeScreen } from "../../utils/client/hooks";
 
 type NavBarItemsProps = {
   onEditProfile?: () => void;
@@ -94,8 +93,8 @@ function MobileNavBarItems(config: NavBarItemsProps) {
 export default function NavBar(flexProps: FlexProps) {
   const userProfileModalDisclosure = useDisclosure();
   const user = useUserContext();
+  const isLargeScreen = useIsLargeScreen();
 
-  // todo use a hook instead so everything isnt rendered
   return (
     <Flex as='nav' alignItems='center' px={3} py={2} m={0} gap={3} boxShadow='md' {...flexProps}>
       <Link href={Path.Home}>
@@ -108,15 +107,14 @@ export default function NavBar(flexProps: FlexProps) {
       </Link>
       <Spacer flex={1} />
       <Flex gap='inherit'>
-        <Show above='md'>
+        {isLargeScreen ? (
           <DesktopNavBarItems
             userContext={user}
             onEditProfile={userProfileModalDisclosure.onOpen}
           />
-        </Show>
-        <Show below='md'>
+        ) : (
           <MobileNavBarItems userContext={user} onEditProfile={userProfileModalDisclosure.onOpen} />
-        </Show>
+        )}
       </Flex>
       {userProfileModalDisclosure.isOpen && (
         <UserProfileModal disclosure={userProfileModalDisclosure} />

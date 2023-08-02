@@ -4,7 +4,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import type { UseToastOptions } from "@chakra-ui/react";
-import { useToast as useToastOriginal } from "@chakra-ui/react";
+import { useBreakpointValue, useToast as useToastOriginal } from "@chakra-ui/react";
 import { useUserContext } from "../../app/providers";
 import LocalStorage from "./LocalStorage";
 
@@ -234,4 +234,10 @@ export function useElement<TElement = HTMLElement>() {
     element: ref.current,
     ref: notify,
   };
+}
+
+export function useIsLargeScreen(
+  config: { above: "sm" | "md" | "lg" | "xl" | "2xl" } = { above: "md" },
+) {
+  return useBreakpointValue({ base: false, [config.above]: true });
 }

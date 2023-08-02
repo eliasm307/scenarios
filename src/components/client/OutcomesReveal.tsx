@@ -82,7 +82,15 @@ export default function OutcomesReveal({
         {results.map((result) => {
           return (
             <VStack key={result.user.id} gap={0}>
-              <Heading as='h3' size='md' mb={2} width='100%' textAlign='center'>
+              <Heading
+                as='h3'
+                size='md'
+                mb={2}
+                width='100%'
+                textAlign='center'
+                display='flex'
+                alignItems='center'
+              >
                 <Text as='span' fontSize='2rem'>
                   {/* ie users with the same count get the same medal */}
                   {correctGuessCountToMedalEmojiMap[result.correctGuessesCount]}

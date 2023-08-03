@@ -65,50 +65,60 @@ export default function OutcomesReveal({
   }, [results]);
 
   return (
-    <VStack spacing={3} mt={5} mb={10} height='stretch' overflow='auto' width='100%' gap={5}>
-      <Box maxWidth='30rem' textAlign='center'>
-        <ScenarioText scenarioText={scenarioText} />
-      </Box>
-      <Divider />
-      <Heading>What did people say?</Heading>
-      <ResponsiveGrid>
-        {results.map((result) => {
-          return <OutcomeVoteResults key={result.user.id} {...result} />;
-        })}
-      </ResponsiveGrid>
-      <Divider />
-      <Heading>Who is on the Podium?</Heading>
-      <ResponsiveGrid>
-        {results.map((result) => {
-          return (
-            <VStack key={result.user.id} gap={0}>
-              <Heading
-                as='h3'
-                size='md'
-                mb={2}
-                width='100%'
-                textAlign='center'
-                display='flex'
-                alignItems='center'
-              >
-                <Text as='span' fontSize='2rem'>
-                  {/* ie users with the same count get the same medal */}
-                  {correctGuessCountToMedalEmojiMap[result.correctGuessesCount]}
-                </Text>{" "}
-                &quot;{result.user.name}&quot; <br />
-              </Heading>
-              <Text>
-                {result.correctGuessesCount} correct guess
-                {result.correctGuessesCount === 1 ? "" : "es"}
-              </Text>
-            </VStack>
-          );
-        })}
-      </ResponsiveGrid>
-      <Divider />
-      <Button colorScheme='green' onClick={handlePlayAgain} p={5}>
-        Start a new Scenario
-      </Button>
+    <VStack
+      className='outcomes-reveal'
+      height='stretch'
+      overflow='auto'
+      mt={5}
+      mb={10}
+      width='100%'
+      pb={20}
+    >
+      <VStack width='100%' gap={7}>
+        <Box maxWidth='40rem' textAlign='center'>
+          <ScenarioText scenarioText={scenarioText} />
+        </Box>
+        <Divider />
+        <Heading>What did people say?</Heading>
+        <ResponsiveGrid>
+          {results.map((result) => {
+            return <OutcomeVoteResults key={result.user.id} {...result} />;
+          })}
+        </ResponsiveGrid>
+        <Divider />
+        <Heading>Summary</Heading>
+        <ResponsiveGrid>
+          {results.map((result) => {
+            return (
+              <VStack key={result.user.id} gap={0}>
+                <Heading
+                  as='h3'
+                  size='md'
+                  mb={2}
+                  width='100%'
+                  textAlign='center'
+                  display='flex'
+                  alignItems='center'
+                >
+                  <Text as='span' fontSize='2rem'>
+                    {/* ie users with the same count get the same medal */}
+                    {correctGuessCountToMedalEmojiMap[result.correctGuessesCount]}
+                  </Text>{" "}
+                  &quot;{result.user.name}&quot; <br />
+                </Heading>
+                <Text>
+                  {result.correctGuessesCount} correct guess
+                  {result.correctGuessesCount === 1 ? "" : "es"}
+                </Text>
+              </VStack>
+            );
+          })}
+        </ResponsiveGrid>
+        <Divider />
+        <Button colorScheme='green' onClick={handlePlayAgain} p={5}>
+          Start a new Scenario
+        </Button>
+      </VStack>
     </VStack>
   );
 }

@@ -17,11 +17,16 @@ export default function ChoiceGrid({ choices }: { choices: ChoiceConfig[] }): Re
       fontSize='2xl'
       templateColumns={{ base: "1fr", md: "1fr 1fr" }}
       width='100%'
-      gap={3}
+      gap={6}
       p={3}
     >
-      {choices.map((choiceConfig) => (
-        <ChoiceCard key={choiceConfig.text + String(choiceConfig.isSelected)} {...choiceConfig} />
+      {choices.map((choiceConfig, i) => (
+        <ChoiceCard
+          key={`choice-card-${i}-${choiceConfig.text}-isSelected-${String(
+            choiceConfig.isSelected,
+          )}`}
+          {...choiceConfig}
+        />
       ))}
     </Grid>
   );

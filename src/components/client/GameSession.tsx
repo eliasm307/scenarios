@@ -63,7 +63,7 @@ type TypingStateChangedPayload = {
 type BroadcastAction =
   | {
       event: `${BroadcastEventName.Toast}`;
-      data: UseToastOptions;
+      data: UseToastOptions & { dontShowToUserId: string | null };
     }
   | {
       event: `${BroadcastEventName.TypingStateChanged}`;
@@ -205,7 +205,7 @@ function useThrottledBroadcast({
           });
         }
         console.log("broadcast event sent", nextEvent);
-      }, 100);
+      }, 200);
     },
     [channelRef, toast],
   );
@@ -357,7 +357,10 @@ function useLogic({ existing, currentUser }: Props) {
 
     function handleBroadcastMessage(message: BroadcastEvent) {
       if (message.event === BroadcastEventName.Toast) {
-        toast(message.data);
+        const { dontShowToUserId: senderUserId, ...toastConfig } = message.data;
+        if (senderUserId !== currentUser.id) {
+          toast(toastConfig); // dont show toasts to self
+        }
         return;
       }
       if (message.event === BroadcastEventName.TypingStateChanged) {

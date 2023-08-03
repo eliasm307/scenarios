@@ -1,10 +1,11 @@
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import OutcomesReveal from "./OutcomesReveal";
 import type { SessionRow, SessionUser } from "../../types";
 import type { BroadcastFunction } from "./GameSession";
 import { invokeResetSessionAction } from "../../utils/server/actions";
 import { useCustomToast } from "../../utils/client/hooks";
 import APIClient from "../../utils/client/APIClient";
+import type { ReadyForNextStageButtonProps } from "./ReadyForNextStageButton";
 
 type Props = {
   currentUser: SessionUser;
@@ -18,7 +19,7 @@ type Props = {
 function useLogic({ users, outcomeVotes, scenarioText, currentUser, sessionId, broadcast }: Props) {
   const toast = useCustomToast();
   const handlePlayAgain = useCallback(async () => {
-    const readyToRestartKey = createReadyToRestartKey(currentUser.id);
+    const readyToRestartKey = createReadyToPlayAgainKey(currentUser.id);
     const latestOutcomeVotes = {
       ...outcomeVotes,
       [currentUser.id]: {
@@ -33,6 +34,7 @@ function useLogic({ users, outcomeVotes, scenarioText, currentUser, sessionId, b
         data: {
           status: "info",
           title: `Everyone is ready, restarting the session...`,
+          dontShowToUserId: null,
         },
       });
       const errorToastConfig = await invokeResetSessionAction(sessionId);
@@ -46,6 +48,7 @@ function useLogic({ users, outcomeVotes, scenarioText, currentUser, sessionId, b
       data: {
         status: "info",
         title: `"${currentUser.name}" is ready to re-start the session`,
+        dontShowToUserId: currentUser.id,
       },
     });
 
@@ -61,17 +64,29 @@ function useLogic({ users, outcomeVotes, scenarioText, currentUser, sessionId, b
     }
   }, [broadcast, currentUser.id, currentUser.name, outcomeVotes, sessionId, toast, users]);
 
+  const currentUserVotedToPlayAgain = useMemo(() => {
+    const readyToRestartKey = createReadyToPlayAgainKey(currentUser.id);
+    const userVoteMap = outcomeVotes[currentUser.id];
+    const wantsToPlayAgain = !!userVoteMap?.[readyToRestartKey];
+    return wantsToPlayAgain;
+  }, [currentUser.id, outcomeVotes]);
+
   return {
-    handlePlayAgain,
     users,
     outcomeVotes,
     scenarioText,
+    readyForNextStageProps: {
+      canMoveToNextStage: true,
+      handleReadyForNextStageClick: handlePlayAgain,
+      isReadyForNextStage: currentUserVotedToPlayAgain,
+      beforeReadyText: "I'm Ready to Play Again",
+    } satisfies ReadyForNextStageButtonProps,
   };
 }
 
 export type OutcomesRevealViewProps = ReturnType<typeof useLogic>;
 
-function createReadyToRestartKey(userId: string) {
+function createReadyToPlayAgainKey(userId: string) {
   return `${userId}-ready-to-restart`;
 }
 
@@ -83,7 +98,7 @@ function everyUserIsReadyToRestart({
   users: SessionUser[];
 }) {
   return users.every((user) => {
-    const key = createReadyToRestartKey(user.id);
+    const key = createReadyToPlayAgainKey(user.id);
     const userVoteMap = latestOutcomeVotes[user.id];
     const isReadyToRestart = !!userVoteMap?.[key];
     return isReadyToRestart;

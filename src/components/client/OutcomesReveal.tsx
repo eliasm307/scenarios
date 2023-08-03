@@ -1,17 +1,18 @@
 "use client";
 
-import { Box, Button, Divider, Grid, Heading, Text, VStack } from "@chakra-ui/react";
+import { Box, Divider, Grid, Heading, Text, VStack } from "@chakra-ui/react";
 import { useMemo } from "react";
 import ScenarioText from "../ScenarioText";
 import type { SessionUser } from "../../types";
 import type { OutcomesRevealViewProps } from "./OutcomesReveal.container";
 import { POSITIVE_OUTCOME_EMOJI, NEGATIVE_OUTCOME_EMOJI } from "../../utils/constants";
+import ReadyForNextStageButton from "./ReadyForNextStageButton";
 
 export default function OutcomesReveal({
   users,
   outcomeVotes,
   scenarioText,
-  handlePlayAgain,
+  readyForNextStageProps,
 }: OutcomesRevealViewProps): React.ReactElement {
   const results = useMemo((): UserVotesResult[] => {
     return users
@@ -115,9 +116,7 @@ export default function OutcomesReveal({
           })}
         </ResponsiveGrid>
         <Divider />
-        <Button colorScheme='green' onClick={handlePlayAgain} p={5}>
-          Start a new Scenario
-        </Button>
+        <ReadyForNextStageButton {...readyForNextStageProps} />
       </VStack>
     </VStack>
   );

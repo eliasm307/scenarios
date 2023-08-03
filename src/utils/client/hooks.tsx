@@ -199,6 +199,9 @@ export function useCustomToast(hookOptions?: UseToastOptions) {
 
   return useCallback(
     (options: UseToastOptions) => {
+      if (options.status === "error") {
+        console.error("useCustomToast:error", options);
+      }
       const id = createToastId(options);
       const isActive = toast.isActive(id);
       if (isActive) {

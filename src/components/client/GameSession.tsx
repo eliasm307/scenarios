@@ -37,7 +37,9 @@ type LocalAction =
     }
   | {
       event: "sessionUpdated";
-      data: SessionRow;
+      // NOTE: supabase seems to only create events with some of the columns
+      // assuming this is an optimisation to only send updates to clients to reduce payloads
+      data: Partial<SessionRow>;
     }
   | {
       event: "currentUserHasJoinedSession";
@@ -110,7 +112,13 @@ function reducer(state: State, action: Action): State {
     }
 
     case "sessionUpdated": {
-      return { ...state, session: action.data };
+      return {
+        ...state,
+        session: {
+          ...state.session,
+          ...action.data,
+        },
+      };
     }
 
     case "currentUserHasJoinedSession": {

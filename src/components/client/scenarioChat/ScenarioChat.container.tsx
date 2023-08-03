@@ -13,6 +13,7 @@ import { isTruthy } from "../../../utils/general";
 import type { BroadcastFunction } from "../GameSession";
 import ScenarioChat from "./ScenarioChat";
 import APIClient from "../../../utils/client/APIClient";
+import type { ReadyForNextStageButtonProps } from "../ReadyForNextStageButton";
 
 type Props = {
   selectedScenarioText: string | null;
@@ -27,6 +28,11 @@ type Props = {
     messageRows: MessageRow[];
   };
 };
+
+/**
+ * @remark This gets persisted so should not be changed
+ */
+const READY_FOR_NEXT_STAGE_KEY = "ready-for-next-stage";
 
 function useChatLogic({
   existing,
@@ -197,73 +203,92 @@ function useChatLogic({
     setInputValue(e.target.value);
   }, []);
 
-  const outcomeVotesForCurrentUser = outcomeVotes[currentUser.id];
+  const outcomeVotesByCurrentUser = outcomeVotes[currentUser.id];
   const handleVoteChange = useCallback(
     async ({ voteForUserId, newVote }: { voteForUserId: string; newVote: "true" | "false" }) => {
       const outcomeVoteFromCurrentUser = newVote === "true";
-      const voteTargetUser = users.find((user) => user.id === voteForUserId);
-      console.log("outcomeVoteFromCurrentUser", voteTargetUser?.name, outcomeVoteFromCurrentUser);
       let errorToastConfig = await APIClient.sessions.voteForUserOutcome({
         session_id: sessionId,
         vote_by_user_id: currentUser.id,
         vote_for_user_id: voteForUserId,
         outcome: outcomeVoteFromCurrentUser,
       });
-      console.log("outcomeVoteFromCurrentUser errorToastConfig", errorToastConfig);
       if (errorToastConfig) {
+        console.error("outcomeVoteFromCurrentUser errorToastConfig", errorToastConfig);
         toast(errorToastConfig);
         return;
       }
 
-      const updatedOutcomeVotes = {
+      const latestOutcomeVotes = {
         ...outcomeVotes,
         [currentUser.id]: {
-          ...outcomeVotesForCurrentUser,
+          ...outcomeVotesByCurrentUser,
           [voteForUserId]: outcomeVoteFromCurrentUser,
         },
       };
 
-      if (!overallOutcomeVotingIsComplete({ users, outcomeVotes: updatedOutcomeVotes })) {
-        const userOutcomeVotingIsComplete =
-          Object.values(updatedOutcomeVotes[currentUser.id] || {}).length === users.length;
-        if (userOutcomeVotingIsComplete) {
-          broadcast({
-            event: "Toast",
-            data: {
-              title: `"${currentUser.name}" has finished voting!`,
-              status: "success",
-            },
-          });
-        }
-        return;
-      }
-      console.log("voting complete");
+      // doing this here so only the last user to vote does it
+      if (allUsersHaveFinishedVoting({ users, latestOutcomeVotes })) {
+        console.log("voting complete");
+        broadcast({
+          event: "Toast",
+          data: {
+            title: "Voting Complete",
+            description: "All votes are in!",
+            status: "success",
+          },
+        });
 
+        // todo convert this to server action
+        errorToastConfig = await APIClient.sessions.moveToOutcomeRevealStage(sessionId);
+        if (errorToastConfig) {
+          toast(errorToastConfig);
+        }
+      }
+    },
+    [users, sessionId, currentUser.id, outcomeVotes, outcomeVotesByCurrentUser, broadcast, toast],
+  );
+
+  const currentUserHasFinishedVoting = useMemo(() => {
+    const currentUserVoteMap = outcomeVotes[currentUser.id];
+    return userHasMadeAllVotesAndIsReadyForNextStage({ users, voteMap: currentUserVoteMap });
+  }, [currentUser.id, outcomeVotes, users]);
+
+  const currentUserHasVotedForAllUsers = useMemo(() => {
+    const currentUserVoteMap = outcomeVotes[currentUser.id];
+    return Boolean(
+      currentUserVoteMap && userHasMadeAllVotes({ users, voteMap: currentUserVoteMap }),
+    );
+  }, [currentUser.id, outcomeVotes, users]);
+
+  useEffect(() => {
+    if (currentUserHasFinishedVoting) {
       broadcast({
         event: "Toast",
         data: {
-          title: "Voting Complete",
-          description: "All votes are in!",
+          title: `"${currentUser.name}" has finished voting!`,
           status: "success",
         },
       });
+    }
+    // NOTE: dependency on current user name means this gets called again when the user name changes
+    // not ideal but leaving it as is as it's not a big deal and changing names is not a common occurrence
+  }, [broadcast, currentUser.name, currentUserHasFinishedVoting]);
 
-      errorToastConfig = await APIClient.sessions.moveToOutcomeRevealStage(sessionId);
-      if (errorToastConfig) {
-        toast(errorToastConfig);
-      }
-    },
-    [
-      users,
-      sessionId,
-      currentUser.id,
-      currentUser.name,
-      outcomeVotes,
-      outcomeVotesForCurrentUser,
-      broadcast,
-      toast,
-    ],
-  );
+  const remoteUserVotingStatuses = useMemo(() => {
+    return users
+      .filter((user) => !user.isCurrentUser)
+      .map((remoteUser) => {
+        const remoteUserVoteMap = outcomeVotes[remoteUser.id];
+        return {
+          user: remoteUser,
+          isFinishedVoting: userHasMadeAllVotesAndIsReadyForNextStage({
+            users,
+            voteMap: remoteUserVoteMap,
+          }),
+        };
+      });
+  }, [outcomeVotes, users]);
 
   if (!selectedScenarioText) {
     throw new Error("selectedScenarioText is required");
@@ -284,9 +309,17 @@ function useChatLogic({
         onChange: handleInputChange,
       } satisfies TextareaProps,
     },
+    remoteUserVotingStatuses,
     outcomeVotes,
-    outcomeVotesForCurrentUser,
+    outcomeVotesByCurrentUser,
     handleVoteChange,
+    readyForNextStageProps: {
+      canMoveToNextStage: currentUserHasVotedForAllUsers,
+      handleReadyForNextStageClick: () => {
+        return handleVoteChange({ voteForUserId: READY_FOR_NEXT_STAGE_KEY, newVote: "true" });
+      },
+      isReadyForNextStage: currentUserHasFinishedVoting,
+    } satisfies ReadyForNextStageButtonProps,
     messageRows,
     selectedScenarioText,
     selectedScenarioImagePath,
@@ -369,18 +402,66 @@ function useRealtimeMessageRows({
   return messageRows;
 }
 
-function overallOutcomeVotingIsComplete({
-  outcomeVotes,
+function allUsersHaveFinishedVoting({
+  latestOutcomeVotes: outcomeVotes,
   users,
 }: {
   users: SessionUser[];
-  outcomeVotes: SessionRow["scenario_outcome_votes"];
+  latestOutcomeVotes: SessionRow["scenario_outcome_votes"];
 }) {
-  const userVotesForEachUser = Object.values(outcomeVotes);
-  return (
-    userVotesForEachUser.length === users.length &&
-    userVotesForEachUser.every((userVotes) => {
-      return Object.keys(userVotes || {}).length === users.length;
-    })
-  );
+  const sessionUserVoteMapEntries = Object.entries(outcomeVotes);
+
+  // check if all current session users have voted
+  const sessionUserIds = new Set(users.map((user) => user.id));
+  sessionUserVoteMapEntries.forEach(([voteUserId]) => {
+    return sessionUserIds.delete(voteUserId);
+  });
+  if (sessionUserIds.size > 0) {
+    return false; // not all users have voted
+  }
+
+  // check if all users have finished voting
+  return sessionUserVoteMapEntries.every(([, voteMap]) => {
+    return userHasMadeAllVotesAndIsReadyForNextStage({ users, voteMap });
+  });
+}
+
+function userHasMadeAllVotes({
+  users,
+  voteMap,
+}: {
+  users: SessionUser[];
+  voteMap: NonNullable<SessionRow["scenario_outcome_votes"][string]>;
+}) {
+  // this might include votes from users who left the session so we need to actually check the vote user ids
+  const sessionUserIds = new Set(users.map((user) => user.id));
+  for (const [voteUserId, vote] of Object.entries(voteMap)) {
+    if (!sessionUserIds.has(voteUserId)) {
+      continue; // ignore votes from users who left the session or non-user keys e.g. READY_FOR_NEXT_STAGE_KEY
+    }
+
+    const voteIsValid = typeof vote === "boolean";
+    if (voteIsValid) {
+      sessionUserIds.delete(voteUserId);
+      if (sessionUserIds.size === 0) {
+        return true; // all users have been voted for
+      }
+    }
+  }
+
+  return false; // not all users have been voted for
+}
+
+function userHasMadeAllVotesAndIsReadyForNextStage({
+  users,
+  voteMap,
+}: {
+  users: SessionUser[];
+  voteMap: SessionRow["scenario_outcome_votes"][string];
+}): boolean {
+  const isReadyForNextStage = !!voteMap?.[READY_FOR_NEXT_STAGE_KEY];
+  if (!isReadyForNextStage) {
+    return false;
+  }
+  return userHasMadeAllVotes({ users, voteMap });
 }

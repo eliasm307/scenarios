@@ -6,6 +6,45 @@ import Page from "./ScenarioChat";
 import type { MessageRow } from "../../../types";
 import { DUMMY_MESSAGES } from "../../../utils/constants";
 
+const users = [
+  {
+    id: "1",
+    name: "John Doe",
+    isCurrentUser: true,
+    relativeName: "I",
+  },
+  {
+    id: "2",
+    name: "Jane Doe",
+    isCurrentUser: false,
+    relativeName: "Jane Doe",
+  },
+  {
+    id: "3",
+    name: "John Smith",
+    isCurrentUser: false,
+    relativeName: "John Smith",
+  },
+  {
+    id: "4",
+    name: "Jane Smith",
+    isCurrentUser: false,
+    relativeName: "Jane Smith",
+  },
+  {
+    id: "5",
+    name: "John Connor",
+    isCurrentUser: false,
+    relativeName: "John Connor",
+  },
+  {
+    id: "6",
+    name: "Jane Connor",
+    isCurrentUser: false,
+    relativeName: "Jane Connor",
+  },
+];
+
 const meta = {
   component: Page,
   args: {
@@ -19,7 +58,7 @@ const meta = {
         onKeyDown: async () => action("input:onKeyDown")(),
         onBlur: action("input:onBlur"),
         placeholder: "Type a message...",
-        value: "", // todo container shouldnt be controlling UI control, this means UI doesnt work standalone
+        value: "", // todo container should not be controlling UI control, this means UI doesn't work standalone
       },
       isLoading: false,
     },
@@ -60,49 +99,20 @@ const meta = {
       },
     ] satisfies MessageRow[],
     outcomeVotes: {},
-    outcomeVotesForCurrentUser: {},
+    outcomeVotesByCurrentUser: {},
     selectedScenarioImagePath: "",
     selectedScenarioImageUrl: "/assets/output.jpeg",
     selectedScenarioText:
       "You are an ambitious professional climbing up the ranks of a successful company when an unexpected opportunity arises:\n another company offers you a higher position with more responsibilities and a significant increase in salary. \nHowever, accepting this offer means leaving behind incredible colleagues and mentors who have helped shape your career so far. \nDo you stay loyal to your current company or take the leap into the unknown?",
-    users: [
-      {
-        id: "1",
-        name: "John Doe",
-        isCurrentUser: true,
-        relativeName: "I",
-      },
-      {
-        id: "2",
-        name: "Jane Doe",
-        isCurrentUser: false,
-        relativeName: "Jane Doe",
-      },
-      {
-        id: "3",
-        name: "John Smith",
-        isCurrentUser: false,
-        relativeName: "John Smith",
-      },
-      {
-        id: "4",
-        name: "Jane Smith",
-        isCurrentUser: false,
-        relativeName: "Jane Smith",
-      },
-      {
-        id: "5",
-        name: "John Connor",
-        isCurrentUser: false,
-        relativeName: "John Connor",
-      },
-      {
-        id: "6",
-        name: "Jane Connor",
-        isCurrentUser: false,
-        relativeName: "Jane Connor",
-      },
-    ],
+    users,
+    readyForNextStageProps: {
+      isReadyForNextStage: false,
+      canMoveToNextStage: false,
+      handleReadyForNextStageClick: async () => action("handleReadyForNextStage")(),
+    },
+    remoteUserVotingStatuses: users
+      .filter((user) => !user.isCurrentUser)
+      .map((user) => ({ user, isFinishedVoting: Math.random() > 0.5 })),
   },
 } satisfies Meta<typeof Page>;
 

@@ -178,8 +178,16 @@ function useLogic({
 
   const usersWaitingToVote = useMemo(() => {
     return users.filter((user) => {
-      const hasNotVoted = typeof optionVotes[user.id] === "undefined";
-      return hasNotVoted;
+      if (user.isCurrentUser) {
+        // current user can see their own vote, so show the latest vote
+        const hasChosenAnOption = typeof optionVotes[user.id] === "number";
+        return !hasChosenAnOption;
+      }
+
+      // can only see other users votes if they have made it public
+      const hasMadeVotePublic =
+        typeof optionVotes[createUserReadyForNextStageKey(user.id)] === "number";
+      return !hasMadeVotePublic;
     });
   }, [users, optionVotes]);
 

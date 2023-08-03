@@ -70,9 +70,12 @@ const meta = {
       2: 2,
       3: 1,
     },
-    handleCurrentUserReadyForNextStage: async () => action("handleCurrentUserReadyForNextStage")(),
-    isCurrentUserReadyForNextStage: false,
-    setSelection: action("setSelection"),
+    readyForNextStageProps: {
+      canMoveToNextStage: false,
+      isReadyForNextStage: false,
+      handleReadyForNextStageClick: async () => action("handleReadyForNextStageClick")(),
+    },
+    handleSelectionChange: async () => action("setSelection")(),
     usersWaitingToVote: users,
   },
 } satisfies Meta<typeof Page>;

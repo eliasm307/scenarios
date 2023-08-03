@@ -17,23 +17,22 @@ import {
 import { useMemo } from "react";
 import type { ChoiceConfig } from "../ChoiceGrid.client";
 import ChoiceGrid from "../ChoiceGrid.client";
-import type { SessionRow, SessionUser } from "../../types";
 import ScenarioText from "../ScenarioText";
 import ReadOutLoudButton from "../ReadOutLoudButton";
 import type { ScenarioSelectorViewProps } from "./ScenarioSelector.container";
 import ReadyForNextStageButton from "./ReadyForNextStageButton";
+import { GENERATE_NEW_SCENARIOS_OPTION_ID } from "../../utils/constants";
 
-export default function ScenarioSelector({
-  isLoading,
-  users,
-  currentUser,
-  optionVotes,
-  scenarioOptions,
-  handleCurrentUserReadyForNextStage,
-  setSelection,
-  usersWaitingToVote,
-  isCurrentUserReadyForNextStage,
-}: ScenarioSelectorViewProps): React.ReactElement {
+export default function ScenarioSelector(props: ScenarioSelectorViewProps): React.ReactElement {
+  const {
+    isLoading,
+    currentUser,
+    userPubliclyHasSelectedOption: userHasSelectedOption,
+    scenarioOptions,
+    usersWaitingToVote,
+    readyForNextStageProps,
+  } = props;
+
   if (isLoading) {
     return (
       <Center as='section' height='100%' display='flex' flexDirection='column' gap={3}>
@@ -43,8 +42,12 @@ export default function ScenarioSelector({
     );
   }
 
+  const votedForNewScenariosOption = userHasSelectedOption(
+    currentUser.id,
+    GENERATE_NEW_SCENARIOS_OPTION_ID,
+  );
   return (
-    <VStack as='section' m={3} height='100%'>
+    <VStack className='scenario-selector' as='section' p={10} height='100%' width='100%'>
       <Heading textAlign='center'>Vote for a Scenario to Play!</Heading>
       <HStack wrap='wrap'>
         <span>Users waiting to vote: </span>
@@ -54,11 +57,19 @@ export default function ScenarioSelector({
           </Badge>
         ))}
       </HStack>
-      <VStack key={scenarioOptions.join("+")} overflow='auto' pb={6} flex={1} gap={4}>
+      <VStack
+        key={scenarioOptions.join("+")}
+        width='100%'
+        maxWidth='100rem'
+        overflow='auto'
+        pb={6}
+        flex={1}
+        gap={4}
+      >
         <ChoiceGrid
           choices={[
             ...scenarioOptions.map((text, optionId): ChoiceConfig => {
-              const isSelected = optionVotes[currentUser.id] === optionId;
+              const isSelected = userHasSelectedOption(currentUser.id, optionId);
               return {
                 text,
                 isSelected,
@@ -68,11 +79,8 @@ export default function ScenarioSelector({
                       <OptionContent
                         key={text + optionId}
                         optionId={optionId}
-                        optionVotes={optionVotes}
+                        viewProps={props}
                         text={text}
-                        users={users}
-                        handleSelect={() => setSelection(optionId)}
-                        isSelected={isSelected}
                       />
                     ) : (
                       <Center
@@ -95,59 +103,48 @@ export default function ScenarioSelector({
               content: (
                 <OptionContent
                   key='new'
-                  optionId={-1}
-                  optionVotes={optionVotes}
+                  optionId={GENERATE_NEW_SCENARIOS_OPTION_ID}
+                  viewProps={props}
                   notReadable
                   text='🆕 Vote to generate new scenarios'
-                  users={users}
-                  handleSelect={() => setSelection(-1)}
-                  isSelected={optionVotes[currentUser.id] === -1}
                 />
               ),
-              isSelected: optionVotes[currentUser.id] === -1,
+              isSelected: votedForNewScenariosOption,
             },
           ]}
         />
-        <ReadyForNextStageButton
-          isReady={isCurrentUserReadyForNextStage}
-          handleReady={handleCurrentUserReadyForNextStage}
-        />
+        <ReadyForNextStageButton {...readyForNextStageProps} />
       </VStack>
     </VStack>
   );
 }
 
 function OptionContent({
-  users,
+  viewProps: {
+    users,
+    currentUser,
+    userPubliclyHasSelectedOption: userHasSelectedOption,
+    handleSelectionChange,
+  },
   optionId,
-  optionVotes,
   text,
   notReadable,
-  handleSelect,
-  isSelected,
 }: {
-  users: SessionUser[];
+  viewProps: ScenarioSelectorViewProps;
   optionId: number;
-  optionVotes: SessionRow["scenario_option_votes"];
   text: string;
   notReadable?: boolean;
-  handleSelect: () => void;
-  isSelected: boolean;
 }) {
   const usersThatVotedForThis = useMemo(
-    () =>
-      users.filter((user) => {
-        const hasVoted = optionVotes[user.id] === optionId;
-        return hasVoted;
-      }),
-    [optionId, optionVotes, users],
+    () => users.filter((user) => userHasSelectedOption(user.id, optionId)),
+    [optionId, userHasSelectedOption, users],
   );
 
   return (
     <VStack height='100%' width='100%'>
       <HStack minHeight={10} width='100%'>
         <HStack flex={1} wrap='wrap'>
-          <Text>Votes:</Text>
+          {usersThatVotedForThis.length > 0 && <Text>Votes:</Text>}
           {usersThatVotedForThis.map((user) => (
             <Badge
               maxHeight={10}
@@ -164,12 +161,16 @@ function OptionContent({
             <ReadOutLoudButton text={text} />
           </Box>
         )}
-        {isSelected ? (
+        {userHasSelectedOption(currentUser.id, optionId) ? (
           <Button colorScheme='gray' key={`${optionId}-selected`} isDisabled>
             Selected
           </Button>
         ) : (
-          <Button colorScheme='green' key={`${optionId}-unselected`} onClick={handleSelect}>
+          <Button
+            colorScheme='green'
+            key={`${optionId}-unselected`}
+            onClick={() => handleSelectionChange(optionId)}
+          >
             Select
           </Button>
         )}

@@ -25,7 +25,7 @@ export default class API {
       const response = await this.supabase
         .from("sessions")
         // will trigger a function that generates new scenario options
-        .update({ scenario_options: [] } satisfies Partial<SessionRow>)
+        .update({ scenario_options: [], scenario_option_votes: {} } satisfies Partial<SessionRow>)
         .eq("id", sessionId);
 
       if (response.error) {

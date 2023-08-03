@@ -64,7 +64,6 @@ function useLogic({
   const handleVoteComplete = useCallback(
     async ({ latestOptionVotes }: { latestOptionVotes: SessionRow["scenario_option_votes"] }) => {
       console.log("handleVoteComplete", { latestOptionVotes });
-      debugger;
       setIsLoading(true);
       const allUserScenarioVoteValues = users.map(({ id }) => latestOptionVotes[id]);
       const majorityVoteId = getMajorityVoteId(allUserScenarioVoteValues);
@@ -79,6 +78,7 @@ function useLogic({
             title: "Re-generating Options",
             description: "No majority vote, creating new options...",
             status: "info",
+            dontShowToUserId: null,
           },
         });
 
@@ -103,6 +103,7 @@ function useLogic({
           title: "Scenario Voting Complete",
           description: `The majority has voted for a scenario to play!`,
           status: "success",
+          dontShowToUserId: null,
         },
       });
 

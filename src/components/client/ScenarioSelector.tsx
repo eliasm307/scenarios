@@ -125,6 +125,7 @@ function OptionContent({
     currentUser,
     userPubliclyHasSelectedOption: userHasSelectedOption,
     handleSelectionChange,
+    readyForNextStageProps,
   },
   optionId,
   text,
@@ -152,7 +153,10 @@ function OptionContent({
               key={user.id}
               colorScheme={user.isCurrentUser ? "green" : "gray"}
             >
-              {user.isCurrentUser ? "Me" : user.name}
+              {user.isCurrentUser ? "Me" : user.name}{" "}
+              {user.isCurrentUser &&
+                !readyForNextStageProps.isReadyForNextStage &&
+                "(Not confirmed)"}
             </Badge>
           ))}
         </HStack>

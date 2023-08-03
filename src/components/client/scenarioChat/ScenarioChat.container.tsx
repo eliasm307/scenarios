@@ -236,6 +236,7 @@ function useChatLogic({
             title: "Voting Complete",
             description: "All votes are in!",
             status: "success",
+            dontShowToUserId: null,
           },
         });
 
@@ -268,12 +269,13 @@ function useChatLogic({
         data: {
           title: `"${currentUser.name}" has finished voting!`,
           status: "success",
+          dontShowToUserId: currentUser.id,
         },
       });
     }
     // NOTE: dependency on current user name means this gets called again when the user name changes
     // not ideal but leaving it as is as it's not a big deal and changing names is not a common occurrence
-  }, [broadcast, currentUser.name, currentUserHasFinishedVoting]);
+  }, [broadcast, currentUser.id, currentUser.name, currentUserHasFinishedVoting]);
 
   const remoteUserVotingStatuses = useMemo(() => {
     return users

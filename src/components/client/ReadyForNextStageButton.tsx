@@ -6,12 +6,14 @@ export type ReadyForNextStageButtonProps = {
   handleReadyForNextStageClick: () => void;
   /** For before clicking the button, should the user be able to click it? */
   canMoveToNextStage: boolean;
+  beforeReadyText?: string;
 };
 
 export default function ReadyForNextStageButton({
   isReadyForNextStage: isReady,
   handleReadyForNextStageClick: handleReady,
   canMoveToNextStage,
+  beforeReadyText,
 }: ReadyForNextStageButtonProps) {
   return isReady ? (
     <Button key='ready' p={5} colorScheme='gray' isDisabled>
@@ -25,7 +27,7 @@ export default function ReadyForNextStageButton({
       isDisabled={isReady || !canMoveToNextStage}
       onClick={handleReady}
     >
-      I&apos;m Ready for the Next Stage
+      {beforeReadyText || "I'm Ready for the Next Stage"}
     </Button>
   );
 }

@@ -6,7 +6,8 @@ import { HfInference } from "https://esm.sh/@huggingface/inference@2.6.1";
 const inference = new HfInference(Deno.env.get("HUGGING_FACE_ACCESS_TOKEN"));
 
 // "stabilityai/stable-diffusion-xl-base-0.9", // inference api has issues atm
-export const ACTIVE_TEXT_TO_IMAGE_MODEL_ID = "stabilityai/stable-diffusion-2-1";
+// "stabilityai/stable-diffusion-2-1" // slow and not great results
+export const ACTIVE_TEXT_TO_IMAGE_MODEL_ID = "prompthero/openjourney";
 
 export async function createImageFromPrompt(prompt: string): Promise<Blob> {
   console.log("generateImageFromPrompt:", prompt);

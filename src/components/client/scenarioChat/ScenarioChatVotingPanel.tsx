@@ -14,6 +14,7 @@ import type { SessionUser } from "../../../types";
 import type { ScenarioChatViewProps } from "./ScenarioChat.container";
 import { useIsLargeScreen } from "../../../utils/client/hooks";
 import { POSITIVE_OUTCOME_EMOJI, NEGATIVE_OUTCOME_EMOJI } from "../../../utils/constants";
+import ReadyForNextStageButton from "../ReadyForNextStageButton";
 
 type Props = ScenarioChatViewProps & {
   isFullWidth?: boolean;
@@ -26,48 +27,45 @@ export default function VotingPanel(props: Props) {
         I think...
       </Heading>
       <OutcomeVotingTable {...props} />
-      {props.users
-        .filter((user) => !user.isCurrentUser)
-        .map((user) => {
-          const userVotes = props.outcomeVotes[user.id];
-          const userHasFinishedVoting =
-            userVotes && Object.values(userVotes).length === props.users.length;
-          return (
-            <>
-              <Divider />
-              <Heading size='md' width='100%' textAlign='center'>
-                {userHasFinishedVoting ? <>✅</> : <>🤔</>} &quot;{user.name}&quot;{" "}
-                {userHasFinishedVoting ? "has decided" : "is deciding..."}
-              </Heading>
-            </>
-          );
-        })}
+      {props.remoteUserVotingStatuses.map(({ user, isFinishedVoting }) => (
+        <>
+          <Divider my={3} key={`${user.id}-divider`} />
+          <Heading key={user.id} size='md' width='100%' textAlign='center'>
+            {isFinishedVoting ? <>✅</> : <>🤔</>} &quot;{user.name}&quot;{" "}
+            {isFinishedVoting ? "has decided" : "is deciding..."}
+          </Heading>
+        </>
+      ))}
     </VStack>
   );
 }
 
 function OutcomeVotingTable({
   users,
-  outcomeVotesForCurrentUser,
+  outcomeVotesByCurrentUser,
   handleVoteChange,
   isFullWidth,
+  readyForNextStageProps,
 }: Props) {
   return (
-    <TableContainer>
-      <Table variant='unstyled'>
-        <Tbody>
-          {users.map((user) => (
-            <UserOutcomeVotingRow
-              key={`${user.id}-outcome-voting-row`}
-              voteForUser={user}
-              latestOutcomeVote={outcomeVotesForCurrentUser?.[user.id]}
-              handleVoteChange={handleVoteChange}
-              isFullWidth={isFullWidth}
-            />
-          ))}
-        </Tbody>
-      </Table>
-    </TableContainer>
+    <>
+      <TableContainer>
+        <Table variant='unstyled'>
+          <Tbody>
+            {users.map((user) => (
+              <UserOutcomeVotingRow
+                key={`${user.id}-outcome-voting-row`}
+                voteForUser={user}
+                latestOutcomeVote={outcomeVotesByCurrentUser?.[user.id]}
+                handleVoteChange={handleVoteChange}
+                isFullWidth={isFullWidth}
+              />
+            ))}
+          </Tbody>
+        </Table>
+      </TableContainer>
+      <ReadyForNextStageButton {...readyForNextStageProps} />
+    </>
   );
 }
 
@@ -112,11 +110,20 @@ function UserOutcomeVotingRow({
       <Td pl={0}>{voteForUser.relativeName}</Td>
       {isLargeScreen ? (
         <>
-          <Td>{positiveRadioNode}</Td>
-          <Td pr={0}> {negativeRadioNode} </Td>
+          <Td key={`isLargeScreen=${String(isLargeScreen)}-col1`}>{positiveRadioNode}</Td>
+          <Td key={`isLargeScreen=${String(isLargeScreen)}-col2`} pr={0}>
+            {" "}
+            {negativeRadioNode}{" "}
+          </Td>
         </>
       ) : (
-        <Td pr={0} display='flex' flexDirection='column' gap={3}>
+        <Td
+          key={`isLargeScreen=${String(isLargeScreen)}-col1`}
+          pr={0}
+          display='flex'
+          flexDirection='column'
+          gap={3}
+        >
           {positiveRadioNode}
           {negativeRadioNode}
         </Td>

@@ -15,7 +15,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import type { SessionRow, ScenarioRow } from "../../../src/types/databaseRows.ts";
 import { isRequestAuthorised, supabaseAdminClient } from "../_utils/supabase.ts";
 import type { GenericWebhookPayload } from "../_utils/types.ts";
-import { ACTIVE_TEXT_TO_IMAGE_MODEL_ID, createImageFromPrompt } from "../_utils/huggingFace.ts";
+import { createImageFromPrompt } from "../_utils/huggingFace.ts";
 import { createScenariosStream } from "../_utils/openai/createScenarios.ts";
 import { createScenarioImagePrompt } from "../_utils/openai/createScenarioImagePrompt.ts";
 import { streamAndPersist } from "../_utils/general.ts";
@@ -81,13 +81,13 @@ serve(async (req) => {
 
 async function generateScenarioImage(scenario: { id: number; text: string }) {
   const imagePrompt = await createScenarioImagePrompt(scenario.text);
-  const imageBlob = await createImageFromPrompt(imagePrompt);
+  const image = await createImageFromPrompt(imagePrompt);
 
   const uploadImageResponse = await supabaseAdminClient.storage
     .from("images")
-    .upload(`scenario_images/${scenario.id}.jpeg`, imageBlob, {
+    .upload(`scenario_images/${scenario.id}.jpeg`, image.blob, {
       upsert: false,
-      contentType: imageBlob.type,
+      contentType: image.blob.type,
     });
 
   if (uploadImageResponse.error) {
@@ -120,7 +120,7 @@ async function generateScenarioImage(scenario: { id: number; text: string }) {
       .update({
         image_path: imagePath,
         image_prompt: imagePrompt,
-        image_creator_ai_model_id: ACTIVE_TEXT_TO_IMAGE_MODEL_ID,
+        image_creator_ai_model_id: image.generatedByModelId,
       })
       .eq("id", scenario.id)
       .then((response) => {

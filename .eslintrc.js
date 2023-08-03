@@ -16,6 +16,7 @@ module.exports = {
     "react/no-unused-prop-types": "off",
     "import/no-unresolved": "off",
     "@typescript-eslint/no-throw-literal": "off",
+    "no-continue": "off",
   },
   settings: {
     "functional-core": {

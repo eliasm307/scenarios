@@ -59,7 +59,12 @@ const meta = {
     layout: "fullscreen",
   },
   args: {
-    handlePlayAgain: async () => action("handlePlayAgain")(),
+    readyForNextStageProps: {
+      canMoveToNextStage: true,
+      handleReadyForNextStageClick: async () => action("handleReadyForNextStageClick")(),
+      beforeReadyText: "Before ready",
+      isReadyForNextStage: true,
+    },
     outcomeVotes,
     scenarioText:
       "You are an ambitious professional climbing up the ranks of a successful company when an unexpected opportunity arises:\n another company offers you a higher position with more responsibilities and a significant increase in salary. \nHowever, accepting this offer means leaving behind incredible colleagues and mentors who have helped shape your career so far. \nDo you stay loyal to your current company or take the leap into the unknown?",

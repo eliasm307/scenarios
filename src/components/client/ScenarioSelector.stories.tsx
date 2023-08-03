@@ -65,10 +65,14 @@ const meta = {
     currentUser: users[0],
     isLoading: false,
     scenarioOptions,
-    optionVotes: {
-      1: null,
-      2: 2,
-      3: 1,
+    userPubliclyHasSelectedOption: (userId, optionId) => {
+      return (
+        {
+          1: null,
+          2: 2,
+          3: 1,
+        }[userId] === optionId
+      );
     },
     readyForNextStageProps: {
       canMoveToNextStage: false,
@@ -87,43 +91,59 @@ export const Default: Story = {};
 
 export const WithNullSelection: Story = {
   args: {
-    optionVotes: {
-      1: null,
-      2: 2,
-      3: 1,
+    userPubliclyHasSelectedOption: (userId, optionId) => {
+      return (
+        {
+          1: null,
+          2: 2,
+          3: 1,
+        }[userId] === optionId
+      );
     },
   },
 };
 
 export const WithMinusOneSelection: Story = {
   args: {
-    optionVotes: {
-      1: -1,
-      2: 2,
-      3: 1,
+    userPubliclyHasSelectedOption: (userId, optionId) => {
+      return (
+        {
+          1: -1,
+          2: 2,
+          3: 1,
+        }[userId] === optionId
+      );
     },
   },
 };
 
 export const WithIdSelection: Story = {
   args: {
-    optionVotes: {
-      1: 1,
-      2: 2,
-      3: 1,
+    userPubliclyHasSelectedOption: (userId, optionId) => {
+      return (
+        {
+          1: 1,
+          2: 2,
+          3: 1,
+        }[userId] === optionId
+      );
     },
   },
 };
 
 export const WithMultipleUsersOnTheSameOption: Story = {
   args: {
-    optionVotes: {
-      1: 1,
-      2: 1,
-      3: 1,
-      4: 1,
-      5: 1,
-      6: 1,
+    userPubliclyHasSelectedOption: (userId, optionId) => {
+      return (
+        {
+          1: 1,
+          2: 1,
+          3: 1,
+          4: 1,
+          5: 1,
+          6: 1,
+        }[userId] === optionId
+      );
     },
   },
 };

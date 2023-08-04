@@ -24,8 +24,8 @@ function userHasFinishedVoting({
     return false;
   }
 
-  const userIsReadyForNextStage = !!optionVotes[createUserReadyForNextStageKey(userId)];
-  return userIsReadyForNextStage;
+  const isUserReadyForNextStage = !!optionVotes[createUserReadyForNextStageKey(userId)];
+  return isUserReadyForNextStage;
 }
 
 function allUsersHaveFinishedVoting({
@@ -178,16 +178,8 @@ function useLogic({
 
   const usersWaitingToVote = useMemo(() => {
     return users.filter((user) => {
-      if (user.isCurrentUser) {
-        // current user can see their own vote, so show the latest vote
-        const hasChosenAnOption = typeof optionVotes[user.id] === "number";
-        return !hasChosenAnOption;
-      }
-
-      // can only see other users votes if they have made it public
-      const hasMadeVotePublic =
-        typeof optionVotes[createUserReadyForNextStageKey(user.id)] === "number";
-      return !hasMadeVotePublic;
+      const hasChosenAnOption = typeof optionVotes[user.id] === "number";
+      return !hasChosenAnOption;
     });
   }, [users, optionVotes]);
 
@@ -195,22 +187,18 @@ function useLogic({
     return userHasFinishedVoting({ userId: currentUser.id, optionVotes });
   }, [currentUser.id, optionVotes]);
 
-  const userPubliclyHasSelectedOption = useCallback(
+  const hasUserSelectedOption = useCallback(
     (userId: string, optionId: number) => {
-      const userHasVotedForOption = optionVotes[userId] === optionId;
-      if (!userHasVotedForOption) {
-        return false;
-      }
-
-      if (userId === currentUser.id) {
-        return true; // current user can see their own vote
-      }
-
-      // for other users, only show their vote if they have finished voting to avoid confusion
-      const userIsReadyForNextStage = !!optionVotes[createUserReadyForNextStageKey(userId)];
-      return userIsReadyForNextStage;
+      return optionVotes[userId] === optionId;
     },
-    [currentUser.id, optionVotes],
+    [optionVotes],
+  );
+
+  const isUserReadyForNextStage = useCallback(
+    (userId: string) => {
+      return !!optionVotes[createUserReadyForNextStageKey(userId)];
+    },
+    [optionVotes],
   );
 
   return {
@@ -219,13 +207,14 @@ function useLogic({
     isLoading,
     users,
     currentUser,
-    userPubliclyHasSelectedOption,
+    hasUserSelectedOption,
     scenarioOptions,
     readyForNextStageProps: {
       canMoveToNextStage: typeof optionVotes[currentUser.id] === "number",
       handleReadyForNextStageClick,
       isReadyForNextStage: currentUserHasFinishedVoting,
     } satisfies ReadyForNextStageButtonProps,
+    isUserReadyForNextStage,
   };
 }
 

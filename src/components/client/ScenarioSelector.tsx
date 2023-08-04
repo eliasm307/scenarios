@@ -27,7 +27,7 @@ export default function ScenarioSelector(props: ScenarioSelectorViewProps): Reac
   const {
     isLoading,
     currentUser,
-    userPubliclyHasSelectedOption: userHasSelectedOption,
+    hasUserSelectedOption,
     scenarioOptions,
     usersWaitingToVote,
     readyForNextStageProps,
@@ -42,7 +42,7 @@ export default function ScenarioSelector(props: ScenarioSelectorViewProps): Reac
     );
   }
 
-  const votedForNewScenariosOption = userHasSelectedOption(
+  const votedForNewScenariosOption = hasUserSelectedOption(
     currentUser.id,
     GENERATE_NEW_SCENARIOS_OPTION_ID,
   );
@@ -69,7 +69,7 @@ export default function ScenarioSelector(props: ScenarioSelectorViewProps): Reac
         <ChoiceGrid
           choices={[
             ...scenarioOptions.map((text, optionId): ChoiceConfig => {
-              const isSelected = userHasSelectedOption(currentUser.id, optionId);
+              const isSelected = hasUserSelectedOption(currentUser.id, optionId);
               return {
                 text,
                 isSelected,
@@ -123,9 +123,9 @@ function OptionContent({
   viewProps: {
     users,
     currentUser,
-    userPubliclyHasSelectedOption: userHasSelectedOption,
+    hasUserSelectedOption,
     handleSelectionChange,
-    readyForNextStageProps,
+    isUserReadyForNextStage,
   },
   optionId,
   text,
@@ -137,8 +137,8 @@ function OptionContent({
   notReadable?: boolean;
 }) {
   const usersThatVotedForThis = useMemo(
-    () => users.filter((user) => userHasSelectedOption(user.id, optionId)),
-    [optionId, userHasSelectedOption, users],
+    () => users.filter((user) => hasUserSelectedOption(user.id, optionId)),
+    [optionId, hasUserSelectedOption, users],
   );
 
   return (
@@ -154,9 +154,7 @@ function OptionContent({
               colorScheme={user.isCurrentUser ? "green" : "gray"}
             >
               {user.isCurrentUser ? "Me" : user.name}{" "}
-              {user.isCurrentUser &&
-                !readyForNextStageProps.isReadyForNextStage &&
-                "(Not confirmed)"}
+              {isUserReadyForNextStage(user.id) ? "✅" : "🤔"}
             </Badge>
           ))}
         </HStack>
@@ -165,7 +163,7 @@ function OptionContent({
             <ReadOutLoudButton text={text} />
           </Box>
         )}
-        {userHasSelectedOption(currentUser.id, optionId) ? (
+        {hasUserSelectedOption(currentUser.id, optionId) ? (
           <Button colorScheme='gray' key={`${optionId}-selected`} isDisabled>
             Selected
           </Button>

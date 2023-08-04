@@ -65,7 +65,7 @@ const meta = {
     currentUser: users[0],
     isLoading: false,
     scenarioOptions,
-    userPubliclyHasSelectedOption: (userId, optionId) => {
+    hasUserSelectedOption: (userId, optionId) => {
       return (
         {
           1: null,
@@ -80,6 +80,7 @@ const meta = {
       handleReadyForNextStageClick: async () => action("handleReadyForNextStageClick")(),
     },
     handleSelectionChange: async () => action("setSelection")(),
+    isUserReadyForNextStage: () => Math.random() > 0.5,
     usersWaitingToVote: users,
   },
 } satisfies Meta<typeof Page>;
@@ -91,7 +92,7 @@ export const Default: Story = {};
 
 export const WithNullSelection: Story = {
   args: {
-    userPubliclyHasSelectedOption: (userId, optionId) => {
+    hasUserSelectedOption: (userId, optionId) => {
       return (
         {
           1: null,
@@ -105,7 +106,7 @@ export const WithNullSelection: Story = {
 
 export const WithMinusOneSelection: Story = {
   args: {
-    userPubliclyHasSelectedOption: (userId, optionId) => {
+    hasUserSelectedOption: (userId, optionId) => {
       return (
         {
           1: -1,
@@ -119,7 +120,7 @@ export const WithMinusOneSelection: Story = {
 
 export const WithIdSelection: Story = {
   args: {
-    userPubliclyHasSelectedOption: (userId, optionId) => {
+    hasUserSelectedOption: (userId, optionId) => {
       return (
         {
           1: 1,
@@ -133,7 +134,7 @@ export const WithIdSelection: Story = {
 
 export const WithMultipleUsersOnTheSameOption: Story = {
   args: {
-    userPubliclyHasSelectedOption: (userId, optionId) => {
+    hasUserSelectedOption: (userId, optionId) => {
       return (
         {
           1: 1,

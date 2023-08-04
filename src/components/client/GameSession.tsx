@@ -5,7 +5,7 @@
 
 "use client";
 
-import React, { useCallback, useEffect, useReducer, useRef } from "react";
+import React, { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import type { UseToastOptions } from "@chakra-ui/react";
 import { Center, Spinner, Text } from "@chakra-ui/react";
 import type { RealtimeChannel, RealtimeChannelSendResponse } from "@supabase/supabase-js";
@@ -226,6 +226,7 @@ function useRealtime({ state, send }: { state: State; send: React.Dispatch<Actio
     state,
     userLeaveTimeoutIdMap: new Map<string, ReturnType<typeof setTimeout>>(),
   });
+
   useEffect(() => {
     console.log("GameSession - new sessionState", state);
     // eslint-disable-next-line functional-core/purity
@@ -233,6 +234,8 @@ function useRealtime({ state, send }: { state: State; send: React.Dispatch<Actio
   }, [state]);
 
   const broadcast = useThrottledBroadcast({ channelRef });
+
+  const [resubscribeFlag, setResubscribeFlag] = useState(false);
 
   // join realtime channel for this session
   useEffect(() => {
@@ -421,6 +424,14 @@ function useRealtime({ state, send }: { state: State; send: React.Dispatch<Actio
             description: presenceTrackResponse,
           });
 
+          // cant recover from this, so just re-subscribe
+          setTimeout(() => {
+            console.log("triggering resubscribe to realtime channel");
+            setResubscribeFlag((flag) => !flag);
+          }, 1000);
+
+          // todo if the above isn't reliable try reloading the whole page?
+
           // handle status
         } else if (status === "CLOSED") {
           // this seems to represent a purposeful close, e.g. when unmounted,
@@ -466,7 +477,7 @@ function useRealtime({ state, send }: { state: State; send: React.Dispatch<Actio
       channelRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- only subscribe to channel once
-  }, []);
+  }, [resubscribeFlag]);
 
   return { broadcast };
 }

@@ -267,6 +267,7 @@ function useRealtime({ state, send }: { state: State; send: React.Dispatch<Actio
           previousUsers: contextRef.current.state.users,
           nextUsers: presenceUsers,
         });
+        console.log("presence sync", { presenceStateMap, presenceUsers, users });
 
         // handle users joining
         users.joining.forEach((joiningUser) => {
@@ -288,6 +289,16 @@ function useRealtime({ state, send }: { state: State; send: React.Dispatch<Actio
           }
         });
 
+        presenceUsers.forEach((presenceUser) => {
+          // clear any pending leave timeouts for all users that are here (incase they got missed above)
+          const leaveTimeoutId = contextRef.current.userLeaveTimeoutIdMap.get(presenceUser.id);
+          if (leaveTimeoutId) {
+            clearTimeout(leaveTimeoutId);
+            contextRef.current.userLeaveTimeoutIdMap.delete(presenceUser.id);
+            console.warn("🔙 cleared leave timeout for presence user:", presenceUser.name);
+          }
+        });
+
         // users join session immediately
         const usersJoiningWithoutHavingLeftRecently = users.joining.filter(
           (joiningUser) => !contextRef.current.userLeaveTimeoutIdMap.has(joiningUser.id),
@@ -303,15 +314,22 @@ function useRealtime({ state, send }: { state: State; send: React.Dispatch<Actio
         // handle users leaving, this is delayed incase its a realtime network issue and they rejoin quickly
         users.leaving.forEach((leavingUser) => {
           if (leavingUser.id !== contextRef.current.state.currentUser?.id) {
+            let leaveTimeoutId = contextRef.current.userLeaveTimeoutIdMap.get(leavingUser.id);
+            if (leaveTimeoutId) {
+              console.log("user already leaving, not setting another timeout:", leavingUser.name);
+              return;
+            }
+
             console.log("⏲️ user leaving session, setting timeout:", leavingUser.name);
-            const leaveTimeoutId = setTimeout(() => {
+            leaveTimeoutId = setTimeout(() => {
+              contextRef.current.userLeaveTimeoutIdMap.delete(leavingUser.id);
               console.log("👋🏾 user left session (even after delay):", leavingUser.name);
               toast({ title: `${leavingUser.name} left` });
               send({
                 event: "usersUpdated",
                 data: contextRef.current.state.users.filter((user) => user.id !== leavingUser.id),
               });
-            }, 5_000);
+            }, 10_000);
 
             contextRef.current.userLeaveTimeoutIdMap.set(leavingUser.id, leaveTimeoutId);
           }
@@ -343,18 +361,8 @@ function useRealtime({ state, send }: { state: State; send: React.Dispatch<Actio
         },
       );
 
-    // todo is this required?
-    // this is to try and prevent the connection from being closed due to inactivity
-    const pingIntervalId = setInterval(
-      () =>
-        channel.send({
-          type: REALTIME_LISTEN_TYPES.BROADCAST,
-          event: "ping",
-        }),
-      10_000,
-    );
-
     function handleBroadcastMessage(message: BroadcastEvent) {
+      console.log("received broadcast message", message);
       if (message.event === BroadcastEventName.Toast) {
         const { dontShowToUserId, ...toastConfig } = message.data;
         if (dontShowToUserId !== contextRef.current.state.currentUser.id) {
@@ -381,96 +389,84 @@ function useRealtime({ state, send }: { state: State; send: React.Dispatch<Actio
 
     channelRef.current = channel;
 
-    const subscription = channel.subscribe(async (status, error) => {
-      console.log("🔃 realtime channel status:", status, error);
+    // ? does this manage re-trying in the event of a disconnect?
+    const subscription = channel.subscribe(
+      async (status, error) => {
+        console.log("🔃 realtime channel status:", status, error);
 
-      // ? when do these fire?
-      if (status === "SUBSCRIBED") {
-        let retriesRemaining = 3;
+        if (status === "SUBSCRIBED") {
+          let retriesRemaining = 3;
 
-        let presenceTrackResponse: RealtimeChannelSendResponse | undefined;
-        while (retriesRemaining) {
-          retriesRemaining--;
+          let presenceTrackResponse: RealtimeChannelSendResponse | undefined;
+          while (retriesRemaining) {
+            retriesRemaining--;
+            console.log("trying to track presence", { retriesRemaining });
 
-          // delay to prevent rate limiting
-          await new Promise((resolve) => setTimeout(resolve, 200));
-          presenceTrackResponse = await channel.track({
-            ...contextRef.current.state.currentUser,
-            isCurrentUser: false, // this is relative to users cant broadcast true to other people
-          } satisfies SessionUser);
+            // delay to prevent rate limiting
+            await new Promise((resolve) => setTimeout(resolve, 1000 + Math.random() * 1000));
+            presenceTrackResponse = await channel.track({
+              ...contextRef.current.state.currentUser,
+              isCurrentUser: false, // this is relative to users cant broadcast true to other people
+            } satisfies SessionUser);
+            console.warn("presenceTrackResponse after #join:", presenceTrackResponse);
 
-          if (presenceTrackResponse === "ok") {
-            return;
+            if (presenceTrackResponse === "ok") {
+              return;
+            }
           }
-          console.error("presenceTrackResponse after join", presenceTrackResponse);
+
+          toast({
+            status: "error",
+            title: "Failed to join session",
+            description: presenceTrackResponse,
+          });
+
+          // handle status
+        } else if (status === "CLOSED") {
+          // this seems to represent a purposeful close, e.g. when unmounted,
+          // so not an error and not showing a toast for this
+          console.warn("CLOSED");
+
+          // handle status
+        } else if (error || status === "CHANNEL_ERROR") {
+          console.error("CHANNEL_ERROR", error);
+          toast({
+            status: "error",
+            title: "Session error",
+            description: error?.message,
+          });
+
+          // handle status
+        } else if (status === "TIMED_OUT") {
+          console.error("TIMED_OUT");
+          toast({
+            status: "error",
+            title: "Session timed out",
+          });
         }
+      },
+      10 * 60 * 1000,
+    );
 
-        toast({
-          status: "error",
-          title: "Failed to join session",
-          description: presenceTrackResponse,
-        });
-      }
-      if (status === "CLOSED") {
-        console.error("CLOSED");
-        toast({
-          title: "Session closed",
-        });
-      }
-      if (error || status === "CHANNEL_ERROR") {
-        console.error("CHANNEL_ERROR", error);
-        toast({
-          status: "error",
-          title: "Session error",
-          description: error?.message,
-        });
-      }
-      if (status === "TIMED_OUT") {
-        console.error("TIMED_OUT");
-        toast({
-          status: "error",
-          title: "Session timed out",
-        });
-      }
-
-      console.warn("closing channel", {
-        "channelRef.current": channelRef.current,
-        status,
-        error,
-        subscription,
+    // todo is this required?
+    // this is to try and prevent the connection from being closed due to inactivity
+    const pingIntervalId = setInterval(() => {
+      console.count("pinging realtime channel");
+      return channel.send({
+        type: REALTIME_LISTEN_TYPES.BROADCAST,
+        event: "ping",
       });
-      clearInterval(pingIntervalId);
-      await supabase.removeChannel(subscription);
-      channelRef.current = null;
-      send({
-        event: "usersUpdated",
-        data: state.users.filter((user) => user.id !== state.currentUser.id),
-      });
-    });
+    }, 10_000);
 
     return () => {
-      // console.warn("closing channel", channelRef.current);
-      // clearInterval(pingIntervalId);
-      // void supabase.removeChannel(subscription);
-      // channelRef.current = null;
+      console.countReset("pinging realtime channel");
+      console.warn("closing channel", channelRef.current);
+      clearInterval(pingIntervalId);
+      void supabase.removeChannel(subscription);
+      channelRef.current = null;
     };
-  }, [
-    send,
-    state.currentUser.id,
-    state.currentUserHasJoinedSession,
-    state.session.id,
-    state.users,
-    toast,
-  ]);
-
-  // useEffect(() => {
-  //   if()  {
-  //     console.warn("closing channel", channelRef.current);
-  //     clearInterval(pingIntervalId);
-  //     void supabase.removeChannel(subscription);
-  //     channelRef.current = null;
-  //   }
-  // }, [subscription]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only subscribe to channel once
+  }, []);
 
   return { broadcast };
 }

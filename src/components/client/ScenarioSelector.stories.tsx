@@ -78,6 +78,7 @@ const meta = {
       canMoveToNextStage: false,
       isReadyForNextStage: false,
       handleReadyForNextStageClick: async () => action("handleReadyForNextStageClick")(),
+      canMoveToNextStageConditionText: "You have to select an option first",
     },
     handleSelectionChange: async () => action("setSelection")(),
     isUserReadyForNextStage: () => Math.random() > 0.5,

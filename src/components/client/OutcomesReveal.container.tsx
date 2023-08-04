@@ -80,6 +80,7 @@ function useLogic({ users, outcomeVotes, scenarioText, currentUser, sessionId, b
       handleReadyForNextStageClick: handlePlayAgain,
       isReadyForNextStage: currentUserVotedToPlayAgain,
       beforeReadyText: "I'm Ready to Play Again",
+      canMoveToNextStageConditionText: "",
     } satisfies ReadyForNextStageButtonProps,
   };
 }

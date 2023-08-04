@@ -321,6 +321,7 @@ function useChatLogic({
         return handleVoteChange({ voteForUserId: READY_FOR_NEXT_STAGE_KEY, newVote: "true" });
       },
       isReadyForNextStage: currentUserHasFinishedVoting,
+      canMoveToNextStageConditionText: "You have to have votes for all users first",
     } satisfies ReadyForNextStageButtonProps,
     messageRows,
     selectedScenarioText,

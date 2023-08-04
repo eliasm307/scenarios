@@ -213,6 +213,7 @@ function useLogic({
       canMoveToNextStage: typeof optionVotes[currentUser.id] === "number",
       handleReadyForNextStageClick,
       isReadyForNextStage: currentUserHasFinishedVoting,
+      canMoveToNextStageConditionText: "You have to select an option first",
     } satisfies ReadyForNextStageButtonProps,
     isUserReadyForNextStage,
   };

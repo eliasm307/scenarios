@@ -64,6 +64,7 @@ const meta = {
       handleReadyForNextStageClick: async () => action("handleReadyForNextStageClick")(),
       beforeReadyText: "Before ready",
       isReadyForNextStage: true,
+      canMoveToNextStageConditionText: "You have to select an option first",
     },
     outcomeVotes,
     scenarioText:

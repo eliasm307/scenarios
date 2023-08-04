@@ -109,6 +109,7 @@ const meta = {
       isReadyForNextStage: false,
       canMoveToNextStage: false,
       handleReadyForNextStageClick: async () => action("handleReadyForNextStage")(),
+      canMoveToNextStageConditionText: "You must vote on all outcomes",
     },
     remoteUserVotingStatuses: users
       .filter((user) => !user.isCurrentUser)

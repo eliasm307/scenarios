@@ -292,29 +292,13 @@ function useRealtime({ state, send }: { state: State; send: React.Dispatch<Actio
           }
         });
 
-        presenceUsers.forEach((presenceUser) => {
-          // clear any pending leave timeouts for all users that are here (incase they got missed above)
-          const leaveTimeoutId = contextRef.current.userLeaveTimeoutIdMap.get(presenceUser.id);
-          if (leaveTimeoutId) {
-            clearTimeout(leaveTimeoutId);
-            contextRef.current.userLeaveTimeoutIdMap.delete(presenceUser.id);
-            console.warn("🔙 cleared leave timeout for presence user:", presenceUser.name);
-          }
-        });
-
         // users join session immediately
-        const usersJoiningWithoutHavingLeftRecently = users.joining.filter(
-          (joiningUser) => !contextRef.current.userLeaveTimeoutIdMap.has(joiningUser.id),
-        );
         send({
           event: "usersUpdated",
-          data: deduplicatedUsers([
-            ...contextRef.current.state.users,
-            ...usersJoiningWithoutHavingLeftRecently,
-          ]),
+          data: deduplicateUsers([...contextRef.current.state.users, ...users.joining]),
         });
 
-        // handle users leaving, this is delayed incase its a realtime network issue and they rejoin quickly
+        // handle users leaving for the first time, this is delayed incase its a realtime network issue and they rejoin quickly
         users.leaving.forEach((leavingUser) => {
           if (leavingUser.id !== contextRef.current.state.currentUser?.id) {
             let leaveTimeoutId = contextRef.current.userLeaveTimeoutIdMap.get(leavingUser.id);
@@ -335,6 +319,17 @@ function useRealtime({ state, send }: { state: State; send: React.Dispatch<Actio
             }, 10_000);
 
             contextRef.current.userLeaveTimeoutIdMap.set(leavingUser.id, leaveTimeoutId);
+          }
+        });
+
+        // handle users that were leaving but have re-joined within the timeout and presence matches the local users
+        presenceUsers.forEach((presenceUser) => {
+          // clear any pending leave timeouts for all users that are here (incase they got missed above)
+          const leaveTimeoutId = contextRef.current.userLeaveTimeoutIdMap.get(presenceUser.id);
+          if (leaveTimeoutId) {
+            clearTimeout(leaveTimeoutId);
+            contextRef.current.userLeaveTimeoutIdMap.delete(presenceUser.id);
+            console.warn("🔙 cleared leave timeout for presence user:", presenceUser.name);
           }
         });
       })
@@ -482,7 +477,7 @@ function useRealtime({ state, send }: { state: State; send: React.Dispatch<Actio
   return { broadcast };
 }
 
-function deduplicatedUsers(users: SessionUser[]) {
+function deduplicateUsers(users: SessionUser[]) {
   return users.filter((user, index) => {
     // ie users can only exist once in the array at a specific index (we take the first one if there is a duplicate)
     return users.findIndex((u) => u.id === user.id) === index;
@@ -497,8 +492,8 @@ function getChangedUsers({
   nextUsers: SessionUser[];
 }) {
   // prevent duplicate users from users using multiple tabs/browsers/devices, they should all be the same user
-  previousUsers = deduplicatedUsers(previousUsers); // should not be needed but just in case
-  nextUsers = deduplicatedUsers(nextUsers);
+  previousUsers = deduplicateUsers(previousUsers); // should not be needed but just in case
+  nextUsers = deduplicateUsers(nextUsers);
   const previousUserIds = new Set(previousUsers.map((u) => u.id));
   const nextUserIds = new Set(nextUsers.map((u) => u.id));
   const added = nextUsers.filter((nextUser) => !previousUserIds.has(nextUser.id));

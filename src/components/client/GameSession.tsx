@@ -8,8 +8,8 @@
 import React, { useCallback, useEffect, useReducer, useRef } from "react";
 import type { UseToastOptions } from "@chakra-ui/react";
 import { Center, Spinner, Text } from "@chakra-ui/react";
-import type { RealtimeChannel } from "@supabase/supabase-js";
-import { REALTIME_LISTEN_TYPES, REALTIME_PRESENCE_LISTEN_EVENTS } from "@supabase/supabase-js";
+import type { RealtimeChannel, RealtimeChannelSendResponse } from "@supabase/supabase-js";
+import { REALTIME_LISTEN_TYPES } from "@supabase/supabase-js";
 import ScenarioSelectorContainer from "./ScenarioSelector.container";
 import { getSupabaseClient } from "../../utils/client/supabase";
 import type {
@@ -30,6 +30,10 @@ type State = {
   currentUserHasJoinedSession: boolean;
 };
 
+/**
+ * These are actions that are only dispatched locally and not broadcasted to other clients
+ * These should be actions that affect the UI, things that happen that do not affect the UI should not be here
+ */
 type LocalAction =
   | {
       event: "usersUpdated";
@@ -40,10 +44,6 @@ type LocalAction =
       // NOTE: supabase seems to only create events with some of the columns
       // assuming this is an optimisation to only send updates to clients to reduce payloads
       data: Partial<SessionRow>;
-    }
-  | {
-      event: "currentUserHasJoinedSession";
-      data: boolean;
     }
   | {
       event: "userProfileUpdated";
@@ -96,6 +96,7 @@ function reducer(state: State, action: Action): State {
             relativeName: isCurrentUser ? "I" : user.name,
           };
         }),
+        currentUserHasJoinedSession: action.data.some((user) => user.id === state.currentUser.id),
       };
     }
 
@@ -116,13 +117,9 @@ function reducer(state: State, action: Action): State {
         ...state,
         session: {
           ...state.session,
-          ...action.data,
+          ...action.data, // NOTE: this is a partial update
         },
       };
-    }
-
-    case "currentUserHasJoinedSession": {
-      return { ...state, currentUserHasJoinedSession: action.data };
     }
 
     case BroadcastEventName.TypingStateChanged: {
@@ -145,7 +142,7 @@ function reducer(state: State, action: Action): State {
 function useThrottledBroadcast({
   channelRef,
 }: {
-  channelRef: React.MutableRefObject<RealtimeChannel>;
+  channelRef: React.MutableRefObject<RealtimeChannel | null>;
 }): BroadcastFunction {
   const toast = useCustomToast();
   const broadcastQueueRef = useRef<BroadcastAction[]>([]);
@@ -157,6 +154,10 @@ function useThrottledBroadcast({
         currentQueue: broadcastQueueRef.current,
         currentIntervalId: broadcastIntervalIdRef.current,
       });
+      if (!channelRef.current) {
+        console.warn("channel not ready, skipping broadcast synchronous handling");
+        return;
+      }
 
       broadcastQueueRef.current.push(event);
       if (typeof broadcastIntervalIdRef.current === "number") {
@@ -167,6 +168,11 @@ function useThrottledBroadcast({
 
       // setup a new interval
       broadcastIntervalIdRef.current = window.setInterval(async () => {
+        if (!channelRef.current) {
+          console.warn("channel not ready, skipping broadcast interval handling");
+          return;
+        }
+
         const nextEvent = broadcastQueueRef.current.shift();
         console.log("broadcast interval tick", {
           nextEvent,
@@ -211,35 +217,31 @@ function useThrottledBroadcast({
   );
 }
 
-function useLogic({ existing, currentUser }: Props) {
+function useRealtime({ state, send }: { state: State; send: React.Dispatch<Action> }) {
   const toast = useCustomToast();
-  const [state, send] = useReducer(reducer, null, () => {
-    return {
-      users: [],
-      currentUser,
-      session: {
-        ...existing.session,
-      },
-      currentUserHasJoinedSession: false,
-    } satisfies State;
-  });
+  const channelRef = useRef<RealtimeChannel | null>(null);
 
   // need this so the use effect for subscribing to realtime can run once only and also access the latest state
-  const stateRef = useRef(state);
+  const contextRef = useRef({
+    state,
+    userLeaveTimeoutIdMap: new Map<string, ReturnType<typeof setTimeout>>(),
+  });
   useEffect(() => {
     console.log("GameSession - new sessionState", state);
     // eslint-disable-next-line functional-core/purity
-    stateRef.current = state;
+    contextRef.current.state = state;
   }, [state]);
 
-  const channelRef = useRef<RealtimeChannel>({} as RealtimeChannel);
+  const broadcast = useThrottledBroadcast({ channelRef });
 
-  // todo update this to prevent rate limiting implicitly
-  const broadcast = useThrottledBroadcast({
-    channelRef,
-  });
-
+  // join realtime channel for this session
   useEffect(() => {
+    if (channelRef.current) {
+      console.log("GameSession - channel already joined, not joining again", channelRef.current);
+      return; // already joined
+    }
+    console.log("GameSession - joining channel");
+
     const sessionKey = `Session-${state.session.id}`;
     const supabase = getSupabaseClient();
     const channel = supabase
@@ -248,77 +250,73 @@ function useLogic({ existing, currentUser }: Props) {
           broadcast: {
             // wait for server to acknowledge sent messages before resolving send message promise
             ack: true,
-            // send own messages to self
+            // send own messages to self (we manually ignore some that we don't want to show to the local user)
             self: true,
           },
           presence: {
+            // todo this should be user ID?
             key: sessionKey,
           },
         },
       })
       // ! presence state seems to be readonly after being tracked, need to listen to broadcast or DB events to update state
       .on("presence", { event: "sync" }, () => {
-        const currentUsers = stateRef.current.users;
         const presenceStateMap = channel.presenceState<SessionUser>();
-        const newUsersRaw = presenceStateMap[sessionKey] || [];
-        // prevent duplicate users from users using multiple tabs/browsers/devices, they should all be the same user
-        const uniqueNewUsers = newUsersRaw.filter((newUser, newUserIndex) => {
-          // ie if the same user exists at different indexes then one is a duplicate, we take the first one as the real one
-          const isDuplicateUser =
-            newUsersRaw.findIndex((user) => user.id === newUser.id) !== newUserIndex;
-          if (isDuplicateUser) {
-            console.log("duplicate user", { newUser, newUsersRaw });
-          }
-          return !isDuplicateUser;
+        const presenceUsers = presenceStateMap[sessionKey] || [];
+        const users = getChangedUsers({
+          previousUsers: contextRef.current.state.users,
+          nextUsers: presenceUsers,
         });
 
-        if (uniqueNewUsers.length > 0) {
-          console.log("presence sync", {
-            newUsers: uniqueNewUsers,
-            presenceStateMap,
-            oldUsers: currentUsers,
-          });
-          send({ event: "usersUpdated", data: [...uniqueNewUsers] });
-        } else {
-          console.log("presence sync but no new users", { presenceStateMap, currentUsers });
-        }
-      })
-      .on<SessionUser>(
-        REALTIME_LISTEN_TYPES.PRESENCE,
-        { event: REALTIME_PRESENCE_LISTEN_EVENTS.JOIN },
-        ({ key: sessionPresenceKey, newPresences, currentPresences }) => {
-          console.log("join", {
-            sessionPresenceKey,
-            newPresences,
-            currentPresences,
-          });
-          newPresences
-            // dont notify about self joining
-            .filter((newUser) => newUser.id !== currentUser.id)
-            .forEach((presence) => {
-              toast({ title: `${presence.name} joined` });
-            });
-        },
-      )
-      .on<SessionUser>(
-        REALTIME_LISTEN_TYPES.PRESENCE,
-        { event: REALTIME_PRESENCE_LISTEN_EVENTS.LEAVE },
-        ({ key: sessionPresenceKey, leftPresences, currentPresences }) => {
-          console.log("leave", {
-            sessionPresenceKey,
-            leftPresences,
-            currentPresences,
-            sessionState: state,
-            sessionStateRef: stateRef.current,
-          });
-          leftPresences.forEach((leftPresence) => {
-            const leftUser = stateRef.current.users.find(
-              (existingUsers) => existingUsers.id === leftPresence.id,
+        // handle users joining
+        users.joining.forEach((joiningUser) => {
+          // clear any pending leave timeouts for this user so its like they never left
+          const leaveTimeoutId = contextRef.current.userLeaveTimeoutIdMap.get(joiningUser.id);
+          if (leaveTimeoutId) {
+            clearTimeout(leaveTimeoutId);
+            contextRef.current.userLeaveTimeoutIdMap.delete(joiningUser.id);
+            console.log(
+              "🔙 cleared leave timeout for user that left but rejoined:",
+              joiningUser.name,
             );
-            toast({ title: `${leftUser?.name || leftPresence.id} left` });
-          });
-        },
-      )
+          }
+
+          // only show toast for users that did not leave recently
+          if (!leaveTimeoutId && joiningUser.id !== contextRef.current.state.currentUser?.id) {
+            console.log("🆕 new user joined session:", joiningUser.name);
+            toast({ title: `${joiningUser.name} joined` });
+          }
+        });
+
+        // users join session immediately
+        const usersJoiningWithoutHavingLeftRecently = users.joining.filter(
+          (joiningUser) => !contextRef.current.userLeaveTimeoutIdMap.has(joiningUser.id),
+        );
+        send({
+          event: "usersUpdated",
+          data: deduplicatedUsers([
+            ...contextRef.current.state.users,
+            ...usersJoiningWithoutHavingLeftRecently,
+          ]),
+        });
+
+        // handle users leaving, this is delayed incase its a realtime network issue and they rejoin quickly
+        users.leaving.forEach((leavingUser) => {
+          if (leavingUser.id !== contextRef.current.state.currentUser?.id) {
+            console.log("⏲️ user leaving session, setting timeout:", leavingUser.name);
+            const leaveTimeoutId = setTimeout(() => {
+              console.log("👋🏾 user left session (even after delay):", leavingUser.name);
+              toast({ title: `${leavingUser.name} left` });
+              send({
+                event: "usersUpdated",
+                data: contextRef.current.state.users.filter((user) => user.id !== leavingUser.id),
+              });
+            }, 5_000);
+
+            contextRef.current.userLeaveTimeoutIdMap.set(leavingUser.id, leaveTimeoutId);
+          }
+        });
+      })
       .on<SessionRow>(
         REALTIME_LISTEN_TYPES.POSTGRES_CHANGES,
         {
@@ -345,20 +343,21 @@ function useLogic({ existing, currentUser }: Props) {
         },
       );
 
+    // todo is this required?
     // this is to try and prevent the connection from being closed due to inactivity
-    // const pingIntervalId = setInterval(
-    //   () =>
-    //     channel.send({
-    //       type: REALTIME_LISTEN_TYPES.BROADCAST,
-    //       event: "ping",
-    //     }),
-    //   10_000,
-    // );
+    const pingIntervalId = setInterval(
+      () =>
+        channel.send({
+          type: REALTIME_LISTEN_TYPES.BROADCAST,
+          event: "ping",
+        }),
+      10_000,
+    );
 
     function handleBroadcastMessage(message: BroadcastEvent) {
       if (message.event === BroadcastEventName.Toast) {
-        const { dontShowToUserId: senderUserId, ...toastConfig } = message.data;
-        if (senderUserId !== currentUser.id) {
+        const { dontShowToUserId, ...toastConfig } = message.data;
+        if (dontShowToUserId !== contextRef.current.state.currentUser.id) {
           toast(toastConfig); // dont show toasts to self
         }
         return;
@@ -383,23 +382,34 @@ function useLogic({ existing, currentUser }: Props) {
     channelRef.current = channel;
 
     const subscription = channel.subscribe(async (status, error) => {
+      console.log("🔃 realtime channel status:", status, error);
+
       // ? when do these fire?
       if (status === "SUBSCRIBED") {
-        // delay to prevent rate limiting
-        await new Promise((resolve) => setTimeout(resolve, 100));
-        const presenceTrackStatus = await channel.track({
-          ...currentUser,
-          isCurrentUser: false,
-        } satisfies SessionUser);
+        let retriesRemaining = 3;
 
-        if (presenceTrackStatus !== "ok") {
-          console.error("presenceTrackStatus after join", presenceTrackStatus);
-          toast({
-            status: "error",
-            title: "Failed to join session",
-            description: presenceTrackStatus,
-          });
+        let presenceTrackResponse: RealtimeChannelSendResponse | undefined;
+        while (retriesRemaining) {
+          retriesRemaining--;
+
+          // delay to prevent rate limiting
+          await new Promise((resolve) => setTimeout(resolve, 200));
+          presenceTrackResponse = await channel.track({
+            ...contextRef.current.state.currentUser,
+            isCurrentUser: false, // this is relative to users cant broadcast true to other people
+          } satisfies SessionUser);
+
+          if (presenceTrackResponse === "ok") {
+            return;
+          }
+          console.error("presenceTrackResponse after join", presenceTrackResponse);
         }
+
+        toast({
+          status: "error",
+          title: "Failed to join session",
+          description: presenceTrackResponse,
+        });
       }
       if (status === "CLOSED") {
         console.error("CLOSED");
@@ -422,22 +432,86 @@ function useLogic({ existing, currentUser }: Props) {
           title: "Session timed out",
         });
       }
+
+      console.warn("closing channel", {
+        "channelRef.current": channelRef.current,
+        status,
+        error,
+        subscription,
+      });
+      clearInterval(pingIntervalId);
+      await supabase.removeChannel(subscription);
+      channelRef.current = null;
+      send({
+        event: "usersUpdated",
+        data: state.users.filter((user) => user.id !== state.currentUser.id),
+      });
     });
 
     return () => {
+      // console.warn("closing channel", channelRef.current);
       // clearInterval(pingIntervalId);
-      void supabase.removeChannel(subscription);
+      // void supabase.removeChannel(subscription);
+      // channelRef.current = null;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- only run once
-  }, []);
+  }, [
+    send,
+    state.currentUser.id,
+    state.currentUserHasJoinedSession,
+    state.session.id,
+    state.users,
+    toast,
+  ]);
 
-  useEffect(() => {
-    if (state.currentUserHasJoinedSession) {
-      return;
-    }
-    const currentUserHasJoined = state.users.some((user) => user.id === currentUser.id);
-    send({ event: "currentUserHasJoinedSession", data: currentUserHasJoined });
-  }, [currentUser, send, state.currentUserHasJoinedSession, state.users]);
+  // useEffect(() => {
+  //   if()  {
+  //     console.warn("closing channel", channelRef.current);
+  //     clearInterval(pingIntervalId);
+  //     void supabase.removeChannel(subscription);
+  //     channelRef.current = null;
+  //   }
+  // }, [subscription]);
+
+  return { broadcast };
+}
+
+function deduplicatedUsers(users: SessionUser[]) {
+  return users.filter((user, index) => {
+    // ie users can only exist once in the array at a specific index (we take the first one if there is a duplicate)
+    return users.findIndex((u) => u.id === user.id) === index;
+  });
+}
+
+function getChangedUsers({
+  previousUsers,
+  nextUsers,
+}: {
+  previousUsers: SessionUser[];
+  nextUsers: SessionUser[];
+}) {
+  // prevent duplicate users from users using multiple tabs/browsers/devices, they should all be the same user
+  previousUsers = deduplicatedUsers(previousUsers); // should not be needed but just in case
+  nextUsers = deduplicatedUsers(nextUsers);
+  const previousUserIds = new Set(previousUsers.map((u) => u.id));
+  const nextUserIds = new Set(nextUsers.map((u) => u.id));
+  const added = nextUsers.filter((nextUser) => !previousUserIds.has(nextUser.id));
+  const removed = previousUsers.filter((previousUser) => !nextUserIds.has(previousUser.id));
+  return { joining: added, leaving: removed };
+}
+
+function useLogic({ existing, currentUser }: Props) {
+  const [state, send] = useReducer(reducer, null, () => {
+    return {
+      users: [],
+      currentUser,
+      session: {
+        ...existing.session,
+      },
+      currentUserHasJoinedSession: false,
+    } satisfies State;
+  });
+
+  const { broadcast } = useRealtime({ state, send });
 
   return {
     currentUser,

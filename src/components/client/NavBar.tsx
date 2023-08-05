@@ -2,7 +2,6 @@
 
 import { Spacer, type FlexProps, Tooltip } from "@chakra-ui/react";
 
-import Image from "next/image";
 import Link from "next/link";
 import {
   Flex,
@@ -15,13 +14,11 @@ import {
   IconButton,
   useDisclosure,
   Button,
-  Box,
 } from "./ChakraUI";
-import { HamburgerIcon, SettingsIcon } from "../Icons";
+import { AppLogoIcon, HamburgerIcon, SettingsIcon } from "../Icons";
 import UserProfileModal from "./UserProfileModal";
 import type { UserContext } from "../../app/providers";
 import { useUserContext } from "../../app/providers";
-import IconSvg from "../assets/emoji_u1f52e.svg";
 import { Path } from "../../utils/client/constants";
 import { useIsLargeScreen } from "../../utils/client/hooks";
 
@@ -99,9 +96,7 @@ export default function NavBar(flexProps: FlexProps) {
     <Flex as='nav' alignItems='center' px={3} py={2} m={0} gap={3} boxShadow='md' {...flexProps}>
       <Link href={Path.Home}>
         <Heading as='h1' fontSize='2xl' display='flex' alignItems='center' gap={2}>
-          <Box position='relative' width='2rem' height='2rem'>
-            <Image fill src={IconSvg} alt='React Logo' />
-          </Box>
+          <AppLogoIcon size='2rem' />
           Scenarios
         </Heading>
       </Link>

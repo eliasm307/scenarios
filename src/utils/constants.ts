@@ -2,6 +2,8 @@ import type { Message } from "ai";
 
 export const POSITIVE_OUTCOME_EMOJI = "👍🏾";
 export const NEGATIVE_OUTCOME_EMOJI = "🙅🏾‍♂️";
+export const THINKING_EMOJI = "🤔";
+export const CONFIRMED_EMOJI = "✅";
 
 export const GENERATE_NEW_SCENARIOS_OPTION_ID = -1;
 

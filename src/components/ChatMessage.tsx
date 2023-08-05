@@ -1,6 +1,7 @@
 import { HStack, Avatar, Flex, Text, VStack } from "@chakra-ui/react";
 import type { MessageRow } from "../types";
 import ReadOutLoudButton from "./ReadOutLoudButton";
+import { AppLogoIcon } from "./Icons";
 
 type Props = {
   authorName: string;
@@ -9,7 +10,6 @@ type Props = {
 
 function ChatMessage({ authorName, messageRow }: Props) {
   const isUser = messageRow.author_role === "user";
-  const senderAvatarSrc = isUser ? "" : "/assets/openai.png";
   if (messageRow.author_role === "assistant") {
     authorName = "AI";
 
@@ -48,10 +48,11 @@ function ChatMessage({ authorName, messageRow }: Props) {
     >
       <Avatar
         size='sm'
-        name={authorName}
-        src={senderAvatarSrc}
+        name={isUser ? authorName : undefined}
+        // todo allow users to define custom avatars
         background={isUser ? "blue.800" : undefined}
         color={isUser ? "white" : undefined}
+        icon={<AppLogoIcon size='2rem' />}
       />
       <Text as='span' fontWeight='bold' fontSize='xl' textAlign={isUser ? "right" : "left"}>
         {authorName}
@@ -80,7 +81,6 @@ function ChatMessage({ authorName, messageRow }: Props) {
             <Text key={sentence}>{sentence}.</Text>
           ))}
       </Flex>
-      {/* <Divider /> */}
     </VStack>
   );
 

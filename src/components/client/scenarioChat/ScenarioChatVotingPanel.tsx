@@ -13,7 +13,12 @@ import { useCallback } from "react";
 import type { SessionUser } from "../../../types";
 import type { ScenarioChatViewProps } from "./ScenarioChat.container";
 import { useIsLargeScreen } from "../../../utils/client/hooks";
-import { POSITIVE_OUTCOME_EMOJI, NEGATIVE_OUTCOME_EMOJI } from "../../../utils/constants";
+import {
+  POSITIVE_OUTCOME_EMOJI,
+  NEGATIVE_OUTCOME_EMOJI,
+  CONFIRMED_EMOJI,
+  THINKING_EMOJI,
+} from "../../../utils/constants";
 import ReadyForNextStageButton from "../ReadyForNextStageButton";
 
 type Props = ScenarioChatViewProps & {
@@ -31,7 +36,7 @@ export default function VotingPanel(props: Props) {
         <>
           <Divider my={3} key={`${user.id}-divider`} />
           <Heading key={user.id} size='md' width='100%' textAlign='center'>
-            {isFinishedVoting ? <>✅</> : <>🤔</>} &quot;{user.name}&quot;{" "}
+            {isFinishedVoting ? CONFIRMED_EMOJI : THINKING_EMOJI} &quot;{user.name}&quot;{" "}
             {isFinishedVoting ? "has decided" : "is deciding..."}
           </Heading>
         </>

@@ -9,7 +9,8 @@ function StartReadOutLoudButton({ onClick }: { onClick: () => void }) {
     <Tooltip label='Read out loud' aria-label='Read out loud'>
       <IconButton
         key='play'
-        icon={<SoundIcon fontSize='1.5rem' />}
+        variant='ghost'
+        icon={<SoundIcon />}
         aria-label='Read out loud'
         onClick={onClick}
       />
@@ -23,7 +24,7 @@ function StopReadingOutLoudButton({ onClick }: { onClick: () => void }) {
       <IconButton
         key='stop'
         colorScheme='yellow'
-        icon={<StopSoundIcon fontSize='1.5rem' />}
+        icon={<StopSoundIcon />}
         aria-label='Stop reading out loud'
         onClick={onClick}
       />

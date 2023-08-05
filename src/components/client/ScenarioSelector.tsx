@@ -168,17 +168,25 @@ function OptionContent({
       <HStack minHeight={10} width='100%'>
         <HStack flex={1} wrap='wrap'>
           {usersThatVotedForThis.length > 0 && <Text>Votes:</Text>}
-          {usersThatVotedForThis.map((user) => (
-            <Badge
-              maxHeight={10}
-              fontSize='lg'
-              key={user.id}
-              colorScheme={user.isCurrentUser ? "green" : "gray"}
-            >
-              {user.isCurrentUser ? "Me" : user.name}{" "}
-              {isUserReadyForNextStage(user.id) ? CONFIRMED_EMOJI : THINKING_EMOJI}
-            </Badge>
-          ))}
+          {usersThatVotedForThis.map((user) => {
+            const isReadyForNextStage = isUserReadyForNextStage(user.id);
+            return (
+              <Tooltip
+                key={user.id}
+                label={isReadyForNextStage ? "Confirmed" : "Still thinking..."}
+              >
+                <Badge
+                  key={user.id}
+                  maxHeight={10}
+                  fontSize='lg'
+                  colorScheme={user.isCurrentUser ? "green" : "gray"}
+                >
+                  {user.isCurrentUser ? "Me" : user.name}{" "}
+                  {isReadyForNextStage ? CONFIRMED_EMOJI : THINKING_EMOJI}
+                </Badge>
+              </Tooltip>
+            );
+          })}
         </HStack>
         {!isNotAScenario && (
           <>

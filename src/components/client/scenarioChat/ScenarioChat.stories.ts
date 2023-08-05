@@ -51,18 +51,18 @@ const meta = {
     chat: {
       allowsSubmitting: true,
       error: null,
-      handleSubmit: async () => action("handleSubmit")(),
+      handleSubmit: action("handleSubmit"),
       hasError: false,
       inputProps: {
         onChange: action("input:onChange"),
-        onKeyDown: async () => action("input:onKeyDown")(),
+        onKeyDown: action("input:onKeyDown"),
         onBlur: action("input:onBlur"),
         placeholder: "Type a message...",
         value: "", // todo container should not be controlling UI control, this means UI doesn't work standalone
       },
       isLoading: false,
     },
-    handleVoteChange: async () => {},
+    handleVoteChange: action("handleVoteChange"),
     messageRows: [
       ...DUMMY_MESSAGES.map((message, id) => {
         const isUser = message.role === "user";
@@ -108,7 +108,7 @@ const meta = {
     readyForNextStageProps: {
       isReadyForNextStage: false,
       canMoveToNextStage: false,
-      handleReadyForNextStageClick: async () => action("handleReadyForNextStage")(),
+      handleReadyForNextStageClick: action("handleReadyForNextStage"),
       canMoveToNextStageConditionText: "You must vote on all outcomes",
     },
     remoteUserVotingStatuses: users

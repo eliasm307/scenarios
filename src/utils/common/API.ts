@@ -53,7 +53,18 @@ export default class API {
     ): Promise<void | UseToastOptions> => {
       const result = await this.supabase.rpc("vote_for_option", config);
       if (result.error) {
-        const title = "Scenario Voting Error";
+        const title = "Scenario Option Voting Error";
+        console.error(title, result.error);
+        return { status: "error", title, description: result.error.message };
+      }
+    },
+
+    setScenarioOptionRating: async (
+      config: Database["public"]["Functions"]["set_option_rating"]["Args"],
+    ): Promise<void | UseToastOptions> => {
+      const result = await this.supabase.rpc("set_option_rating", config);
+      if (result.error) {
+        const title = "Set Scenario Option Rating Error";
         console.error(title, result.error);
         return { status: "error", title, description: result.error.message };
       }

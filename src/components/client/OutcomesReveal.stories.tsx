@@ -61,7 +61,7 @@ const meta = {
   args: {
     readyForNextStageProps: {
       canMoveToNextStage: true,
-      handleReadyForNextStageClick: async () => action("handleReadyForNextStageClick")(),
+      handleReadyForNextStageClick: action("handleReadyForNextStageClick"),
       beforeReadyText: "Before ready",
       isReadyForNextStage: true,
       canMoveToNextStageConditionText: "You have to select an option first",

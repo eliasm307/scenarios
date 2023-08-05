@@ -12,6 +12,10 @@ function createUserReadyForNextStageKey(userId: string) {
   return `${userId}-ready-for-next-stage`;
 }
 
+function createScenarioOptionRatingKey({ userId, optionId }: { userId: string; optionId: number }) {
+  return `${userId}-rating-for-scenario-${optionId}`;
+}
+
 function userHasFinishedVoting({
   userId,
   optionVotes,
@@ -35,19 +39,9 @@ function allUsersHaveFinishedVoting({
   users: SessionUser[];
   latestOptionVotes: SessionRow["scenario_option_votes"];
 }): boolean {
-  const sessionUserIds = new Set(users.map(({ id }) => id));
-  for (const userId of Object.keys(latestOptionVotes)) {
-    if (!sessionUserIds.has(userId)) {
-      continue; // user has left the session or its a non-user key
-    }
-    if (userHasFinishedVoting({ userId, optionVotes: latestOptionVotes })) {
-      sessionUserIds.delete(userId);
-    } else {
-      return false; // atleast one user has not finished voting
-    }
-  }
-
-  return sessionUserIds.size === 0; // all users have finished voting
+  return users.every((user) =>
+    userHasFinishedVoting({ userId: user.id, optionVotes: latestOptionVotes }),
+  );
 }
 
 function useLogic({
@@ -57,6 +51,7 @@ function useLogic({
   scenarioOptions,
   optionVotes,
   broadcast,
+  optionsAiAuthorModelId,
 }: Props) {
   const toast = useCustomToast();
   const [isLoading, setIsLoading] = useState(false);
@@ -128,6 +123,7 @@ function useLogic({
     [broadcast, scenarioOptions, sessionId, toast, users],
   );
 
+  // todo make this a supabase edge function
   const handleSelectionChange = useCallback(
     async (optionId: number) => {
       console.log("handleSelectionChange", { optionId });
@@ -147,6 +143,36 @@ function useLogic({
       }
     },
     [currentUser.id, optionVotes, sessionId, toast],
+  );
+
+  const handleOptionRating = useCallback(
+    async ({ optionId, rating }: { optionId: number; rating: "POSITIVE" | "NEGATIVE" }) => {
+      console.log("handleOptionRating", { optionId, rating });
+
+      const errorToastConfig = await APIClient.sessions.setScenarioOptionRating({
+        rating_key: createScenarioOptionRatingKey({ optionId, userId: currentUser.id }),
+        rating: rating === "POSITIVE" ? 1 : -1,
+        session_id: sessionId,
+      });
+
+      if (errorToastConfig) {
+        toast(errorToastConfig);
+      }
+    },
+    [currentUser.id, sessionId, toast],
+  );
+
+  const getOptionRating = useCallback(
+    (optionId: number) => {
+      const ratingKey = createScenarioOptionRatingKey({ optionId, userId: currentUser.id });
+      const rating = optionVotes[ratingKey];
+      if (typeof rating !== "number") {
+        return null;
+      }
+
+      return rating;
+    },
+    [currentUser.id, optionVotes],
   );
 
   const handleReadyForNextStageClick = useCallback(async () => {
@@ -203,12 +229,15 @@ function useLogic({
 
   return {
     usersWaitingToVote,
+    // todo only expose one "send" or "dispatch" or "action" or "handleEvent" function to UI?
     handleSelectionChange,
+    handleOptionRating,
     isLoading,
     users,
     currentUser,
     hasUserSelectedOption,
     scenarioOptions,
+    getOptionRating,
     optionsAiAuthorModelId,
     readyForNextStageProps: {
       canMoveToNextStage: typeof optionVotes[currentUser.id] === "number",

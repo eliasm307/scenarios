@@ -77,11 +77,13 @@ const meta = {
     readyForNextStageProps: {
       canMoveToNextStage: false,
       isReadyForNextStage: false,
-      handleReadyForNextStageClick: async () => action("handleReadyForNextStageClick")(),
+      handleReadyForNextStageClick: action("handleReadyForNextStageClick"),
       canMoveToNextStageConditionText: "You have to select an option first",
     },
-    handleSelectionChange: async () => action("setSelection")(),
+    handleSelectionChange: action("setSelection"),
+    handleOptionRating: action("handleOptionRating"),
     isUserReadyForNextStage: () => Math.random() > 0.5,
+    getOptionRating: () => null,
     usersWaitingToVote: users,
     optionsAiAuthorModelId: "",
   },
@@ -146,6 +148,20 @@ export const WithMultipleUsersOnTheSameOption: Story = {
           5: 1,
           6: 1,
         }[userId] === optionId
+      );
+    },
+  },
+};
+
+export const WithPositiveAndNegativeRatings: Story = {
+  args: {
+    getOptionRating: (optionId) => {
+      return (
+        {
+          1: 1,
+          2: -1,
+          3: 1,
+        }[optionId] || null
       );
     },
   },

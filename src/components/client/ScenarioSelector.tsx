@@ -10,8 +10,10 @@ import {
   Divider,
   HStack,
   Heading,
+  IconButton,
   Spinner,
   Text,
+  Tooltip,
   VStack,
 } from "@chakra-ui/react";
 import { useMemo } from "react";
@@ -21,7 +23,17 @@ import ScenarioText from "../ScenarioText";
 import ReadOutLoudButton from "../ReadOutLoudButton";
 import type { ScenarioSelectorViewProps } from "./ScenarioSelector.container";
 import ReadyForNextStageButton from "./ReadyForNextStageButton";
-import { GENERATE_NEW_SCENARIOS_OPTION_ID } from "../../utils/constants";
+import {
+  CONFIRMED_EMOJI,
+  GENERATE_NEW_SCENARIOS_OPTION_ID,
+  THINKING_EMOJI,
+} from "../../utils/constants";
+import {
+  ThumbsDownFilledIcon,
+  ThumbsDownOutlineIcon,
+  ThumbsUpFilledIcon,
+  ThumbsUpOutlineIcon,
+} from "../Icons";
 
 export default function ScenarioSelector(props: ScenarioSelectorViewProps): React.ReactElement {
   const {
@@ -109,7 +121,7 @@ export default function ScenarioSelector(props: ScenarioSelectorViewProps): Reac
                   key='new'
                   optionId={GENERATE_NEW_SCENARIOS_OPTION_ID}
                   viewProps={props}
-                  notReadable
+                  isNotAScenario
                   text='🆕 Vote to generate new scenarios'
                 />
               ),
@@ -129,21 +141,27 @@ function OptionContent({
     currentUser,
     hasUserSelectedOption,
     handleSelectionChange,
+    handleOptionRating,
     isUserReadyForNextStage,
+    getOptionRating,
   },
   optionId,
   text,
-  notReadable,
+  isNotAScenario,
 }: {
   viewProps: ScenarioSelectorViewProps;
   optionId: number;
   text: string;
-  notReadable?: boolean;
+  isNotAScenario?: boolean;
 }) {
   const usersThatVotedForThis = useMemo(
     () => users.filter((user) => hasUserSelectedOption(user.id, optionId)),
     [optionId, hasUserSelectedOption, users],
   );
+
+  const rating = getOptionRating(optionId);
+  const isRatedPositive = rating === 1;
+  const isRatedNegative = rating === -1;
 
   return (
     <VStack height='100%' width='100%'>
@@ -162,10 +180,36 @@ function OptionContent({
             </Badge>
           ))}
         </HStack>
-        {!notReadable && (
-          <Box>
+        {!isNotAScenario && (
+          <>
+            <HStack>
+              <Tooltip label='😀 Create more scenarios like this' aria-label='Like'>
+                <IconButton
+                  variant='ghost'
+                  colorScheme={isRatedPositive ? "green" : "gray"}
+                  icon={isRatedPositive ? <ThumbsUpFilledIcon /> : <ThumbsUpOutlineIcon />}
+                  aria-label='Like'
+                  // dont use disabled styling but dont handle further clicks
+                  onClick={() =>
+                    !isRatedPositive && handleOptionRating({ optionId, rating: "POSITIVE" })
+                  }
+                />
+              </Tooltip>
+              <Tooltip label='😒 Create less scenarios like this' aria-label='Dislike'>
+                <IconButton
+                  variant='ghost'
+                  colorScheme={isRatedNegative ? "red" : "gray"}
+                  icon={isRatedNegative ? <ThumbsDownFilledIcon /> : <ThumbsDownOutlineIcon />}
+                  aria-label='Dislike'
+                  // dont use disabled styling but dont handle further clicks
+                  onClick={() =>
+                    !isRatedNegative && handleOptionRating({ optionId, rating: "NEGATIVE" })
+                  }
+                />
+              </Tooltip>
+            </HStack>
             <ReadOutLoudButton text={text} />
-          </Box>
+          </>
         )}
         {hasUserSelectedOption(currentUser.id, optionId) ? (
           <Button colorScheme='gray' key={`${optionId}-selected`} isDisabled>

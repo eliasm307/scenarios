@@ -316,7 +316,7 @@ function useRealtime({ state, send }: { state: State; send: React.Dispatch<Actio
                 event: "usersUpdated",
                 data: contextRef.current.state.users.filter((user) => user.id !== leavingUser.id),
               });
-            }, 10_000);
+            }, 15_000);
 
             contextRef.current.userLeaveTimeoutIdMap.set(leavingUser.id, leaveTimeoutId);
           }

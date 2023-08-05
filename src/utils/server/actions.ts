@@ -108,7 +108,11 @@ export async function invokeMoveSessionToOutcomeSelectionStageAction({
       ai_is_responding: false,
     } satisfies Omit<
       SessionRow,
-      "id" | "created_at" | "scenario_options" | "selected_scenario_image_path"
+      | "id"
+      | "created_at"
+      | "scenario_options"
+      | "selected_scenario_image_path"
+      | "scenario_options_ai_author_model_id"
     >)
     .eq("id", sessionId);
 
@@ -138,7 +142,9 @@ async function resetSessionRow({
       selected_scenario_image_path: null,
       selected_scenario_id: null,
       ai_is_responding: false,
-    } satisfies Required<Omit<SessionRow, "id" | "created_at">>)
+    } satisfies Required<
+      Omit<SessionRow, "id" | "created_at" | "scenario_options_ai_author_model_id">
+    >)
     .eq("id", sessionId);
 
   if (response.error) {

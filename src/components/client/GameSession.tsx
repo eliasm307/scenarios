@@ -10,7 +10,7 @@ import type { UseToastOptions } from "@chakra-ui/react";
 import { Center, Spinner, Text } from "@chakra-ui/react";
 import type { RealtimeChannel, RealtimeChannelSendResponse } from "@supabase/supabase-js";
 import { REALTIME_LISTEN_TYPES } from "@supabase/supabase-js";
-import ScenarioSelectorContainer from "./ScenarioSelector.container";
+import ScenarioSelectorContainer from "./scenarioSelector/ScenarioSelector.container";
 import { getSupabaseClient } from "../../utils/client/supabase";
 import type {
   BroadcastEventFrom,

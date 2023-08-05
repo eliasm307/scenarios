@@ -1,15 +1,15 @@
 /* eslint-disable no-console */
 import { useState, useCallback, useMemo } from "react";
-import type { SessionUser, SessionRow } from "../../types";
-import { useCustomToast } from "../../utils/client/hooks";
+import type { SessionUser, SessionRow } from "../../../types";
+import { useCustomToast } from "../../../utils/client/hooks";
 import {
   invokeGenerateNewScenarioOptions,
   invokeMoveSessionToOutcomeSelectionStageAction,
-} from "../../utils/server/actions";
-import type { BroadcastFunction } from "./GameSession";
+} from "../../../utils/server/actions";
+import type { BroadcastFunction } from "../GameSession";
 import ScenarioSelector from "./ScenarioSelector";
-import APIClient from "../../utils/client/APIClient";
-import type { ReadyForNextStageButtonProps } from "./ReadyForNextStageButton";
+import APIClient from "../../../utils/client/APIClient";
+import type { ReadyForNextStageButtonProps } from "../ReadyForNextStageButton";
 
 function createUserReadyForNextStageKey(userId: string) {
   return `${userId}-ready-for-next-stage`;

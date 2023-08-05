@@ -17,23 +17,23 @@ import {
   VStack,
 } from "@chakra-ui/react";
 import { useMemo } from "react";
-import type { ChoiceConfig } from "../ChoiceGrid.client";
-import ChoiceGrid from "../ChoiceGrid.client";
-import ScenarioText from "../ScenarioText";
-import ReadOutLoudButton from "../ReadOutLoudButton";
+import type { ChoiceConfig } from "../../ChoiceGrid.client";
+import ChoiceGrid from "../../ChoiceGrid.client";
+import ScenarioText from "../../ScenarioText";
+import ReadOutLoudButton from "../../ReadOutLoudButton";
 import type { ScenarioSelectorViewProps } from "./ScenarioSelector.container";
-import ReadyForNextStageButton from "./ReadyForNextStageButton";
+import ReadyForNextStageButton from "../ReadyForNextStageButton";
 import {
   CONFIRMED_EMOJI,
   GENERATE_NEW_SCENARIOS_OPTION_ID,
   THINKING_EMOJI,
-} from "../../utils/constants";
+} from "../../../utils/constants";
 import {
   ThumbsDownFilledIcon,
   ThumbsDownOutlineIcon,
   ThumbsUpFilledIcon,
   ThumbsUpOutlineIcon,
-} from "../Icons";
+} from "../../Icons";
 
 export default function ScenarioSelector(props: ScenarioSelectorViewProps): React.ReactElement {
   const {

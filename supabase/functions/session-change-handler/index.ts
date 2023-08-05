@@ -19,6 +19,7 @@ import { createImageFromPrompt } from "../_utils/huggingFace.ts";
 import { createScenariosStream } from "../_utils/openai/createScenarios.ts";
 import { createScenarioImagePrompt } from "../_utils/openai/createScenarioImagePrompt.ts";
 import { streamAndPersist } from "../_utils/general.ts";
+import { ACTIVE_OPENAI_MODEL } from "../_utils/openai/general.ts";
 
 serve(async (req) => {
   try {
@@ -152,6 +153,20 @@ async function generateNewSessionScenarios(sessionId: number) {
   const newScenariosStream = await createScenariosStream(exampleScenarios);
   console.log("newScenariosStream", newScenariosStream);
 
+  // reset scenario options
+  const resetOptionsResponse = await supabaseAdminClient
+    .from("sessions")
+    .update({ scenario_option_votes: {}, scenario_options_ai_author_model_id: ACTIVE_OPENAI_MODEL })
+    .match({ id: sessionId });
+
+  if (resetOptionsResponse.error) {
+    // eslint-disable-next-line no-console
+    console.error(
+      `Reset session scenario options error: ${resetOptionsResponse.error.message} (${resetOptionsResponse.error.code}) \nDetails: ${resetOptionsResponse.error.details} \nHint: ${resetOptionsResponse.error.hint}`,
+    );
+    throw resetOptionsResponse.error;
+  }
+
   await streamAndPersist({
     persistenceEntityName: "session",
     streamValueName: "new session scenario options",
@@ -170,7 +185,7 @@ async function updateSessionScenarioOptions({
 }) {
   const updateSessionResponse = await supabaseAdminClient
     .from("sessions")
-    .update({ scenario_options: latestScenarios, scenario_option_votes: {} })
+    .update({ scenario_options: latestScenarios })
     .match({ id: sessionId });
 
   if (updateSessionResponse.error) {

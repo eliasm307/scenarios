@@ -58,7 +58,7 @@ export interface Database {
           image_path: string | null;
           image_prompt: string | null;
           liked_by_user_ids: string[];
-          rating: number | null;
+          rating: number;
           text: string;
           voted_by_user_ids: string[] | null;
         };
@@ -70,7 +70,7 @@ export interface Database {
           image_path?: string | null;
           image_prompt?: string | null;
           liked_by_user_ids?: string[];
-          rating?: number | null;
+          rating?: number;
           text: string;
           voted_by_user_ids?: string[] | null;
         };
@@ -82,7 +82,7 @@ export interface Database {
           image_path?: string | null;
           image_prompt?: string | null;
           liked_by_user_ids?: string[];
-          rating?: number | null;
+          rating?: number;
           text?: string;
           voted_by_user_ids?: string[] | null;
         };
@@ -189,7 +189,7 @@ export interface Database {
           image_path: string | null;
           image_prompt: string | null;
           liked_by_user_ids: string[];
-          rating: number | null;
+          rating: number;
           text: string;
           voted_by_user_ids: string[] | null;
         }[];

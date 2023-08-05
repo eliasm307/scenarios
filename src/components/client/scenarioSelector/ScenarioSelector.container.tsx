@@ -10,14 +10,10 @@ import type { BroadcastFunction } from "../GameSession";
 import ScenarioSelector from "./ScenarioSelector";
 import APIClient from "../../../utils/client/APIClient";
 import type { ReadyForNextStageButtonProps } from "../ReadyForNextStageButton";
-
-function createUserReadyForNextStageKey(userId: string) {
-  return `${userId}-ready-for-next-stage`;
-}
-
-function createScenarioOptionRatingKey({ userId, optionId }: { userId: string; optionId: number }) {
-  return `${userId}-rating-for-scenario-${optionId}`;
-}
+import {
+  createUserReadyForNextStageKey,
+  createScenarioOptionUserRatingKey,
+} from "../../../utils/general";
 
 function userHasFinishedVoting({
   userId,
@@ -112,6 +108,8 @@ function useLogic({
         })
         .map(([userId]) => userId);
 
+      // NOTE: this should be invoked by the last voting client instead of the db doing this via a webhook
+      // because if it fails then the last client user will see an error and they can try again
       const errorToastConfig = await invokeMoveSessionToOutcomeSelectionStageAction({
         scenarioText: winningScenarioText,
         userIdsThatVotedForScenario: userIdsThatVotedForWinningScenario,
@@ -153,7 +151,7 @@ function useLogic({
       console.log("handleOptionRating", { optionId, rating });
 
       const errorToastConfig = await APIClient.sessions.setScenarioOptionRating({
-        rating_key: createScenarioOptionRatingKey({ optionId, userId: currentUser.id }),
+        rating_key: createScenarioOptionUserRatingKey({ optionId, userId: currentUser.id }),
         rating: rating === "POSITIVE" ? 1 : -1,
         session_id: sessionId,
       });
@@ -167,7 +165,7 @@ function useLogic({
 
   const getOptionRating = useCallback(
     (optionId: number) => {
-      const ratingKey = createScenarioOptionRatingKey({ optionId, userId: currentUser.id });
+      const ratingKey = createScenarioOptionUserRatingKey({ optionId, userId: currentUser.id });
       const rating = optionVotes[ratingKey];
       if (typeof rating !== "number") {
         return null;

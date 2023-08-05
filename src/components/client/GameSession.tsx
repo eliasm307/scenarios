@@ -534,6 +534,7 @@ type Props = {
 };
 
 export default function GameSession(props: Props): React.ReactElement {
+  console.log("GameSession render");
   const { currentUser, users, session, currentUserHasJoinedSession, broadcast } = useLogic(props);
 
   if (!currentUserHasJoinedSession) {

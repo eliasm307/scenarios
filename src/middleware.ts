@@ -24,6 +24,7 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(new URL("/", req.url));
   }
 
+  // todo allow this to redirect to the initial page the user was trying to access
   // if user is not signed in and the current path is not / redirect the user to /
   if (!session?.user && req.nextUrl.pathname !== "/auth") {
     console.log("middleware", "redirecting to /auth");

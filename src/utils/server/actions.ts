@@ -4,10 +4,11 @@
 
 import "server-only";
 
+import { error } from "console";
 import { cookies } from "next/headers";
 import type { UseToastOptions } from "@chakra-ui/react";
 import { getSupabaseServer } from "./supabase";
-import type { SessionRow } from "../../types";
+import type { ScenarioRow, SessionRow } from "../../types";
 import { isTruthy } from "../general";
 
 type SupabaseClient = ReturnType<typeof getSupabaseServer>;
@@ -62,6 +63,12 @@ export async function invokeMoveSessionToOutcomeSelectionStageAction({
 }): Promise<undefined | UseToastOptions> {
   console.log("moveToOutcomeSelectionStage invoked");
   const supabase = getSupabaseServer(cookies);
+
+  const errorConfig = await saveSessionScenarioOptionRatings(sessionId);
+  if (errorConfig) {
+    return errorConfig;
+  }
+
   const existingScenarioResponse = await supabase
     .from("scenarios")
     .select("id")
@@ -79,7 +86,7 @@ export async function invokeMoveSessionToOutcomeSelectionStageAction({
   if (!existingScenarioResponse.data.length) {
     const insertScenarioResponse = await supabase
       .from("scenarios")
-      .insert({
+      .upsert({
         text: scenarioText,
         voted_by_user_ids: userIdsThatVotedForScenario,
       })
@@ -120,6 +127,89 @@ export async function invokeMoveSessionToOutcomeSelectionStageAction({
     const title = "Error updating session stage";
     console.error(title, response.error);
     return { status: "error", title, description: response.error.message };
+  }
+}
+
+export async function invokeGenerateNewScenarioOptions(
+  sessionId: number,
+): Promise<void | UseToastOptions> {
+  const supabase = getSupabaseServer(cookies);
+
+  const errorConfig = await saveSessionScenarioOptionRatings(sessionId);
+  if (errorConfig) {
+    return errorConfig;
+  }
+
+  const response = await supabase
+    .from("sessions")
+    // will trigger a function that generates new scenario options
+    .update({
+      scenario_options: [],
+      scenario_option_votes: {},
+      ai_is_responding: false,
+      scenario_options_ai_author_model_id: null,
+    } satisfies Omit<
+      SessionRow,
+      | "id"
+      | "stage"
+      | "created_at"
+      | "scenario_outcome_votes"
+      | "selected_scenario_id"
+      | "selected_scenario_image_path"
+      | "selected_scenario_text"
+    >)
+    .eq("id", sessionId);
+
+  if (response.error) {
+    const title = "Error triggering new scenario options generation";
+    console.error(title, response.error);
+    return { status: "error", title, description: response.error.message };
+  }
+}
+
+async function saveSessionScenarioOptionRatings(
+  sessionId: number,
+): Promise<undefined | UseToastOptions> {
+  const supabase = getSupabaseServer(cookies);
+
+  const sessionResponse = await supabase.from("sessions").select().eq("id", sessionId).single();
+
+  if (sessionResponse.error) {
+    const title = "Error fetching session";
+    console.error(title, sessionResponse.error);
+    return { status: "error", title, description: sessionResponse.error.message };
+  }
+
+  const session = sessionResponse.data;
+
+  if (!session.scenario_option_votes) {
+    const title = "Scenario option votes not found";
+    console.error(title);
+    return { status: "error", title };
+  }
+
+  const scenarioOptionRatings = Object.entries(session.scenario_option_votes)
+    .filter(([key]) => isScenarioRatingKey(key))
+    .reduce<Pick<ScenarioRow, "rating" | "text" | "liked_by_user_ids" | "disliked_by_user_ids">[]>(
+      (partialScenarioRows, [scenarioRatingKey, rating]) => {
+        const scenarioOptionIndex = scenarioOptions.indexOf(scenarioOption);
+        return {
+          scenario_option_index: scenarioOptionIndex,
+          user_ids: userIds,
+        };
+      },
+      [],
+    );
+
+  const scenarioOptionRatingResponse = await supabase
+    .from("scenario_option_ratings")
+    .insert(scenarioOptionRatings)
+    .select("id");
+
+  if (scenarioOptionRatingResponse.error) {
+    const title = "Error saving scenario option ratings";
+    console.error(title, scenarioOptionRatingResponse.error);
+    return { status: "error", title, description: scenarioOptionRatingResponse.error.message };
   }
 }
 

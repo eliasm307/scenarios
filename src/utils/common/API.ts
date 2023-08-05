@@ -21,20 +21,6 @@ export default class API {
       }
     },
 
-    generateNewScenarioOptions: async (sessionId: number): Promise<void | UseToastOptions> => {
-      const response = await this.supabase
-        .from("sessions")
-        // will trigger a function that generates new scenario options
-        .update({ scenario_options: [], scenario_option_votes: {} } satisfies Partial<SessionRow>)
-        .eq("id", sessionId);
-
-      if (response.error) {
-        const title = "Error generating new scenario options";
-        console.error(title, response.error);
-        return { status: "error", title, description: response.error.message };
-      }
-    },
-
     voteForUserOutcome: async (
       config: Database["public"]["Functions"]["vote_for_outcome"]["Args"],
     ): Promise<void | UseToastOptions> => {

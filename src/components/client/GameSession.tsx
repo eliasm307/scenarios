@@ -401,6 +401,7 @@ function useRealtime({ state, send }: { state: State; send: React.Dispatch<Actio
             console.log("trying to track presence", { retriesRemaining });
 
             // delay to prevent rate limiting
+            // todo create pause util
             await new Promise((resolve) => setTimeout(resolve, 1000 + Math.random() * 1000));
             presenceTrackResponse = await channel.track({
               ...contextRef.current.state.currentUser,

@@ -52,30 +52,36 @@ export interface Database {
       scenarios: {
         Row: {
           created_at: string;
+          disliked_by_user_ids: string[];
           id: number;
           image_creator_ai_model_id: string | null;
           image_path: string | null;
           image_prompt: string | null;
+          liked_by_user_ids: string[];
           rating: number | null;
           text: string;
           voted_by_user_ids: string[] | null;
         };
         Insert: {
           created_at?: string;
+          disliked_by_user_ids?: string[];
           id?: number;
           image_creator_ai_model_id?: string | null;
           image_path?: string | null;
           image_prompt?: string | null;
+          liked_by_user_ids?: string[];
           rating?: number | null;
           text: string;
           voted_by_user_ids?: string[] | null;
         };
         Update: {
           created_at?: string;
+          disliked_by_user_ids?: string[];
           id?: number;
           image_creator_ai_model_id?: string | null;
           image_path?: string | null;
           image_prompt?: string | null;
+          liked_by_user_ids?: string[];
           rating?: number | null;
           text?: string;
           voted_by_user_ids?: string[] | null;
@@ -177,10 +183,12 @@ export interface Database {
         Args: Record<PropertyKey, never>;
         Returns: {
           created_at: string;
+          disliked_by_user_ids: string[];
           id: number;
           image_creator_ai_model_id: string | null;
           image_path: string | null;
           image_prompt: string | null;
+          liked_by_user_ids: string[];
           rating: number | null;
           text: string;
           voted_by_user_ids: string[] | null;

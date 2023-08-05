@@ -56,8 +56,9 @@ export interface Database {
           image_creator_ai_model_id: string | null;
           image_path: string | null;
           image_prompt: string | null;
+          rating: number | null;
           text: string;
-          voted_by_user_ids: string[];
+          voted_by_user_ids: string[] | null;
         };
         Insert: {
           created_at?: string;
@@ -65,8 +66,9 @@ export interface Database {
           image_creator_ai_model_id?: string | null;
           image_path?: string | null;
           image_prompt?: string | null;
+          rating?: number | null;
           text: string;
-          voted_by_user_ids?: string[];
+          voted_by_user_ids?: string[] | null;
         };
         Update: {
           created_at?: string;
@@ -74,8 +76,9 @@ export interface Database {
           image_creator_ai_model_id?: string | null;
           image_path?: string | null;
           image_prompt?: string | null;
+          rating?: number | null;
           text?: string;
-          voted_by_user_ids?: string[];
+          voted_by_user_ids?: string[] | null;
         };
         Relationships: [];
       };
@@ -86,6 +89,7 @@ export interface Database {
           id: number;
           scenario_option_votes: Json;
           scenario_options: string[] | null;
+          scenario_options_ai_author_model_id: string | null;
           scenario_outcome_votes: Json;
           selected_scenario_id: number | null;
           selected_scenario_image_path: string | null;
@@ -98,6 +102,7 @@ export interface Database {
           id?: number;
           scenario_option_votes?: Json;
           scenario_options?: string[] | null;
+          scenario_options_ai_author_model_id?: string | null;
           scenario_outcome_votes?: Json;
           selected_scenario_id?: number | null;
           selected_scenario_image_path?: string | null;
@@ -110,6 +115,7 @@ export interface Database {
           id?: number;
           scenario_option_votes?: Json;
           scenario_options?: string[] | null;
+          scenario_options_ai_author_model_id?: string | null;
           scenario_outcome_votes?: Json;
           selected_scenario_id?: number | null;
           selected_scenario_image_path?: string | null;
@@ -175,8 +181,9 @@ export interface Database {
           image_creator_ai_model_id: string | null;
           image_path: string | null;
           image_prompt: string | null;
+          rating: number | null;
           text: string;
-          voted_by_user_ids: string[];
+          voted_by_user_ids: string[] | null;
         }[];
       };
       json_matches_schema: {
@@ -192,6 +199,14 @@ export interface Database {
           instance: Json;
         };
         Returns: boolean;
+      };
+      set_option_rating: {
+        Args: {
+          rating_key: string;
+          session_id: number;
+          rating: Json;
+        };
+        Returns: undefined;
       };
       vote_for_option: {
         Args: {

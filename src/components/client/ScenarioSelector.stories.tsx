@@ -83,6 +83,7 @@ const meta = {
     handleSelectionChange: async () => action("setSelection")(),
     isUserReadyForNextStage: () => Math.random() > 0.5,
     usersWaitingToVote: users,
+    optionsAiAuthorModelId: "",
   },
 } satisfies Meta<typeof Page>;
 

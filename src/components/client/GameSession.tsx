@@ -568,8 +568,8 @@ export default function GameSession(props: Props): React.ReactElement {
         currentUser={currentUser}
         users={users}
         selectedOptionId={session.id}
-        voteId={session.scenario_option_votes?.[currentUser.id] || null}
         broadcast={broadcast}
+        optionsAiAuthorModelId={session.scenario_options_ai_author_model_id}
       />
     );
   }

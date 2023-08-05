@@ -209,6 +209,7 @@ function useLogic({
     currentUser,
     hasUserSelectedOption,
     scenarioOptions,
+    optionsAiAuthorModelId,
     readyForNextStageProps: {
       canMoveToNextStage: typeof optionVotes[currentUser.id] === "number",
       handleReadyForNextStageClick,
@@ -224,16 +225,11 @@ export type ScenarioSelectorViewProps = ReturnType<typeof useLogic>;
 type Props = {
   users: SessionUser[];
   currentUser: SessionUser;
-  /**
-   * The index of the scenario option voted for by the current user.
-   * If the current user has not voted, this will be `null`.
-   * If the current user has voted to reset the options, this will be `-1`.
-   */
-  voteId: number | null;
   selectedOptionId: number;
   scenarioOptions: string[];
   optionVotes: SessionRow["scenario_option_votes"];
   broadcast: BroadcastFunction;
+  optionsAiAuthorModelId: string | null;
 };
 
 export default function ScenarioSelectorContainer(props: Props) {

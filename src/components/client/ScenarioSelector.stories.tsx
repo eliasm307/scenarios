@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import { action } from "@storybook/addon-actions";
+import { action } from "../../../.storybook/utils";
 // import { within, userEvent } from "@storybook/testing-library";
 
 import Page from "./ScenarioSelector";

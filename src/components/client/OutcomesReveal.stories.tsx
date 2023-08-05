@@ -1,9 +1,9 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import { action } from "@storybook/addon-actions";
 // import { within, userEvent } from "@storybook/testing-library";
 
 import Page from "./OutcomesReveal";
 import type { SessionUser } from "../../types";
+import { action } from "../../../.storybook/utils";
 
 const users: SessionUser[] = [
   {

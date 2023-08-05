@@ -1,10 +1,10 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import { action } from "@storybook/addon-actions";
 // import { within, userEvent } from "@storybook/testing-library";
 
 import Page from "./ScenarioChat";
 import type { MessageRow } from "../../../types";
 import { DUMMY_MESSAGES } from "../../../utils/constants";
+import { action } from "../../../../.storybook/utils";
 
 const users = [
   {

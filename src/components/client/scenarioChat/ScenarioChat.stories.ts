@@ -58,6 +58,7 @@ const meta = {
         onKeyDown: action("input:onKeyDown"),
         onBlur: action("input:onBlur"),
         placeholder: "Type a message...",
+        maxLength: 500,
         value: "", // todo container should not be controlling UI control, this means UI doesn't work standalone
       },
       isLoading: false,
@@ -98,9 +99,7 @@ const meta = {
         session_id: 1,
       },
     ] satisfies MessageRow[],
-    outcomeVotes: {},
     outcomeVotesByCurrentUser: {},
-    selectedScenarioImagePath: "",
     selectedScenarioImageUrl: "/assets/output.jpeg",
     selectedScenarioText:
       "You are an ambitious professional climbing up the ranks of a successful company when an unexpected opportunity arises:\n another company offers you a higher position with more responsibilities and a significant increase in salary. \nHowever, accepting this offer means leaving behind incredible colleagues and mentors who have helped shape your career so far. \nDo you stay loyal to your current company or take the leap into the unknown?",

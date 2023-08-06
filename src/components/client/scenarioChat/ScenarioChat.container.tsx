@@ -52,7 +52,6 @@ function useChatLogic({
 
   const toast = useCustomToast();
   const [inputValue, setInputValue] = useState("");
-  const [error] = useState<Error | null>(null); // todo is this required?
   const messageRows = useRealtimeMessageRows({
     sessionId,
     initialMessageRows: existing.messageRows,
@@ -316,11 +315,9 @@ function useChatLogic({
     chat: {
       handleSubmit: handleUserMessageSubmit,
       isLoading,
-      error,
       allowsSubmitting: chatAllowsSubmitting,
-      hasError: !!error,
       inputProps: {
-        placeholder: getPlaceholderText({ isLoading, hasError: !!error }),
+        placeholder: getPlaceholderText({ isLoading }),
         value: inputValue,
         onKeyDown: handleInputKeyDown,
         onBlur: handleTypingEnd,
@@ -357,12 +354,9 @@ export default function ScenarioChatContainer(props: Props) {
   return <ScenarioChat {...viewProps} />;
 }
 
-function getPlaceholderText(chat: { isLoading: boolean; hasError: boolean }): string {
+function getPlaceholderText(chat: { isLoading: boolean }): string {
   if (chat.isLoading) {
     return "AI is typing...";
-  }
-  if (chat.hasError) {
-    return "An error occurred 😢";
   }
   return "Ask me anything about the scenario 😀";
 }

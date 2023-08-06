@@ -124,7 +124,6 @@ function useLogic({
     [broadcast, scenarioOptions, sessionId, toast, users],
   );
 
-  // todo make this a supabase edge function
   const handleSelectionChange = useCallback(
     async (optionId: number) => {
       console.log("handleSelectionChange", { optionId });
@@ -133,6 +132,7 @@ function useLogic({
         throw new Error("Option has not changed");
       }
 
+      // todo make this a server action
       const errorToastConfig = await APIClient.sessions.voteForScenarioOption({
         user_id: currentUser.id,
         option_id: optionId,
@@ -176,7 +176,7 @@ function useLogic({
     [currentUser.id, optionVotes],
   );
 
-  // todo move this off client
+  // todo move this off client, ie use edge function
   const handleReadyForNextStageClick = useCallback(async () => {
     const readyForNextStageKey = createUserReadyForNextStageKey(currentUser.id);
     const latestOptionVotes = { ...optionVotes, [readyForNextStageKey]: 1 };

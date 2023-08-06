@@ -22,6 +22,7 @@ import type {
 import OutcomesRevealContainer from "./OutcomesReveal.container";
 import { useCustomToast } from "../../utils/client/hooks";
 import ScenarioChatContainer from "./scenarioChat/ScenarioChat.container";
+import { pause } from "../../utils/general";
 
 type State = {
   users: SessionUser[];
@@ -404,8 +405,8 @@ function useRealtime({ state, send }: { state: State; send: React.Dispatch<Actio
             console.log("trying to track presence", { retriesRemaining });
 
             // delay to prevent rate limiting
-            // todo create pause util
-            await new Promise((resolve) => setTimeout(resolve, 1000 + Math.random() * 1000));
+            await pause(1000 + Math.random() * 1000);
+
             presenceTrackResponse = await channel.track({
               ...contextRef.current.state.currentUser,
               isCurrentUser: false, // this is relative to users cant broadcast true to other people

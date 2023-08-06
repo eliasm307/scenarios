@@ -46,7 +46,8 @@ const DEFAULT_CHAT_COMPLETION_REQUEST_CONFIG = {
   presence_penalty: 0.5,
 } satisfies Partial<CreateChatCompletionRequest>;
 
-const STREAM_TIMEOUT_MS = 10_000;
+// gpt 4 with function calling can take some time, this is a worst case scenario
+const STREAM_TIMEOUT_MS = 60_000;
 
 function createRawChatCompletionStream({
   messages,
@@ -136,17 +137,17 @@ export async function createGeneralChatResponseStream(
 
   console.log("createGeneralChatResponseStream, stream", stream);
 
+  let bailError = "";
   function handleTimeout() {
-    console.error(
-      `createGeneralChatResponseStream, timeout after ${STREAM_TIMEOUT_MS}ms: request config`,
-      JSON.stringify(DEFAULT_CHAT_COMPLETION_REQUEST_CONFIG, null, 2),
-      "input messages",
-      JSON.stringify(messages, null, 2),
-    );
-    streamReader.releaseLock();
-    stream.cancel();
-
-    throw Error(`createGeneralChatResponseStream, timeout after ${STREAM_TIMEOUT_MS}ms`);
+    const errorMessage = `createGeneralChatResponseStream, timeout after ${STREAM_TIMEOUT_MS}ms: \nrequest config${JSON.stringify(
+      DEFAULT_CHAT_COMPLETION_REQUEST_CONFIG,
+      null,
+      2,
+    )}\ninput messages${JSON.stringify(messages, null, 2)}`;
+    console.error(errorMessage);
+    // streamReader.releaseLock();
+    // stream.cancel();
+    bailError = errorMessage;
   }
 
   let content = "";
@@ -154,11 +155,19 @@ export async function createGeneralChatResponseStream(
     [Symbol.asyncIterator]() {
       return {
         async next(): Promise<IteratorResult<string, string>> {
+          if (bailError) {
+            throw Error(bailError);
+          }
+
           const timeoutId = setTimeout(handleTimeout, STREAM_TIMEOUT_MS);
 
           const { value: rawChunk, done } = await streamReader.read();
 
           clearTimeout(timeoutId);
+
+          if (bailError) {
+            throw Error(bailError);
+          }
 
           if (done) {
             console.log("createGeneralChatResponseStream, done", content);

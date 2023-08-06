@@ -50,9 +50,7 @@ const meta = {
   args: {
     chat: {
       allowsSubmitting: true,
-      error: null,
       handleSubmit: action("handleSubmit"),
-      hasError: false,
       inputProps: {
         onChange: action("input:onChange"),
         onKeyDown: action("input:onKeyDown"),

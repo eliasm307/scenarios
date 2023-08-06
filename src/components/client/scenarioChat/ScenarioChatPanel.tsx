@@ -116,7 +116,7 @@ export default function ChatPanel({
             ref={textArea.ref}
             resize='none'
             // dont disable as it prevents other users to keep typing while waiting for AI response
-            isInvalid={chat.hasError}
+            // isInvalid={chat.hasError}
             // minHeight='unset'
             // maxHeight='10rem'
             spellCheck={false}

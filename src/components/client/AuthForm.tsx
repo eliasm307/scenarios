@@ -53,7 +53,7 @@ function getViewTypeDescription(viewType: ViewType) {
 export default function AuthForm() {
   // eslint-disable-next-line no-console
   console.log("AuthForm");
-  const [currentViewType, setCurrentViewType] = useState<ViewType>("magic_link");
+  const [currentViewType, setCurrentViewType] = useState<ViewType>("sign_in");
   const router = useRouter();
   const [isSignedIn, setIsSignedIn] = useState(false);
 

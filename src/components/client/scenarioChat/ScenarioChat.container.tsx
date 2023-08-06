@@ -245,9 +245,32 @@ function useChatLogic({
         if (errorToastConfig) {
           toast(errorToastConfig);
         }
+        return;
+      }
+
+      // let other users know when current user has finished, but only once (not when user makes changes to their selection after)
+      const userHadAlreadyFinishedVoting = outcomeVotesByCurrentUser?.[READY_FOR_NEXT_STAGE_KEY];
+      if (!userHadAlreadyFinishedVoting) {
+        broadcast({
+          event: "Toast",
+          data: {
+            title: `"${currentUser.name}" has finished voting`,
+            status: "success",
+            dontShowToUserId: currentUser.id,
+          },
+        });
       }
     },
-    [users, sessionId, currentUser.id, outcomeVotes, outcomeVotesByCurrentUser, broadcast, toast],
+    [
+      sessionId,
+      currentUser.id,
+      currentUser.name,
+      outcomeVotes,
+      outcomeVotesByCurrentUser,
+      users,
+      broadcast,
+      toast,
+    ],
   );
 
   const currentUserHasFinishedVoting = useMemo(() => {
@@ -335,6 +358,7 @@ function useChatLogic({
 export type ScenarioChatViewProps = ReturnType<typeof useChatLogic>;
 
 export default function ScenarioChatContainer(props: Props) {
+  console.log("ScenarioChatContainer props", props);
   const viewProps = useChatLogic(props);
 
   return <ScenarioChat {...viewProps} />;

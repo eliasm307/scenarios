@@ -202,8 +202,26 @@ function useLogic({
 
     if (errorToastConfig) {
       toast(errorToastConfig);
+      return;
     }
-  }, [currentUser.id, handleVoteComplete, optionVotes, sessionId, toast, users]);
+
+    broadcast({
+      event: "Toast",
+      data: {
+        title: `"${currentUser.name}" is ready to move on`,
+        dontShowToUserId: currentUser.id,
+      },
+    });
+  }, [
+    broadcast,
+    currentUser.id,
+    currentUser.name,
+    handleVoteComplete,
+    optionVotes,
+    sessionId,
+    toast,
+    users,
+  ]);
 
   const usersWaitingToVote = useMemo(() => {
     return users.filter((user) => {

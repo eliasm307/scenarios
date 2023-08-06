@@ -16,13 +16,13 @@ import {
   Tabs,
   VStack,
 } from "@chakra-ui/react";
-import { memo } from "react";
+import { memo, useEffect, useState } from "react";
 import ScenarioText from "../../ScenarioText";
 import ReadOutLoudButton from "../../ReadOutLoudButton";
 import type { ScenarioChatViewProps } from "./ScenarioChat.container";
 import ChatPanel from "./ScenarioChatPanel";
 import VotingPanel from "./ScenarioChatVotingPanel";
-import { useIsLargeScreen } from "../../../utils/client/hooks";
+import { useCustomToast, useIsLargeScreen } from "../../../utils/client/hooks";
 
 function ScenarioTextPanel({ scenarioText }: { scenarioText: string }) {
   return (
@@ -132,6 +132,31 @@ function MobileScenarioChat({
   selectedScenarioImageUrl,
   users,
 }: Props) {
+  const toast = useCustomToast();
+  const [activeTabIndex, setActiveTabIndex] = useState(0);
+  const [messagesCount, setMessagesCount] = useState(messageRows.length);
+
+  useEffect(() => {
+    const oldMessagesCount = messagesCount;
+    const newMessagesCount = messageRows.length;
+    setMessagesCount(newMessagesCount);
+
+    const isOnChatTab = activeTabIndex === 2;
+    if (isOnChatTab) {
+      // user can see the messages
+      return;
+    }
+
+    if (newMessagesCount <= oldMessagesCount) {
+      return; // changes are not relevant
+    }
+
+    // user is not on the chat tab and there are new messages
+    toast({
+      title: "New message(s) in chat",
+    });
+  }, [activeTabIndex, messageRows.length, messagesCount, toast]);
+
   return (
     <Tabs
       isFitted
@@ -140,6 +165,8 @@ function MobileScenarioChat({
       display='flex'
       flexDirection='column'
       overflow='hidden'
+      defaultIndex={activeTabIndex}
+      onChange={setActiveTabIndex}
     >
       <TabList mb='1em'>
         <Tab>Scenario</Tab>

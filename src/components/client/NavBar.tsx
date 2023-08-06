@@ -93,7 +93,17 @@ export default function NavBar(flexProps: FlexProps) {
   const isLargeScreen = useIsLargeScreen();
 
   return (
-    <Flex as='nav' alignItems='center' px={3} py={2} m={0} gap={3} boxShadow='md' {...flexProps}>
+    <Flex
+      as='nav'
+      width='100%'
+      alignItems='center'
+      px={3}
+      py={2}
+      m={0}
+      gap={3}
+      boxShadow='md'
+      {...flexProps}
+    >
       <Link href={Path.Home}>
         <Heading as='h1' fontSize='2xl' display='flex' alignItems='center' gap={2}>
           <AppLogoIcon size='2rem' />

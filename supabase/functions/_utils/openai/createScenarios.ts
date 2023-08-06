@@ -20,28 +20,39 @@ function createGenerateScenariosSystemMessage(): string {
     randomTemplate,
     "",
     `
-    IMPORTANT RULES:
-    - You will be provided with example scenarios separated with "---", please create exactly 3 new scenarios that are a similar format to the examples provided where a person needs to make a difficult choice.
+    # IMPORTANT RULES:
+    - You will be provided with example scenarios separated with "---", please create exactly 3 new scenarios that are a similar format to the good examples provided where a person needs to make a difficult choice.
+    - You will also be provided with scenarios that are bad examples, please do not create scenarios like these.
+    - Examples will be provided with ratings which will be a number, where:
+      -- positive numbers represent how good a scenario is (for example a rating of 1 is good, a rating of 2 is very good, a rating of 3 is very very good etc)
+      -- negative numbers represent how bad a scenario is (for example a rating of -1 is bad, a rating of -2 is very bad, a rating of -3 is very very bad etc)
+      -- a rating of 0 means the scenario is neither good nor bad, it is mediocre and boring
+    - Try to replicate aspects of the good examples and minimise aspects of the bad or mediocre examples in the scenarios you generate.
+    - please do not provide scenario ratings in the scenarios you generate, external users will rate the scenarios.
     - Make the scenarios such that a right answer is not obvious and subjective.
     - Please do not copy the examples, but use them as inspiration.
     - Provide the scenarios you suggest separated by "---" and dont include any other content other than the suggested scenarios.
-    - VERY IMPORTANT paragraphs and sentences in the response should always be separated by a blank line (ie \\n\\n) for example at the end of a sentence after a fullstop or a question mark.
+    - VERY IMPORTANT paragraphs and sentences in the response should always be separated by two blank lines (ie \\n\\n) for example at the end of a sentence after a fullstop or a question mark.
     - Paragraphs and Sentences should be separated by a gap.
-    - Scenarios should be less about technology and more about personalities, people, and life choices.
-    - Scenarios should be as short as possible, but still be interesting and engaging.
-    - Scenarios should be easy for anyone to understand.
-    - Scenarios should be as short and direct as possible.
     - Only use simple direct language, do not use complex words or sentences.
     - Do not use too much metaphors.
     - Do not be too dramatic or too boring.
     - Avoid repeating details about the scenario in answers.
+    - The Scenarios you generate should:
+      -- not be about technology and more about personalities, people, and life choices.
+      -- be as short as possible, but still be interesting and engaging.
+      -- be easy for anyone to understand.
+      -- be as short and direct as possible.
+      -- be plain text, not in markdown or any other special format.
+      -- not have headers, they should just be the scenario text.
     `,
   ].join("\n\n");
 }
 
-export async function createScenariosStream(
-  exampleScenarios: string[],
-): Promise<AsyncIterable<string[]>> {
+export async function createScenariosStream(example: {
+  goodScenarios: string[];
+  badScenarios: string[];
+}): Promise<AsyncIterable<string[]>> {
   console.log("generateScenarios, creating chat completion...");
 
   const messages: ChatMessage[] = [
@@ -50,8 +61,12 @@ export async function createScenariosStream(
       content: [
         createGenerateScenariosSystemMessage(),
         "",
-        "Example scenarios: ",
-        ...exampleScenarios.flatMap((scenario) => ["---", scenario]),
+        "# Example scenarios that are good: ",
+        ...example.goodScenarios.flatMap((scenario) => ["---", scenario]),
+        "---",
+        "",
+        "# Example scenarios that are bad: ",
+        ...example.badScenarios.flatMap((scenario) => ["---", scenario]),
       ].join("\n"),
     },
   ];

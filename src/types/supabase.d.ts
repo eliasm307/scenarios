@@ -173,13 +173,22 @@ export interface Database {
       [_ in never]: never;
     };
     Functions: {
-      get_example_scenarios: {
+      get_example_bad_scenarios: {
         Args: Record<PropertyKey, never>;
         Returns: {
-          value: string;
+          created_at: string;
+          disliked_by_user_ids: string[];
+          id: number;
+          image_creator_ai_model_id: string | null;
+          image_path: string | null;
+          image_prompt: string | null;
+          liked_by_user_ids: string[];
+          rating: number;
+          text: string;
+          voted_by_user_ids: string[] | null;
         }[];
       };
-      get_example_scenarios_fn: {
+      get_example_good_scenarios: {
         Args: Record<PropertyKey, never>;
         Returns: {
           created_at: string;

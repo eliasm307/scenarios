@@ -35,7 +35,7 @@ serve(async (req) => {
     }
 
     const newSessionRow = payload.record;
-    if (!newSessionRow.scenario_options?.length) {
+    if (newSessionRow.stage === "scenario-selection" && !newSessionRow.scenario_options?.length) {
       console.log("no scenarios, generating new ones");
       await generateNewSessionScenarios(newSessionRow.id);
 
@@ -58,7 +58,7 @@ serve(async (req) => {
 
       // no known action to take
     } else {
-      console.log("nothing to do");
+      console.debug("nothing to do");
     }
 
     console.log("done handling session event payload", JSON.stringify(payload, null, 2));
@@ -136,21 +136,55 @@ async function generateScenarioImage(scenario: { id: number; text: string }) {
   ]);
 }
 
-async function generateNewSessionScenarios(sessionId: number) {
-  const { data: exampleScenarioRows, error } = await supabaseAdminClient.rpc(
-    "get_example_scenarios_fn",
-  );
-  if (error) {
-    console.error(
-      `Get example scenarios error: ${error.message} (${error.code}) \nDetails: ${error.details} \nHint: ${error.hint}`,
-    );
-    throw error;
+function ratingNumberToText(rating: number) {
+  if (rating > 0) {
+    return `${"very".repeat(rating - 1)} good`.trim();
   }
-  const exampleScenarios = exampleScenarioRows.map(({ text }: ScenarioRow) => text);
-  console.log("exampleScenarios", exampleScenarios);
+  if (rating < -1) {
+    return `${"very".repeat(Math.abs(rating) - 1)} bad`.trim();
+  }
+  if (rating === 0) {
+    return "mediocre";
+  }
+}
+
+function scenarioRowToScenarioTextWithRating(scenarioRow: ScenarioRow) {
+  return `${scenarioRow.text}\n\n[RATING: ${
+    scenarioRow.rating
+  } which means it is ${ratingNumberToText(scenarioRow.rating)}]`;
+}
+
+async function generateNewSessionScenarios(sessionId: number) {
+  const [exampleGoodScenarioRows, exampleBadScenarioRows] = await Promise.all([
+    supabaseAdminClient.rpc("get_example_good_scenarios").then(({ error, data }) => {
+      if (error) {
+        console.error(
+          `Get example good scenarios error: ${error.message} (${error.code}) \nDetails: ${error.details} \nHint: ${error.hint}`,
+        );
+        throw error;
+      }
+      const exampleGoodScenarios = data.map(scenarioRowToScenarioTextWithRating);
+      console.log("exampleGoodScenarios", JSON.stringify(exampleGoodScenarios, null, 2));
+      return exampleGoodScenarios;
+    }),
+    supabaseAdminClient.rpc("get_example_bad_scenarios").then(({ error, data }) => {
+      if (error) {
+        console.error(
+          `Get example bad scenarios error: ${error.message} (${error.code}) \nDetails: ${error.details} \nHint: ${error.hint}`,
+        );
+        throw error;
+      }
+      const exampleBadScenarios = data.map(scenarioRowToScenarioTextWithRating);
+      console.log("exampleBadScenarios", JSON.stringify(exampleBadScenarios, null, 2));
+      return exampleBadScenarios;
+    }),
+  ]);
 
   console.log("generating scenarios");
-  const newScenariosStream = await createScenariosStream(exampleScenarios);
+  const newScenariosStream = await createScenariosStream({
+    goodScenarios: exampleGoodScenarioRows,
+    badScenarios: exampleBadScenarioRows,
+  });
   console.log("newScenariosStream", newScenariosStream);
 
   // reset scenario options

@@ -27,12 +27,27 @@ export const ACTIVE_OPENAI_MODEL = "gpt-3.5-turbo"; // "gpt-4"
 const DEFAULT_CHAT_COMPLETION_REQUEST_CONFIG = {
   // todo revert to gpt-4 when done testing
   model: ACTIVE_OPENAI_MODEL, // "gpt-4",
-  temperature: 1,
+  temperature: 0.9,
+  /*
+  This parameter is used to discourage the model from repeating the same words or phrases too frequently within the generated text.
+  It is a value that is added to the log-probability of a token each time it occurs in the generated text.
+  A higher frequency_penalty value will result in the model being more conservative in its use of repeated tokens.
+
+  @see https://community.openai.com/t/difference-between-frequency-and-presence-penalties/2777/3
+  */
   frequency_penalty: 0.5,
+  /*
+  This parameter is used to encourage the model to include a diverse range of tokens in the generated text.
+  It is a value that is subtracted from the log-probability of a token each time it is generated.
+  A higher presence_penalty value will result in the model being more likely to generate tokens that have
+  not yet been included in the generated text.
+
+  @see https://community.openai.com/t/difference-between-frequency-and-presence-penalties/2777/3
+  */
   presence_penalty: 0.5,
 } satisfies Partial<CreateChatCompletionRequest>;
 
-const TIMEOUT_MS = 10_000;
+const STREAM_TIMEOUT_MS = 10_000;
 
 /**
  * @remark Yields the latest full message on each iteration.
@@ -55,7 +70,7 @@ export async function createGeneralChatResponseStream(
 
   function handleTimeout() {
     console.error(
-      `createGeneralChatResponseStream, timeout after ${TIMEOUT_MS}ms: request config`,
+      `createGeneralChatResponseStream, timeout after ${STREAM_TIMEOUT_MS}ms: request config`,
       JSON.stringify(DEFAULT_CHAT_COMPLETION_REQUEST_CONFIG, null, 2),
       "input messages",
       JSON.stringify(messages, null, 2),
@@ -63,7 +78,7 @@ export async function createGeneralChatResponseStream(
     streamReader.releaseLock();
     stream.cancel();
 
-    throw Error(`createGeneralChatResponseStream, timeout after ${TIMEOUT_MS}ms`);
+    throw Error(`createGeneralChatResponseStream, timeout after ${STREAM_TIMEOUT_MS}ms`);
   }
 
   let content = "";
@@ -71,7 +86,7 @@ export async function createGeneralChatResponseStream(
     [Symbol.asyncIterator]() {
       return {
         async next(): Promise<IteratorResult<string, string>> {
-          const timeoutId = setTimeout(handleTimeout, TIMEOUT_MS);
+          const timeoutId = setTimeout(handleTimeout, STREAM_TIMEOUT_MS);
 
           const { value: rawChunk, done } = await streamReader.read();
 

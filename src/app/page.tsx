@@ -6,7 +6,7 @@ export default function Home() {
   return (
     <VStack as='section' height='100%' width='100%' gap={5}>
       <NavBar />
-      <VStack mx={3}>
+      <VStack flex={1} mx={3}>
         <Heading>Welcome to Scenarios 🔮</Heading>
         <HomeOptions />
       </VStack>

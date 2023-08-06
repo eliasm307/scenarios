@@ -15,7 +15,7 @@ export default function ChoiceGrid({ choices }: { choices: ChoiceConfig[] }): Re
     <Grid
       className='choice-grid'
       fontSize='2xl'
-      templateColumns={{ base: "1fr", md: "1fr 1fr" }}
+      templateColumns={{ base: "1fr", md: choices.length === 1 ? "1fr" : "1fr 1fr" }}
       width='100%'
       gap={6}
       p={3}

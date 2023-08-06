@@ -35,11 +35,11 @@ export default function ChatImage({ src, ...props }: Props) {
             position='absolute'
             inset={0}
             left={0}
-            backgroundColor='rgba(0,0,0,0.5)'
+            backgroundColor='rgba(0,0,0,0.1)'
+            // color='white'
             display='flex'
             alignItems='center'
             justifyContent='center'
-            color='white'
           >
             <Spinner />
             <Text>Loading image...</Text>

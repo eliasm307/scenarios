@@ -45,6 +45,11 @@ function useChatLogic({
   users,
   outcomeVotes,
 }: Props) {
+  useEffect(() => {
+    console.log("ScenarioChat 'existing' props changed", existing);
+    return () => console.log("ScenarioChat 'existing' props before effect unmount", existing);
+  }, [existing]);
+
   const toast = useCustomToast();
   const [inputValue, setInputValue] = useState("");
   const [error] = useState<Error | null>(null); // todo is this required?

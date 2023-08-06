@@ -191,7 +191,7 @@ function useThrottledBroadcast({
           return;
         }
 
-        console.log("broadcasting event", nextEvent);
+        console.log("⬆️ broadcasting event", nextEvent);
         const result = await channelRef.current
           .send({
             ...nextEvent,
@@ -534,8 +534,13 @@ type Props = {
 };
 
 export default function GameSession(props: Props): React.ReactElement {
-  console.log("GameSession render");
+  console.log("GameSession render, existing data:", props.existing);
   const { currentUser, users, session, currentUserHasJoinedSession, broadcast } = useLogic(props);
+
+  useEffect(() => {
+    console.log("GameSession props changed", props);
+    return () => console.log("GameSession props before effect unmount", props);
+  }, [props]);
 
   if (!currentUserHasJoinedSession) {
     console.log("waiting for user to join session...");

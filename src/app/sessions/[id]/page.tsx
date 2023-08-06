@@ -13,6 +13,7 @@ export default async function SessionPage({ params: { id } }: { params: { id: st
   const sessionId = Number(id);
   if (isNaN(sessionId)) {
     // ! ID will be used in SQL query, so need to make sure it's a number to prevent SQL injection
+    console.error("invalid session id", id, "parses to", sessionId, "redirecting to home");
     return redirect("/");
   }
 
@@ -21,6 +22,7 @@ export default async function SessionPage({ params: { id } }: { params: { id: st
   const sessionRow = await API.getSession(sessionId);
   if (!sessionRow) {
     // session doesn't exist yet
+    console.error("session doesn't exist yet", id, "redirecting to home");
     return redirect("/");
   }
 

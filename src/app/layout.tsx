@@ -16,7 +16,7 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  console.log("RootLayout");
+  console.log("RootLayout render");
   const supabase = getSupabaseServer(cookies);
 
   const {

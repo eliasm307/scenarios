@@ -254,8 +254,11 @@ function useChatLogic({
       }
 
       // let other users know when current user has finished, but only once (not when user makes changes to their selection after)
-      const userHadAlreadyFinishedVoting = outcomeVotesByCurrentUser?.[READY_FOR_NEXT_STAGE_KEY];
-      if (!userHadAlreadyFinishedVoting) {
+      const currentUserHadAlreadyFinishedVoting =
+        outcomeVotesByCurrentUser?.[READY_FOR_NEXT_STAGE_KEY];
+      const currentUserHasNowFinishedVoting =
+        latestOutcomeVotes[currentUser.id]?.[READY_FOR_NEXT_STAGE_KEY];
+      if (currentUserHasNowFinishedVoting && !currentUserHadAlreadyFinishedVoting) {
         broadcast({
           event: "Toast",
           data: {
@@ -289,21 +292,6 @@ function useChatLogic({
       currentUserVoteMap && userHasMadeAllVotes({ users, voteMap: currentUserVoteMap }),
     );
   }, [currentUser.id, outcomeVotes, users]);
-
-  useEffect(() => {
-    if (currentUserHasFinishedVoting) {
-      broadcast({
-        event: "Toast",
-        data: {
-          title: `"${currentUser.name}" has finished voting!`,
-          status: "success",
-          dontShowToUserId: currentUser.id,
-        },
-      });
-    }
-    // NOTE: dependency on current user name means this gets called again when the user name changes
-    // not ideal but leaving it as is as it's not a big deal and changing names is not a common occurrence
-  }, [broadcast, currentUser.id, currentUser.name, currentUserHasFinishedVoting]);
 
   const remoteUserVotingStatuses = useMemo(() => {
     return users

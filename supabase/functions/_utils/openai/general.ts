@@ -11,11 +11,7 @@ import type {
 } from "https://esm.sh/openai-edge@1.2.0";
 import { Configuration, OpenAIApi } from "https://esm.sh/openai-edge@1.2.0";
 import { OpenAIStream } from "https://esm.sh/ai@2.1.28";
-import type {
-  ChatCompletionFunction,
-  ChatMessage,
-  FunctionCallMessage,
-} from "./types.ts";
+import type { ChatCompletionFunction, ChatMessage, FunctionCallMessage } from "./types.ts";
 
 export { OpenAIStream };
 
@@ -26,11 +22,10 @@ const config = new Configuration({
 
 const openai = new OpenAIApi(config);
 
-export const ACTIVE_OPENAI_MODEL = "gpt-3.5-turbo"; // "gpt-4"
+export const ACTIVE_OPENAI_MODEL = "gpt-4"; // "gpt-3.5-turbo"
 
 const DEFAULT_CHAT_COMPLETION_REQUEST_CONFIG = {
-  // todo revert to gpt-4 when done testing
-  model: ACTIVE_OPENAI_MODEL, // "gpt-4",
+  model: ACTIVE_OPENAI_MODEL,
   temperature: 0.9,
   /*
   This parameter is used to discourage the model from repeating the same words or phrases too frequently within the generated text.
@@ -68,9 +63,7 @@ function createRawChatCompletionStream({
   });
 }
 
-function functionCallMessageToChatMessage(
-  message: FunctionCallMessage,
-): ChatMessage {
+function functionCallMessageToChatMessage(message: FunctionCallMessage): ChatMessage {
   const outputMessage: ChatMessage = {
     role: message.role,
     content: message.content,
@@ -114,14 +107,8 @@ export async function createGeneralChatResponseStream(
      *
      * there will only be one final streamed message
      */
-    async experimental_onFunctionCall(
-      functionCall,
-      createFunctionCallMessages,
-    ) {
-      console.log(
-        "\nfunctionCallPayload",
-        JSON.stringify(functionCall, null, 2),
-      );
+    async experimental_onFunctionCall(functionCall, createFunctionCallMessages) {
+      console.log("\nfunctionCallPayload", JSON.stringify(functionCall, null, 2));
 
       const functionHandler = options?.availableFunctions?.find(
         ({ definition }) => definition.name === functionCall.name,
@@ -159,9 +146,7 @@ export async function createGeneralChatResponseStream(
     streamReader.releaseLock();
     stream.cancel();
 
-    throw Error(
-      `createGeneralChatResponseStream, timeout after ${STREAM_TIMEOUT_MS}ms`,
-    );
+    throw Error(`createGeneralChatResponseStream, timeout after ${STREAM_TIMEOUT_MS}ms`);
   }
 
   let content = "";
@@ -204,9 +189,7 @@ export async function createGeneralChatResponseStream(
   };
 }
 
-export async function createGeneralChatResponse(
-  messages: ChatMessage[],
-): Promise<string> {
+export async function createGeneralChatResponse(messages: ChatMessage[]): Promise<string> {
   const response = await openai
     .createChatCompletion({
       ...DEFAULT_CHAT_COMPLETION_REQUEST_CONFIG,
@@ -220,12 +203,7 @@ export async function createGeneralChatResponse(
   console.log("generateScenarios, response", JSON.stringify(response, null, 2));
 
   if (!response.ok) {
-    console.error(
-      "generateScenarios error",
-      response.status,
-      response.statusText,
-      response,
-    );
+    console.error("generateScenarios error", response.status, response.statusText, response);
     console.error("error response text:", await response.text());
     throw Error("OpenAI request failed");
   }

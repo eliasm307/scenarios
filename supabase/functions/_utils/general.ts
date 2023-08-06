@@ -39,7 +39,7 @@ export async function streamAndPersist<StreamOutput>({
       console.error(errorMessage);
       throw new Error(errorMessage);
     }
-  }, 100);
+  }, 250);
 
   console.log(`"${streamKey}" starting stream`);
   for await (const scenarios of stream) {

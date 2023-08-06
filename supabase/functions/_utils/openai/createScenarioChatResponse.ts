@@ -7,6 +7,7 @@ import { createGeneralChatResponseStream } from "./general.ts";
 import { createImageFromPrompt } from "../huggingFace.ts";
 import { supabaseAdminClient } from "../supabase.ts";
 import { mimeTypeToFileExtension } from "../pure.ts";
+import { EXAMPLE_GOOD_IMAGE_PROMPTS_PROMPT } from "./createScenarioImagePrompt.ts";
 
 const USE_DUMMY_CHAT_RESPONSE_STREAM = false;
 
@@ -18,13 +19,13 @@ export type ChatRequestBody = {
 const GENERATE_IMAGE_FUNCTION: ChatCompletionFunction = {
   definition: {
     name: "generate_image",
-    description: "Generates an image from a given prompt and returns the image URL",
+    description: `Generates an image from a given prompt and returns the image URL.`,
     parameters: {
       type: "object",
       properties: {
         prompt: {
           type: "string",
-          description: "The prompt to generate an image from",
+          description: `The prompt to generate an image from. ${EXAMPLE_GOOD_IMAGE_PROMPTS_PROMPT}`,
         },
       },
       required: ["prompt"],
@@ -32,10 +33,15 @@ const GENERATE_IMAGE_FUNCTION: ChatCompletionFunction = {
   },
   async handler({ prompt }: { prompt: string }) {
     try {
+      console.log("generate_image function called with prompt:", prompt);
+
       const image = await createImageFromPrompt(prompt);
+      console.log("image created by:", image.generatedByModelId, "\nblob:", image.blob);
+
       const fileExtension = mimeTypeToFileExtension(image.blob.type);
       const path = `session_chat_images/${crypto.randomUUID()}.${fileExtension}`;
       console.log("uploading image with path:", path);
+
       const uploadImageResponse = await supabaseAdminClient.storage
         .from("images")
         .upload(path, image.blob, {
@@ -55,11 +61,9 @@ const GENERATE_IMAGE_FUNCTION: ChatCompletionFunction = {
         // using the response path, not sure if they could be different
         .getPublicUrl(uploadImageResponse.data.path);
 
-      console.log("public imageUrl:", imageUrl);
+      console.log("uploaded image! Public imageUrl:", imageUrl);
 
-      return {
-        imageUrl,
-      };
+      return { imageUrl };
     } catch (error) {
       console.error("generate_image function error: ", error);
       // ? should we let the AI know about errors so it can retry? could end up being expensive if the AI keeps retrying

@@ -8,7 +8,7 @@ import type {
 } from "react-markdown/lib/ast-to-react";
 import type { ListProps } from "@chakra-ui/react";
 import { Text, ListItem, OrderedList, UnorderedList } from "@chakra-ui/react";
-import ChatImage from "./ChatImage";
+import ChatImage from "./client/scenarioChat/ChatImage";
 
 const Li: LiComponent = ({ node, ...props }) => {
   return <ListItem {...props} marginLeft={5} />;

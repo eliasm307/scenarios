@@ -1,8 +1,8 @@
 import { HStack, Avatar, Flex, Text, VStack } from "@chakra-ui/react";
-import type { MessageRow } from "../types";
-import ReadOutLoudButton from "./ReadOutLoudButton";
-import { AppLogoIcon } from "./Icons";
-import MarkdownRenderer from "./MarkdownRenderer";
+import type { MessageRow } from "../../../types";
+import ReadOutLoudButton from "../../ReadOutLoudButton";
+import { AppLogoIcon } from "../../Icons";
+import MarkdownRenderer from "../../MarkdownRenderer";
 
 type Props = {
   authorName: string;

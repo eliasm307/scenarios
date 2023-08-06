@@ -1,0 +1,6 @@
+{
+  "scripts": {
+    "type-check": "deno task type-check",
+    "format": "deno fmt"
+  }
+}

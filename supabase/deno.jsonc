@@ -1,0 +1,14 @@
+{
+  "tasks": {
+    "dev": "deno run --watch main.ts",
+    "type-check": "deno check functions/**/*.ts",
+    "type-check1": "deno check functions/*/*.ts",
+    "type-check2": "deno check functions/_utils/general.ts",
+    "type-check3": "deno check functions/**"
+  },
+  "imports": {
+    "ai": "https://esm.sh/ai",
+    "@chakra-ui/react": "https://esm.sh/@chakra-ui/react",
+    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js"
+  }
+}

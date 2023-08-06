@@ -9,6 +9,7 @@ const REDIRECT_AFTER_AUTH_QUERY_PARAM_NAME = "next";
 export async function middleware(req: NextRequest) {
   const res = NextResponse.next();
   const supabase = createMiddlewareClient({ req, res });
+  console.log("middleware", "req.url", req.url, "res.url", res.url);
 
   const {
     data: { session },
@@ -23,10 +24,12 @@ export async function middleware(req: NextRequest) {
   // if user is signed in and the current path is / redirect the user to /account
   if (session?.user && req.nextUrl.pathname === "/auth") {
     const nextPath = req.nextUrl.searchParams.get(REDIRECT_AFTER_AUTH_QUERY_PARAM_NAME);
-    const targetUrl = new URL(nextPath || "/", req.url);
+    // dont redirect to urls on different origins
+    const nextPathSafe = nextPath?.startsWith("/") ? nextPath : null;
+    const targetUrl = new URL(nextPathSafe || "/", req.url);
     console.log("middleware authenticated", "redirecting to", targetUrl.toString());
 
-    // todo investigate this doesnt change the url in the browser
+    // todo investigate this doesn't change the url in the browser
     return NextResponse.redirect(targetUrl, { url: targetUrl.toString(), status: 302 });
   }
 

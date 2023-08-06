@@ -10,7 +10,10 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import type { GenericWebhookPayload } from "../_utils/types.ts";
 import type { MessageRow } from "../../../src/types/databaseRows.ts";
-import { isRequestAuthorised, supabaseAdminClient } from "../_utils/supabase.ts";
+import {
+  isRequestAuthorised,
+  supabaseAdminClient,
+} from "../_utils/supabase.ts";
 import { messageRowToChatMessage } from "../_utils/pure.ts";
 import { createScenarioChatResponseStream } from "../_utils/openai/createScenarioChatResponse.ts";
 import { streamAndPersist } from "../_utils/general.ts";
@@ -20,7 +23,10 @@ import { isTruthy } from "../../../src/utils/general.ts";
 serve(async (req) => {
   try {
     const payload: GenericWebhookPayload<MessageRow> = await req.json();
-    console.log("handling message create event payload", JSON.stringify(payload, null, 2));
+    console.log(
+      "handling message create event payload",
+      JSON.stringify(payload, null, 2),
+    );
 
     if (!isRequestAuthorised(req)) {
       console.log("unauthorized");
@@ -42,14 +48,23 @@ serve(async (req) => {
     if (newMessageRow.author_role === "user") {
       console.log("user message, generating response");
       try {
-        await setAiIsResponding({ sessionId: newMessageRow.session_id, isResponding: true });
+        await setAiIsResponding({
+          sessionId: newMessageRow.session_id,
+          isResponding: true,
+        });
         await generateResponse(newMessageRow);
       } finally {
-        await setAiIsResponding({ sessionId: newMessageRow.session_id, isResponding: false });
+        await setAiIsResponding({
+          sessionId: newMessageRow.session_id,
+          isResponding: false,
+        });
       }
     }
 
-    console.log("done handling message event:", JSON.stringify(payload, null, 2));
+    console.log(
+      "done handling message event:",
+      JSON.stringify(payload, null, 2),
+    );
     return new Response(JSON.stringify({ message: "ok" }), {
       headers: { "Content-Type": "application/json" },
       status: 200,
@@ -59,7 +74,9 @@ serve(async (req) => {
   } catch (error) {
     console.error("general webhook error", error);
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.stack : String(error) }),
+      JSON.stringify({
+        error: error instanceof Error ? error.stack : String(error),
+      }),
       {
         headers: { "Content-Type": "application/json" },
         status: 500,
@@ -88,7 +105,10 @@ async function setAiIsResponding({
 }
 
 async function generateResponse(newMessageRow: MessageRow) {
-  console.log("generating response for message", JSON.stringify(newMessageRow, null, 2));
+  console.log(
+    "generating response for message",
+    JSON.stringify(newMessageRow, null, 2),
+  );
 
   const [messageRows, sessionScenario] = await Promise.all([
     supabaseAdminClient
@@ -121,12 +141,16 @@ async function generateResponse(newMessageRow: MessageRow) {
 
         const scenario = response.data.selected_scenario_text;
         if (!scenario) {
-          const error = `no scenario text for session ${newMessageRow.session_id}`;
+          const error =
+            `no scenario text for session ${newMessageRow.session_id}`;
           console.error(error);
           throw new Error(error);
         }
 
-        console.log(`fetched session ${newMessageRow.session_id} scenario`, scenario);
+        console.log(
+          `fetched session ${newMessageRow.session_id} scenario`,
+          scenario,
+        );
         return scenario;
       }),
   ]);
@@ -147,7 +171,9 @@ async function generateResponse(newMessageRow: MessageRow) {
   }
 
   const userIdToNameMap = new Map(
-    getUsersRequest.data.map((userProfile) => [userProfile.user_id, userProfile.user_name]),
+    getUsersRequest.data.map((
+      userProfile,
+    ) => [userProfile.user_id, userProfile.user_name]),
   );
 
   const sessionChatMessagesWithAuthorNames = messageRows
@@ -164,25 +190,33 @@ async function generateResponse(newMessageRow: MessageRow) {
     });
 
   const responseMessageStream = await createScenarioChatResponseStream({
-    chatMessages: sessionChatMessagesWithAuthorNames,
+    messages: sessionChatMessagesWithAuthorNames,
     scenario: sessionScenario,
   });
 
   // only create a response message if everything went well and we are ready to stream the message
   const createResponseMessageResponse = await supabaseAdminClient
     .from("messages")
-    .insert({
-      author_id: null,
-      author_role: "assistant",
-      author_ai_model_id: ACTIVE_OPENAI_MODEL,
-      content: "",
-      session_id: newMessageRow.session_id,
-    } satisfies Omit<Required<MessageRow>, "id" | "inserted_at" | "updated_at">)
+    .insert(
+      {
+        author_id: null,
+        author_role: "assistant",
+        author_ai_model_id: ACTIVE_OPENAI_MODEL,
+        content: "",
+        session_id: newMessageRow.session_id,
+      } satisfies Omit<
+        Required<MessageRow>,
+        "id" | "inserted_at" | "updated_at"
+      >,
+    )
     .select("id")
     .single();
 
   if (createResponseMessageResponse.error) {
-    console.error("error creating response message row", createResponseMessageResponse.error);
+    console.error(
+      "error creating response message row",
+      createResponseMessageResponse.error,
+    );
     throw createResponseMessageResponse.error;
   }
 
@@ -199,7 +233,10 @@ async function generateResponse(newMessageRow: MessageRow) {
         }),
     });
 
-    console.log("done generating response for message", JSON.stringify(newMessageRow, null, 2));
+    console.log(
+      "done generating response for message",
+      JSON.stringify(newMessageRow, null, 2),
+    );
   } catch (error) {
     // delete the response message row if we failed to generate a response
     await supabaseAdminClient
@@ -212,7 +249,9 @@ async function generateResponse(newMessageRow: MessageRow) {
   }
 }
 
-async function updateMessageRow({ id, content }: { id: number; content: string }) {
+async function updateMessageRow(
+  { id, content }: { id: number; content: string },
+) {
   const updateMessageResponse = await supabaseAdminClient
     .from("messages")
     .update({ content })

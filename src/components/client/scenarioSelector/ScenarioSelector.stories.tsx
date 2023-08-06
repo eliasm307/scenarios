@@ -1,8 +1,9 @@
 import type { Meta, StoryObj } from "@storybook/react";
+import { useEffect, useState } from "react";
 import { action } from "../../../../.storybook/utils";
 // import { within, userEvent } from "@storybook/testing-library";
 
-import Page from "./ScenarioSelector";
+import Component from "./ScenarioSelector";
 import type { SessionUser } from "../../../types";
 
 const users: SessionUser[] = [
@@ -44,18 +45,14 @@ const users: SessionUser[] = [
   },
 ];
 
-const scenarioOptions = [
-  `You are an ambitious professional climbing up the ranks of a successful company when an unexpected opportunity arises: another company offers you a higher position with more responsibilities and a significant increase in salary.
-
-  However, accepting this offer means leaving behind incredible colleagues and mentors who have helped shape your career so far.
-
-  Do you stay loyal to your current company or take the leap into the unknown?`,
-  "Scenario 2",
-  "Scenario 3",
+const DUMMY_SCENARIOS = [
+  "You are a successful surgeon who has just received an invitation to participate in a groundbreaking medical trial. The trial involves testing a new and experimental procedure that could potentially save many lives in the future. However, you learn that the procedure has not been extensively tested and carries significant risks for the patients involved.\n\nDo you take on the responsibility of participating in the trial, knowing that your expertise could make a difference but also risking harm to the patients? Or do you decline the opportunity, prioritizing patient safety over potential medical advancements?",
+  "You are a renowned journalist who has been assigned to cover an important political scandal. As you dig deeper into the story, you uncover evidence that could potentially expose high-ranking officials involved in corruption. However, publishing this information would put your career at risk and could also endanger your personal safety.\n\nDo you publish the story, believing in the importance of exposing corruption and holding those accountable? Or do you protect your career and personal well-being by keeping the information confidential?",
+  "You are a devoted parent who is offered a once-in-a-lifetime job opportunity on another continent. Accepting this job means relocating and uprooting your entire family from their familiar surroundings. While it offers financial security and professional growth, it also means disrupting your children's lives and potentially straining your relationships with extended family members.\n\nDo you seize this chance for professional advancement, knowing it could have lasting effects on your family dynamics? Or do you prioritize stability and continuity for your children by declining the job offer?",
 ];
 
 const meta = {
-  component: Page,
+  component: Component,
   parameters: {
     // More on how to position stories at: https://storybook.js.org/docs/react/configure/story-layout
     layout: "fullscreen",
@@ -64,7 +61,7 @@ const meta = {
     users,
     currentUser: users[0],
     isLoading: false,
-    scenarioOptions,
+    scenarioOptions: DUMMY_SCENARIOS,
     hasUserSelectedOption: (userId, optionId) => {
       return (
         {
@@ -82,12 +79,14 @@ const meta = {
     },
     handleSelectionChange: action("setSelection"),
     handleOptionRating: action("handleOptionRating"),
-    isUserReadyForNextStage: () => Math.random() > 0.5,
+    isUserReadyForNextStage: (userId) => {
+      return ["1", "2", "3"].includes(userId);
+    },
     getOptionRating: () => null,
     usersWaitingToVote: users,
     optionsAiAuthorModelId: "",
   },
-} satisfies Meta<typeof Page>;
+} satisfies Meta<typeof Component>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
@@ -166,3 +165,49 @@ export const WithPositiveAndNegativeRatings: Story = {
     },
   },
 };
+
+export const WithScenarioOptionsStreamingIn: Story = {
+  render: function Render(props) {
+    const [scenarioOptions, setScenarioOptions] = useState<string[]>(["", "", ""]);
+
+    useEffect(() => {
+      const stream = createDummyScenarioStream();
+      const intervalId = setInterval(() => {
+        const { value, done } = stream.next();
+        if (done) {
+          clearInterval(intervalId);
+        }
+        setScenarioOptions(value);
+      }, 10);
+
+      return () => {
+        clearInterval(intervalId);
+      };
+    }, []);
+
+    return <Component {...props} scenarioOptions={scenarioOptions} />;
+  },
+};
+
+const DUMMY_SCENARIOS_FOR_STREAMING = [
+  "You are a successful surgeon ".repeat(30),
+  "You are a renowned journalist ".repeat(30),
+  "You are a devoted parent ".repeat(30),
+];
+
+function* createDummyScenarioStream() {
+  const output = ["", "", ""];
+  let index = 0;
+  for (const scenario of DUMMY_SCENARIOS_FOR_STREAMING) {
+    const tokens = scenario.split(/\b/g);
+
+    for (const token of tokens) {
+      output[index] += token;
+      yield [...output];
+    }
+
+    index++;
+  }
+
+  return output;
+}

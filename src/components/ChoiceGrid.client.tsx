@@ -22,9 +22,8 @@ export default function ChoiceGrid({ choices }: { choices: ChoiceConfig[] }): Re
     >
       {choices.map((choiceConfig, i) => (
         <ChoiceCard
-          key={`choice-card-${i}-${choiceConfig.text}-isSelected-${String(
-            choiceConfig.isSelected,
-          )}`}
+          // eslint-disable-next-line react/no-array-index-key -- they will always be in the same order
+          key={`choice-card=${i}}`}
           {...choiceConfig}
         />
       ))}

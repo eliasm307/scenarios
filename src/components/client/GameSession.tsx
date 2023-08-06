@@ -343,6 +343,7 @@ function useRealtime({ state, send }: { state: State; send: React.Dispatch<Actio
         },
         (data) => {
           console.log("sessionUpdated", data);
+          console.debug("scenario options", JSON.stringify(data.new.scenario_options, null, 2));
           send({ event: "sessionUpdated", data: data.new });
         },
       )

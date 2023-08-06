@@ -203,11 +203,14 @@ function useThrottledBroadcast({
 
         if (result !== "ok") {
           console.error("broadcast error", { event: nextEvent, result });
-          toast({
-            status: "error",
-            title: "Error sending broadcast message",
-            description: result || "",
-          });
+          // dont need to show a toast for rate limited, it cools down and starts working with a delay
+          if (result !== "rate limited") {
+            toast({
+              status: "error",
+              title: "Error sending broadcast message",
+              description: result || "",
+            });
+          }
         }
         console.log("broadcast event sent", nextEvent);
       }, 500);

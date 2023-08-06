@@ -15,6 +15,7 @@
     "build:scripts": "tsc -p ./src/scripts",
     "script:test-image-gen": "npm run build:scripts && node ./src/scripts/out/image-gen-demo.js",
     "script:test-function-calling": "npm run build:scripts && node ./src/scripts/out/function-calling-demo.js",
+    "script:test-function-calling-edge": "npm run build:scripts && node ./src/scripts/out/function-calling-demo-edge.js",
     "script:test-eager-scenarios": "npm run build:scripts && node ./src/scripts/out/eager-scenarios.js",
     "script:test-eager-scenarios-edge": "npm run build:scripts && node ./src/scripts/out/eager-scenarios-edge.js",
     "storybook": "storybook dev -p 6006 --no-open",

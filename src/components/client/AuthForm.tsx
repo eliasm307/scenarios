@@ -1,3 +1,5 @@
+/* eslint-disable no-console */
+
 "use client";
 
 import { Auth } from "@supabase/auth-ui-react";
@@ -70,9 +72,13 @@ export default function AuthForm() {
   }, []);
 
   useEffect(() => {
-    if (isSignedIn) {
-      void router.push("/");
+    if (!isSignedIn) {
+      return;
     }
+
+    // middleware will handle redirect
+    window.location.reload();
+    // router.refresh(); // using this means redirect doesnt update the url in browser for some reason
   }, [isSignedIn, router]);
 
   const redirectUrl = useMemo(() => new URL("/auth/callback", getURL()).href, []);

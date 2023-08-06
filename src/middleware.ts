@@ -4,6 +4,8 @@ import { NextResponse } from "next/server";
 
 import type { NextRequest } from "next/server";
 
+const REDIRECT_AFTER_AUTH_QUERY_PARAM_NAME = "next";
+
 export async function middleware(req: NextRequest) {
   const res = NextResponse.next();
   const supabase = createMiddlewareClient({ req, res });
@@ -20,15 +22,21 @@ export async function middleware(req: NextRequest) {
 
   // if user is signed in and the current path is / redirect the user to /account
   if (session?.user && req.nextUrl.pathname === "/auth") {
-    console.log("middleware", "redirecting to /");
-    return NextResponse.redirect(new URL("/", req.url));
+    const nextPath = req.nextUrl.searchParams.get(REDIRECT_AFTER_AUTH_QUERY_PARAM_NAME);
+    const targetUrl = new URL(nextPath || "/", req.url);
+    console.log("middleware authenticated", "redirecting to", targetUrl.toString());
+
+    // todo investigate this doesnt change the url in the browser
+    return NextResponse.redirect(targetUrl, { url: targetUrl.toString(), status: 302 });
   }
 
   // todo allow this to redirect to the initial page the user was trying to access
   // if user is not signed in and the current path is not / redirect the user to /
   if (!session?.user && req.nextUrl.pathname !== "/auth") {
-    console.log("middleware", "redirecting to /auth");
-    return NextResponse.redirect(new URL("/auth", req.url));
+    const targetUrl = new URL("/auth", req.url);
+    targetUrl.searchParams.set(REDIRECT_AFTER_AUTH_QUERY_PARAM_NAME, req.nextUrl.pathname);
+    console.log("middleware not authenticated", "redirecting to:", targetUrl.toString());
+    return NextResponse.redirect(targetUrl);
   }
 
   return res;

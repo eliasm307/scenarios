@@ -44,3 +44,7 @@ export function parseUserRatingKey(key: string) {
   }
   return { byUserId, forScenarioOptionIndex: forScenarioOptionId };
 }
+
+export async function pause(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}

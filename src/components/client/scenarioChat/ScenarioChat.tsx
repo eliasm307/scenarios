@@ -16,6 +16,7 @@ import {
   Tabs,
   VStack,
 } from "@chakra-ui/react";
+import { memo } from "react";
 import ScenarioText from "../../ScenarioText";
 import ReadOutLoudButton from "../../ReadOutLoudButton";
 import type { ScenarioChatViewProps } from "./ScenarioChat.container";
@@ -34,7 +35,63 @@ function ScenarioTextPanel({ scenarioText }: { scenarioText: string }) {
   );
 }
 
-function DesktopScenarioChat(props: ScenarioChatViewProps) {
+type Props = Pick<
+  ScenarioChatViewProps,
+  | "selectedScenarioText"
+  | "handleVoteChange"
+  | "outcomeVotesByCurrentUser"
+  | "readyForNextStageProps"
+  | "remoteUserVotingStatuses"
+  | "chat"
+  | "messageRows"
+  | "selectedScenarioImageUrl"
+  | "users"
+>;
+
+const ScenarioAndVotingPanel = memo(function ScenarioAndVotingPanel({
+  handleVoteChange,
+  selectedScenarioText,
+  outcomeVotesByCurrentUser,
+  readyForNextStageProps,
+  remoteUserVotingStatuses,
+  users,
+}: Pick<
+  Props,
+  | "selectedScenarioText"
+  | "handleVoteChange"
+  | "outcomeVotesByCurrentUser"
+  | "readyForNextStageProps"
+  | "remoteUserVotingStatuses"
+  | "users"
+>) {
+  return (
+    <VStack m={3} gap={5} width='100%' maxHeight='100%' overflowY='auto'>
+      <ScenarioTextPanel scenarioText={selectedScenarioText} />
+      <Divider />
+      <VotingPanel
+        {...{
+          handleVoteChange,
+          outcomeVotesByCurrentUser,
+          readyForNextStageProps,
+          remoteUserVotingStatuses,
+          users,
+        }}
+      />
+    </VStack>
+  );
+});
+
+function DesktopScenarioChat({
+  selectedScenarioText,
+  handleVoteChange,
+  outcomeVotesByCurrentUser,
+  readyForNextStageProps,
+  remoteUserVotingStatuses,
+  chat,
+  messageRows,
+  selectedScenarioImageUrl,
+  users,
+}: Props) {
   return (
     <Grid
       as='section'
@@ -49,17 +106,32 @@ function DesktopScenarioChat(props: ScenarioChatViewProps) {
       padding={2}
       gap={5}
     >
-      <VStack m={3} gap={5} width='100%' maxHeight='100%' overflowY='auto'>
-        <ScenarioTextPanel scenarioText={props.selectedScenarioText} />
-        <Divider />
-        <VotingPanel {...props} />
-      </VStack>
-      <ChatPanel {...props} />
+      <ScenarioAndVotingPanel
+        {...{
+          handleVoteChange,
+          selectedScenarioText,
+          outcomeVotesByCurrentUser,
+          readyForNextStageProps,
+          remoteUserVotingStatuses,
+          users,
+        }}
+      />
+      <ChatPanel {...{ chat, messageRows, selectedScenarioImageUrl, users }} />
     </Grid>
   );
 }
 
-function MobileScenarioChat(props: ScenarioChatViewProps) {
+function MobileScenarioChat({
+  selectedScenarioText,
+  handleVoteChange,
+  outcomeVotesByCurrentUser,
+  readyForNextStageProps,
+  remoteUserVotingStatuses,
+  chat,
+  messageRows,
+  selectedScenarioImageUrl,
+  users,
+}: Props) {
   return (
     <Tabs
       isFitted
@@ -76,20 +148,38 @@ function MobileScenarioChat(props: ScenarioChatViewProps) {
       </TabList>
       <TabPanels flex={1} overflow='hidden'>
         <TabPanel height='100%' overflow='auto'>
-          <ScenarioTextPanel scenarioText={props.selectedScenarioText} />
+          <ScenarioTextPanel key='scenario-text' scenarioText={selectedScenarioText} />
         </TabPanel>
         <TabPanel height='100%' overflow='auto'>
-          <VotingPanel isFullWidth {...props} />
+          <VotingPanel
+            key='voting-panel'
+            isFullWidth
+            {...{
+              handleVoteChange,
+              outcomeVotesByCurrentUser,
+              readyForNextStageProps,
+              remoteUserVotingStatuses,
+              users,
+            }}
+          />
         </TabPanel>
         <TabPanel height='100%' overflow='hidden'>
-          <ChatPanel {...props} />
+          <ChatPanel
+            key='chat-panel'
+            {...{
+              chat,
+              messageRows,
+              selectedScenarioImageUrl,
+              users,
+            }}
+          />
         </TabPanel>
       </TabPanels>
     </Tabs>
   );
 }
 
-export default function ScenarioChat(props: ScenarioChatViewProps) {
+export default function ScenarioChat(props: Props) {
   const isLargeScreen = useIsLargeScreen({ above: "lg" });
   return (
     <Box
@@ -101,7 +191,11 @@ export default function ScenarioChat(props: ScenarioChatViewProps) {
       my={2}
       width='100%'
     >
-      {isLargeScreen ? <DesktopScenarioChat {...props} /> : <MobileScenarioChat {...props} />}
+      {isLargeScreen ? (
+        <DesktopScenarioChat key='desktop' {...props} />
+      ) : (
+        <MobileScenarioChat key='mobile' {...props} />
+      )}
     </Box>
   );
 }

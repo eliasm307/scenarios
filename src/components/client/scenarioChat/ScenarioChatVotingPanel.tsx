@@ -9,7 +9,7 @@ import {
   Td,
   Radio,
 } from "@chakra-ui/react";
-import { useCallback } from "react";
+import { memo, useCallback } from "react";
 import type { SessionUser } from "../../../types";
 import type { ScenarioChatViewProps } from "./ScenarioChat.container";
 import { useIsLargeScreen } from "../../../utils/client/hooks";
@@ -25,17 +25,33 @@ type Props = ScenarioChatViewProps & {
   isFullWidth?: boolean;
 };
 
-export default function VotingPanel(props: Props) {
+const VotingPanel = memo(function VotingPanel(
+  props: Pick<
+    Props,
+    | "users"
+    | "outcomeVotesByCurrentUser"
+    | "handleVoteChange"
+    | "readyForNextStageProps"
+    | "isFullWidth"
+    | "remoteUserVotingStatuses"
+  >,
+) {
   return (
     <VStack className='voting-panel' gap={3} width='100%' flex={1}>
-      <Heading size='md' width='100%' textAlign='center'>
+      <Heading key='i-think' size='md' width='100%' textAlign='center'>
         I think...
       </Heading>
-      <OutcomeVotingTable {...props} />
+      <OutcomeVotingTable
+        users={props.users}
+        outcomeVotesByCurrentUser={props.outcomeVotesByCurrentUser}
+        handleVoteChange={props.handleVoteChange}
+        readyForNextStageProps={props.readyForNextStageProps}
+        isFullWidth={props.isFullWidth}
+      />
       {props.remoteUserVotingStatuses.map(({ user, isFinishedVoting }) => (
         <>
           <Divider my={3} key={`${user.id}-divider`} />
-          <Heading key={user.id} size='md' width='100%' textAlign='center'>
+          <Heading key={`${user.id}-heading`} size='md' width='100%' textAlign='center'>
             {isFinishedVoting ? CONFIRMED_EMOJI : THINKING_EMOJI} &quot;{user.name}&quot;{" "}
             {isFinishedVoting ? "has decided" : "is deciding..."}
           </Heading>
@@ -43,7 +59,9 @@ export default function VotingPanel(props: Props) {
       ))}
     </VStack>
   );
-}
+});
+
+export default VotingPanel;
 
 function OutcomeVotingTable({
   users,
@@ -51,7 +69,14 @@ function OutcomeVotingTable({
   handleVoteChange,
   isFullWidth,
   readyForNextStageProps,
-}: Props) {
+}: Pick<
+  Props,
+  | "users"
+  | "outcomeVotesByCurrentUser"
+  | "handleVoteChange"
+  | "isFullWidth"
+  | "readyForNextStageProps"
+>) {
   return (
     <>
       <TableContainer>
@@ -123,7 +148,7 @@ function UserOutcomeVotingRow({
         </>
       ) : (
         <Td
-          key={`isLargeScreen=${String(isLargeScreen)}-col1`}
+          key={`isLargeScreen=${String(isLargeScreen)}-col3`}
           pr={0}
           display='flex'
           flexDirection='column'

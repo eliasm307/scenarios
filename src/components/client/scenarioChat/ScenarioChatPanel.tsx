@@ -23,7 +23,7 @@ export default function ChatPanel({
   messageRows,
   users,
   chat,
-}: ScenarioChatViewProps) {
+}: Pick<ScenarioChatViewProps, "selectedScenarioImageUrl" | "messageRows" | "users" | "chat">) {
   const messagesList = useElement<HTMLDivElement>();
   const textArea = useElement<HTMLTextAreaElement>();
   const form = useElement<HTMLFormElement>();
@@ -78,6 +78,7 @@ export default function ChatPanel({
 
   const typingUsers = users.filter((user) => user.isTyping && !user.isCurrentUser);
 
+  // todo there is an issue here where typing causes the voting panel to re-render, not sure why
   const controlsNode = (
     <Flex
       className='chat-controls'
@@ -108,6 +109,7 @@ export default function ChatPanel({
       <form ref={form.ref} onSubmit={chat.handleSubmit}>
         <Flex gap={2} alignItems='center' flexDirection={{ base: "column", md: "row" }}>
           <Textarea
+            {...chat.inputProps}
             width='100%'
             flex={1}
             variant='outline'
@@ -122,7 +124,6 @@ export default function ChatPanel({
             data-gramm='false'
             data-gramm_editor='false'
             data-enable-grammarly='false'
-            {...chat.inputProps}
           />
           <Flex gap='inherit' width={{ base: "100%", md: "unset" }} justifyContent='space-evenly'>
             {chat.isLoading ? (

@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 /* eslint-disable react/jsx-wrap-multilines */
 /* eslint-disable react/no-unused-prop-types */
 

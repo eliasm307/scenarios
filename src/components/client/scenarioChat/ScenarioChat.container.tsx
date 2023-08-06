@@ -138,7 +138,7 @@ function useChatLogic({
     };
   }, [broadcast, currentUser.id, handleTypingEnd]);
 
-  const chatAllowsSubmitting = inputValue && !isLoading;
+  const chatAllowsSubmitting = inputValue.trim() && !isLoading;
   const isSubmitActionEvent = useCallback(
     (e: React.KeyboardEvent) => {
       if (e.key !== "Enter") {
@@ -309,6 +309,7 @@ function useChatLogic({
         onKeyDown: handleInputKeyDown,
         onBlur: handleTypingEnd,
         onChange: handleInputChange,
+        maxLength: 500,
       } satisfies TextareaProps,
     },
     remoteUserVotingStatuses,

@@ -160,6 +160,7 @@ function useThrottledBroadcast({
       }
 
       broadcastQueueRef.current.push(event);
+      console.log("broadcast event added to queue");
       if (typeof broadcastIntervalIdRef.current === "number") {
         console.log("broadcast interval already running");
         return; // interval already running
@@ -178,16 +179,14 @@ function useThrottledBroadcast({
           nextEvent,
           currentQueue: broadcastQueueRef.current,
         });
-        if (!broadcastQueueRef.current?.length) {
+
+        if (!nextEvent) {
           console.log("broadcast queue empty, clearing interval");
           // no more scheduled events to send
           if (broadcastIntervalIdRef.current) {
             window.clearInterval(broadcastIntervalIdRef.current);
           }
           broadcastIntervalIdRef.current = null;
-        }
-
-        if (!nextEvent) {
           console.warn("no next event, skipping");
           return;
         }
@@ -211,7 +210,7 @@ function useThrottledBroadcast({
           });
         }
         console.log("broadcast event sent", nextEvent);
-      }, 200);
+      }, 500);
     },
     [channelRef, toast],
   );

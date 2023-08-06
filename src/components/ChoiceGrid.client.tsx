@@ -36,10 +36,11 @@ function ChoiceCard({ text, onSelect, isSelected, content }: ChoiceConfig) {
     <Card
       className='choice-card'
       minHeight='10rem'
-      shadow='lg'
+      shadow='xl'
       onClick={onSelect}
       _hover={onSelect ? { outline: "5px solid gray", cursor: "pointer" } : {}}
       style={isSelected ? { outline: "5px solid green" } : undefined}
+      outline='1px solid rgba(0,0,0,0.1)'
     >
       <CardBody
         className='card-body'

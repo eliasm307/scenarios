@@ -35,9 +35,29 @@ serve(async (req) => {
     }
 
     const newSessionRow = payload.record;
-    if (newSessionRow.stage === "scenario-selection" && !newSessionRow.scenario_options?.length) {
-      console.log("no scenarios, generating new ones");
-      await generateNewSessionScenarios(newSessionRow.id);
+    if (newSessionRow.stage === "scenario-selection") {
+      if (!newSessionRow.scenario_options?.length && !newSessionRow.ai_is_responding) {
+        console.log(
+          "no scenarios, generating new ones, current options:",
+          JSON.stringify(newSessionRow.scenario_options, null, 2),
+        );
+        try {
+          await supabaseAdminClient
+            .from("sessions")
+            .update({ ai_is_responding: true }) // to prevent multiple streams generating scenarios
+            .eq("id", newSessionRow.id);
+          await generateNewSessionScenarios(newSessionRow.id);
+        } finally {
+          await supabaseAdminClient
+            .from("sessions")
+            .update({ ai_is_responding: false })
+            .eq("id", newSessionRow.id);
+        }
+      } else if (!newSessionRow.scenario_options?.length && newSessionRow.ai_is_responding) {
+        console.log(
+          "no scenarios, however there is already an existing process generating new ones, skipping",
+        );
+      }
 
       // make sure scenario image is loaded in outcome selection stage
     } else if (

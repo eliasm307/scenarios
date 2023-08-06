@@ -2,8 +2,11 @@
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable no-console */
 
-import type { ChatMessage } from "./types.ts";
+import type { ChatCompletionFunction, ChatMessage } from "./types.ts";
 import { createGeneralChatResponseStream } from "./general.ts";
+import { createImageFromPrompt } from "../huggingFace.ts";
+import { supabaseAdminClient } from "../supabase.ts";
+import { mimeTypeToFileExtension } from "../pure.ts";
 
 const USE_DUMMY_CHAT_RESPONSE_STREAM = false;
 
@@ -12,16 +15,63 @@ export type ChatRequestBody = {
   scenario: string;
 };
 
-export async function createScenarioChatResponseStream({
-  chatMessages,
-  scenario,
-}: {
-  chatMessages: ChatMessage[];
-  scenario: string;
-}) {
+const GENERATE_IMAGE_FUNCTION: ChatCompletionFunction = {
+  definition: {
+    name: "generate_image",
+    description: "Generates an image from a given prompt and returns the image URL",
+    parameters: {
+      type: "object",
+      properties: {
+        prompt: {
+          type: "string",
+          description: "The prompt to generate an image from",
+        },
+      },
+      required: ["prompt"],
+    },
+  },
+  async handler({ prompt }: { prompt: string }) {
+    try {
+      const image = await createImageFromPrompt(prompt);
+      const fileExtension = mimeTypeToFileExtension(image.blob.type);
+      const path = `session_chat_images/${crypto.randomUUID()}.${fileExtension}`;
+      console.log("uploading image with path:", path);
+      const uploadImageResponse = await supabaseAdminClient.storage
+        .from("images")
+        .upload(path, image.blob, {
+          upsert: false,
+          contentType: image.blob.type,
+        });
+
+      if (uploadImageResponse.error) {
+        console.error(
+          `Upload image error: ${uploadImageResponse.error.message} (${uploadImageResponse.error.name}) \nCause: ${uploadImageResponse.error.cause} \nStack: ${uploadImageResponse.error.stack}`,
+        );
+        throw uploadImageResponse.error;
+      }
+
+      const imageUrl = supabaseAdminClient.storage
+        .from("images")
+        // using the response path, not sure if they could be different
+        .getPublicUrl(uploadImageResponse.data.path);
+
+      console.log("public imageUrl:", imageUrl);
+
+      return {
+        imageUrl,
+      };
+    } catch (error) {
+      console.error("generate_image function error: ", error);
+      // ? should we let the AI know about errors so it can retry? could end up being expensive if the AI keeps retrying
+      throw error;
+    }
+  },
+};
+
+export async function createScenarioChatResponseStream({ messages, scenario }: ChatRequestBody) {
   console.log(
     "createScenarioChatResponseStream, creating chat completion for:",
-    JSON.stringify({ messagesCount: chatMessages.length, scenario }, null, 2),
+    JSON.stringify({ messagesCount: messages.length, scenario }, null, 2),
   );
 
   if (USE_DUMMY_CHAT_RESPONSE_STREAM) {
@@ -29,12 +79,14 @@ export async function createScenarioChatResponseStream({
   }
 
   try {
-    const response = await createGeneralChatResponseStream([
-      createScenarioChatSystemMessage(scenario),
-      ...chatMessages.map(formatMessage),
-    ]);
+    const stream = await createGeneralChatResponseStream(
+      [createScenarioChatSystemMessage(scenario), ...messages.map(formatMessage)],
+      {
+        availableFunctions: [GENERATE_IMAGE_FUNCTION],
+      },
+    );
     console.log("createScenarioChatResponseStream, created chat completion stream");
-    return response;
+    return stream;
 
     // handle error
   } catch (error) {
@@ -75,6 +127,8 @@ function createScenarioChatSystemMessage(scenario: string): ChatMessage {
     - Responses should be easy for anyone to understand.
     - Paragraphs and Sentences should be separated by a new line.
     - You will be speaking with multiple users at the same time so you can refer to users by name when responding to their questions to make it clear who you are addressing.
+    - You can use the available functions to enhance responses where appropriate e.g. generating images to visualise what you mean.
+    - Responses can use markdown to format text e.g. for images you can embed them using the following format in your response: ![Alt text](https://somewhere/some-image-link.png "image title")
     `,
   };
 }

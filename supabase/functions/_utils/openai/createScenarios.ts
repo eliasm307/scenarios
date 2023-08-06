@@ -11,10 +11,9 @@ const CREATE_SCENARIOS_SYSTEM_MESSAGE_TEMPLATES = [
 ];
 
 function createGenerateScenariosSystemMessage(): string {
-  const randomTemplate =
-    CREATE_SCENARIOS_SYSTEM_MESSAGE_TEMPLATES[
-      Math.floor(Math.random() * CREATE_SCENARIOS_SYSTEM_MESSAGE_TEMPLATES.length)
-    ];
+  const randomTemplate = CREATE_SCENARIOS_SYSTEM_MESSAGE_TEMPLATES[
+    Math.floor(Math.random() * CREATE_SCENARIOS_SYSTEM_MESSAGE_TEMPLATES.length)
+  ];
 
   return [
     randomTemplate,

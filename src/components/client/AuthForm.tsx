@@ -81,7 +81,7 @@ export default function AuthForm() {
     // router.refresh(); // using this means redirect doesnt update the url in browser for some reason
   }, [isSignedIn, router]);
 
-  const redirectUrl = useMemo(() => new URL("/auth/callback", getURL()).href, []);
+  const magicLinkRedirectUrl = useMemo(() => new URL("/auth/callback", getURL()).href, []);
 
   if (isSignedIn) {
     return (
@@ -128,7 +128,7 @@ export default function AuthForm() {
           showLinks={false}
           // see https://supabase.com/docs/guides/auth#providers
           providers={[]}
-          redirectTo={redirectUrl}
+          redirectTo={magicLinkRedirectUrl}
         />
         <Heading>Or</Heading>
         <VStack width='inherit'>

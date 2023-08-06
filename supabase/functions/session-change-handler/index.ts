@@ -12,19 +12,29 @@
 // structuring: https://supabase.com/docs/guides/functions/quickstart#organizing-your-edge-functions
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import type { SessionRow, ScenarioRow } from "../../../src/types/databaseRows.ts";
-import { isRequestAuthorised, supabaseAdminClient } from "../_utils/supabase.ts";
+import type {
+  ScenarioRow,
+  SessionRow,
+} from "../../../src/types/databaseRows.ts";
+import {
+  isRequestAuthorised,
+  supabaseAdminClient,
+} from "../_utils/supabase.ts";
 import type { GenericWebhookPayload } from "../_utils/types.ts";
 import { createImageFromPrompt } from "../_utils/huggingFace.ts";
 import { createScenariosStream } from "../_utils/openai/createScenarios.ts";
 import { createScenarioImagePrompt } from "../_utils/openai/createScenarioImagePrompt.ts";
 import { streamAndPersist } from "../_utils/general.ts";
 import { ACTIVE_OPENAI_MODEL } from "../_utils/openai/general.ts";
+import { mimeTypeToFileExtension } from "../_utils/pure.ts";
 
 serve(async (req) => {
   try {
     const payload: GenericWebhookPayload<SessionRow> = await req.json();
-    console.log("handling session event payload", JSON.stringify(payload, null, 2));
+    console.log(
+      "handling session event payload",
+      JSON.stringify(payload, null, 2),
+    );
 
     if (!isRequestAuthorised(req)) {
       console.log("unauthorized");
@@ -36,7 +46,10 @@ serve(async (req) => {
 
     const newSessionRow = payload.record;
     if (newSessionRow.stage === "scenario-selection") {
-      if (!newSessionRow.scenario_options?.length && !newSessionRow.ai_is_responding) {
+      if (
+        !newSessionRow.scenario_options?.length &&
+        !newSessionRow.ai_is_responding
+      ) {
         console.log(
           "no scenarios, generating new ones, current options:",
           JSON.stringify(newSessionRow.scenario_options, null, 2),
@@ -53,7 +66,10 @@ serve(async (req) => {
             .update({ ai_is_responding: false })
             .eq("id", newSessionRow.id);
         }
-      } else if (!newSessionRow.scenario_options?.length && newSessionRow.ai_is_responding) {
+      } else if (
+        !newSessionRow.scenario_options?.length &&
+        newSessionRow.ai_is_responding
+      ) {
         console.log(
           "no scenarios, however there is already an existing process generating new ones, skipping",
         );
@@ -81,7 +97,10 @@ serve(async (req) => {
       console.debug("nothing to do");
     }
 
-    console.log("done handling session event payload", JSON.stringify(payload, null, 2));
+    console.log(
+      "done handling session event payload",
+      JSON.stringify(payload, null, 2),
+    );
     return new Response(JSON.stringify({ message: "ok" }), {
       headers: { "Content-Type": "application/json" },
       status: 200,
@@ -91,7 +110,9 @@ serve(async (req) => {
   } catch (error) {
     console.error("general webhook error", error);
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.stack : String(error) }),
+      JSON.stringify({
+        error: error instanceof Error ? error.stack : String(error),
+      }),
       {
         headers: { "Content-Type": "application/json" },
         status: 500,
@@ -104,9 +125,10 @@ async function generateScenarioImage(scenario: { id: number; text: string }) {
   const imagePrompt = await createScenarioImagePrompt(scenario.text);
   const image = await createImageFromPrompt(imagePrompt);
 
+  const fileExtension = mimeTypeToFileExtension(image.blob.type);
   const uploadImageResponse = await supabaseAdminClient.storage
     .from("images")
-    .upload(`scenario_images/${scenario.id}.jpeg`, image.blob, {
+    .upload(`scenario_images/${scenario.id}.${fileExtension}`, image.blob, {
       upsert: false,
       contentType: image.blob.type,
     });
@@ -169,35 +191,49 @@ function ratingNumberToText(rating: number) {
 }
 
 function scenarioRowToScenarioTextWithRating(scenarioRow: ScenarioRow) {
-  return `${scenarioRow.text}\n\n[RATING: ${
-    scenarioRow.rating
-  } which means it is ${ratingNumberToText(scenarioRow.rating)}]`;
+  return `${scenarioRow.text}\n\n[RATING: ${scenarioRow.rating} which means it is ${
+    ratingNumberToText(scenarioRow.rating)
+  }]`;
 }
 
 async function generateNewSessionScenarios(sessionId: number) {
   const [exampleGoodScenarioRows, exampleBadScenarioRows] = await Promise.all([
-    supabaseAdminClient.rpc("get_example_good_scenarios").then(({ error, data }) => {
-      if (error) {
-        console.error(
-          `Get example good scenarios error: ${error.message} (${error.code}) \nDetails: ${error.details} \nHint: ${error.hint}`,
+    supabaseAdminClient.rpc("get_example_good_scenarios").then(
+      ({ error, data }) => {
+        if (error) {
+          console.error(
+            `Get example good scenarios error: ${error.message} (${error.code}) \nDetails: ${error.details} \nHint: ${error.hint}`,
+          );
+          throw error;
+        }
+        const exampleGoodScenarios = data.map(
+          scenarioRowToScenarioTextWithRating,
         );
-        throw error;
-      }
-      const exampleGoodScenarios = data.map(scenarioRowToScenarioTextWithRating);
-      console.log("exampleGoodScenarios", JSON.stringify(exampleGoodScenarios, null, 2));
-      return exampleGoodScenarios;
-    }),
-    supabaseAdminClient.rpc("get_example_bad_scenarios").then(({ error, data }) => {
-      if (error) {
-        console.error(
-          `Get example bad scenarios error: ${error.message} (${error.code}) \nDetails: ${error.details} \nHint: ${error.hint}`,
+        console.log(
+          "exampleGoodScenarios",
+          JSON.stringify(exampleGoodScenarios, null, 2),
         );
-        throw error;
-      }
-      const exampleBadScenarios = data.map(scenarioRowToScenarioTextWithRating);
-      console.log("exampleBadScenarios", JSON.stringify(exampleBadScenarios, null, 2));
-      return exampleBadScenarios;
-    }),
+        return exampleGoodScenarios;
+      },
+    ),
+    supabaseAdminClient.rpc("get_example_bad_scenarios").then(
+      ({ error, data }) => {
+        if (error) {
+          console.error(
+            `Get example bad scenarios error: ${error.message} (${error.code}) \nDetails: ${error.details} \nHint: ${error.hint}`,
+          );
+          throw error;
+        }
+        const exampleBadScenarios = data.map(
+          scenarioRowToScenarioTextWithRating,
+        );
+        console.log(
+          "exampleBadScenarios",
+          JSON.stringify(exampleBadScenarios, null, 2),
+        );
+        return exampleBadScenarios;
+      },
+    ),
   ]);
 
   console.log("generating scenarios");
@@ -210,7 +246,10 @@ async function generateNewSessionScenarios(sessionId: number) {
   // reset scenario options
   const resetOptionsResponse = await supabaseAdminClient
     .from("sessions")
-    .update({ scenario_option_votes: {}, scenario_options_ai_author_model_id: ACTIVE_OPENAI_MODEL })
+    .update({
+      scenario_option_votes: {},
+      scenario_options_ai_author_model_id: ACTIVE_OPENAI_MODEL,
+    })
     .match({ id: sessionId });
 
   if (resetOptionsResponse.error) {
@@ -226,7 +265,8 @@ async function generateNewSessionScenarios(sessionId: number) {
     streamValueName: "new session scenario options",
     stream: newScenariosStream,
     persistLatestValue: (latestScenarios) =>
-      latestScenarios && updateSessionScenarioOptions({ sessionId, latestScenarios }),
+      latestScenarios &&
+      updateSessionScenarioOptions({ sessionId, latestScenarios }),
   });
 }
 

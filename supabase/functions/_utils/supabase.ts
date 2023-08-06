@@ -1,5 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.26.0";
-import type { Database } from "../../../src/types/supabase.d.ts";
+import type { Database } from "../../../src/types/supabase.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 if (!SUPABASE_URL) {

@@ -1,5 +1,5 @@
 import type { Message } from "ai";
-import type { MessageRow } from "../types";
+import type { MessageRow } from "../types/index.ts";
 
 export function messageRowToChatMessage(messageRow: MessageRow): Message {
   return {

@@ -7,3 +7,12 @@ export function messageRowToChatMessage(messageRow: MessageRow): ChatMessage {
     role: messageRow.author_role,
   };
 }
+
+export function mimeTypeToFileExtension(mimeType: string): string {
+  switch (mimeType) {
+    case "image/jpeg":
+      return "jpeg";
+    default:
+      throw new Error(`Unsupported mime type: ${mimeType}`);
+  }
+}

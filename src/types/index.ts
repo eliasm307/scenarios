@@ -1,6 +1,7 @@
 import type { useDisclosure } from "@chakra-ui/react";
 import type { Message } from "ai";
-import type { Database } from "./supabase";
+import type { REALTIME_LISTEN_TYPES } from "@supabase/supabase-js";
+import type { Database } from "./supabase.ts";
 
 export type ChakraDisclosure = ReturnType<typeof useDisclosure>;
 
@@ -23,15 +24,13 @@ export type BroadcastEventFrom<TAction extends { event: string }> = TAction & {
 type ExtendRowData<
   OriginalRowData extends Record<string, unknown>,
   NewRowData extends {
-    [key in keyof OriginalRowData]: OriginalRowData[key];
+    [key in keyof OriginalRowData]?: OriginalRowData[key];
   },
 > = Omit<OriginalRowData, keyof NewRowData> & NewRowData;
 
 export type SessionRow = ExtendRowData<
   Database["public"]["Tables"]["sessions"]["Row"],
   {
-    created_at: string;
-    id: number;
     /**
      * @key UserId
      * @key Index (0-based) of the user's vote (where -1 means voting to skip)

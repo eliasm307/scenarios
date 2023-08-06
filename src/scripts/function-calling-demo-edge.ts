@@ -1,10 +1,12 @@
+/* eslint-disable functional-core/purity */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable no-console */
 import type { JSONSchema7 } from "json-schema";
 
+import type { CreateMessage, Message } from "ai";
 import { OpenAIStream } from "ai";
-import type { ChatCompletionRequestMessage, CreateChatCompletionRequest } from "openai-edge";
+import type { CreateChatCompletionRequest, ChatCompletionRequestMessage } from "openai-edge";
 import { Configuration, OpenAIApi } from "openai-edge";
 
 require("dotenv").config({
@@ -48,24 +50,16 @@ async function main() {
 
   const openAI = new OpenAIApi(config);
 
-  const messages: ChatCompletionRequestMessage[] = [
-    {
-      role: "user",
-      content: `You're an experienced weaver of tales gifted in creating captivating plots. Save three remarkable stories where the characters wrestle with complex dilemmas. Each scenario should be distinctive in tone and ambiguous in its resolution.
-      `,
-    },
-  ];
-
   const functions = [
     {
       name: "send_scenarios" as const,
-      description: "Save scenarios",
+      description: "Save multiple scenarios at the same time",
       parameters: {
         type: "object",
         properties: {
           scenarios: {
             type: "array",
-            description: "An array of scenarios to save",
+            description: "An array of scenarios to save simultaneously",
             items: {
               type: "object",
               properties: {
@@ -85,27 +79,102 @@ async function main() {
         required: ["scenarios"],
       } satisfies JSONSchema7,
     },
+    {
+      name: "generate_image" as const,
+      description: "Generates an image from a given prompt and returns the image URL",
+      parameters: {
+        type: "object",
+        properties: {
+          prompt: {
+            type: "string",
+            description: "The prompt to generate an image from",
+          },
+        },
+        required: ["prompt"],
+      } satisfies JSONSchema7,
+    },
   ] satisfies CreateChatCompletionRequest["functions"];
 
   type FunctionName = (typeof functions)[number]["name"];
 
-  console.log("messages", messages);
-  console.log("functions", functions);
+  function getDummyFunctionCallResponse(functionName: FunctionName) {
+    switch (functionName) {
+      case "send_scenarios":
+        return {
+          result: "success",
+        };
+      case "generate_image":
+        return {
+          imageUrl: "https://example.com/image.png",
+        };
+      default:
+        throw new Error(`Unknown function name "${functionName}"`);
+    }
+  }
+
+  const originalMessages: Message[] = [
+    {
+      role: "user",
+      id: "1",
+      content: `You're an experienced weaver of tales gifted in creating captivating plots. Save two remarkable stories as a short sentence where the characters wrestle with complex dilemmas. Each scenario should be distinctive in tone and ambiguous in its resolution. Then create an image for each scenario and explain why you chose it in a single short sentence.
+      `,
+    },
+  ];
+
+  console.log("messages", JSON.stringify(originalMessages, null, 2));
+  console.log("functions", JSON.stringify(functions, null, 2));
+
+  function chatMessageToChatCompletionMessage(
+    message: Message | CreateMessage,
+  ): ChatCompletionRequestMessage {
+    const outputMessage: ChatCompletionRequestMessage = {
+      role: message.role,
+      content: message.content,
+      name: message.name,
+    };
+    if (message.role === "assistant" && message.function_call) {
+      if (typeof message.function_call === "string") {
+        outputMessage.function_call = {
+          name: message.function_call,
+        };
+      } else {
+        outputMessage.function_call = message.function_call;
+      }
+    }
+    return outputMessage;
+  }
+
+  function createChatCompletion(messages: (Message | CreateMessage)[]) {
+    return openAI.createChatCompletion({
+      model: "gpt-3.5-turbo", // "gpt-4",
+      messages: messages.map(chatMessageToChatCompletionMessage),
+      functions,
+      // function_call: "auto",
+      stream: true,
+    });
+  }
 
   // see https://sdk.vercel.ai/docs/guides/providers/openai-functions
-  const response = await openAI.createChatCompletion({
-    model: "gpt-4",
-    messages,
-    functions,
-    function_call: {
-      name: "send_scenarios" as FunctionName,
-    },
-    stream: true,
-  });
+  const response = await createChatCompletion(originalMessages);
 
+  let functionCallMessages: CreateMessage[] = [];
   const stream = OpenAIStream(response, {
+    /**
+     * The AI will call functions to get more context before responding, and the context it gets from functions will be included in the streamed messages
+     * We dont need to keep the function calls it makes as they are just to give it more context,
+     *
+     * there will only be one final streamed message
+     */
     async experimental_onFunctionCall(functionCallPayload, createFunctionCallMessages) {
-      console.log("functionCallPayload", JSON.stringify(functionCallPayload, null, 2));
+      console.log("\nfunctionCallPayload", JSON.stringify(functionCallPayload, null, 2));
+
+      const functionName = functionCallPayload.name as FunctionName;
+      const functionCallResponse = getDummyFunctionCallResponse(functionName);
+      functionCallMessages = createFunctionCallMessages(functionCallResponse as any);
+      const newResponse = createChatCompletion([...originalMessages, ...functionCallMessages]);
+
+      // console.log("\nnew response loading");
+      return newResponse;
     },
   });
 
@@ -155,7 +224,12 @@ async function main() {
   //   }
   // }
 
-  console.log("Final content", content, "messages", messages);
+  console.log(
+    "Final content",
+    content,
+    "\functionCallMessages:",
+    JSON.stringify(functionCallMessages, null, 2),
+  );
 }
 
 void main()

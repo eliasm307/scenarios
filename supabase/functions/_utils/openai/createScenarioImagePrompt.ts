@@ -2,8 +2,13 @@
 import { createGeneralChatResponse } from "./general.ts";
 import type { ChatMessage } from "./types.ts";
 
-export async function createScenarioImagePrompt(scenario: string): Promise<string> {
-  console.log("createScenarioImagePrompt, creating chat completion for scenario:", scenario);
+export async function createScenarioImagePrompt(
+  scenario: string,
+): Promise<string> {
+  console.log(
+    "createScenarioImagePrompt, creating chat completion for scenario:",
+    scenario,
+  );
 
   const messages: ChatMessage[] = [
     {
@@ -27,7 +32,8 @@ export async function createScenarioImagePrompt(scenario: string): Promise<strin
     },
     {
       role: "system",
-      content: `Please generate a relevant image prompt that represents this scenario and only reply with the prompt to feed into the text-to-image AI: ${scenario}`,
+      content:
+        `Please generate a relevant image prompt that represents this scenario and only reply with the prompt to feed into the text-to-image AI: ${scenario}`,
     },
   ];
 

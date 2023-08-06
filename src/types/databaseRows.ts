@@ -1,4 +1,4 @@
-import type { Database } from "./supabase.d.ts";
+import type { Database } from "./supabase.ts";
 
 type ExtendRowData<
   OriginalRowData extends Record<string, unknown>,

@@ -11,7 +11,11 @@ import type {
 } from "https://esm.sh/openai-edge@1.2.0";
 import { Configuration, OpenAIApi } from "https://esm.sh/openai-edge@1.2.0";
 import { OpenAIStream } from "https://esm.sh/ai@2.1.28";
-import type { ChatMessage } from "./types.ts";
+import type {
+  ChatCompletionFunction,
+  ChatMessage,
+  FunctionCallMessage,
+} from "./types.ts";
 
 export { OpenAIStream };
 
@@ -49,20 +53,97 @@ const DEFAULT_CHAT_COMPLETION_REQUEST_CONFIG = {
 
 const STREAM_TIMEOUT_MS = 10_000;
 
+function createRawChatCompletionStream({
+  messages,
+  functions,
+}: {
+  messages: ChatMessage[];
+  functions?: ChatCompletionFunction[];
+}) {
+  return openai.createChatCompletion({
+    ...DEFAULT_CHAT_COMPLETION_REQUEST_CONFIG,
+    stream: true,
+    messages,
+    functions: functions?.map(({ definition }) => definition),
+  });
+}
+
+function functionCallMessageToChatMessage(
+  message: FunctionCallMessage,
+): ChatMessage {
+  const outputMessage: ChatMessage = {
+    role: message.role,
+    content: message.content,
+    name: message.name,
+  };
+  if (message.role === "assistant" && message.function_call) {
+    if (typeof message.function_call === "string") {
+      outputMessage.function_call = {
+        name: message.function_call,
+      };
+    } else {
+      outputMessage.function_call = message.function_call;
+    }
+  }
+  return outputMessage;
+}
+
 /**
  * @remark Yields the latest full message on each iteration.
  */
 export async function createGeneralChatResponseStream(
   messages: ChatMessage[],
+  options?: {
+    availableFunctions?: ChatCompletionFunction[];
+  },
 ): Promise<AsyncIterable<string>> {
   console.log("createGeneralChatResponseStream, creating chat completion...");
-  const response = await openai.createChatCompletion({
-    ...DEFAULT_CHAT_COMPLETION_REQUEST_CONFIG,
-    stream: true,
+  const response = await createRawChatCompletionStream({
     messages,
+    functions: options?.availableFunctions,
   });
 
-  const stream = OpenAIStream(response);
+  /**
+   * The function call messages should be replaced on each function call, not concatenated, the ai util handles this for us
+   */
+  let functionCallMessages: ChatMessage[] | undefined;
+  const stream = OpenAIStream(response, {
+    /**
+     * The AI will call functions to get more context before responding, and the context it gets from functions will be included in the streamed messages
+     * We dont need to keep the function calls it makes as they are just to give it more context,
+     *
+     * there will only be one final streamed message
+     */
+    async experimental_onFunctionCall(
+      functionCall,
+      createFunctionCallMessages,
+    ) {
+      console.log(
+        "\nfunctionCallPayload",
+        JSON.stringify(functionCall, null, 2),
+      );
+
+      const functionHandler = options?.availableFunctions?.find(
+        ({ definition }) => definition.name === functionCall.name,
+      )?.handler;
+
+      if (!functionHandler) {
+        throw Error(
+          `createGeneralChatResponseStream, no handler found for function "${functionCall.name}"`,
+        );
+      }
+
+      const functionCallResult = await functionHandler(functionCall.arguments);
+      functionCallMessages = createFunctionCallMessages(functionCallResult).map(
+        functionCallMessageToChatMessage,
+      );
+
+      return createRawChatCompletionStream({
+        messages: [...messages, ...functionCallMessages],
+        functions: options?.availableFunctions,
+      });
+    },
+  });
   const streamReader = stream.getReader();
   const decoder = new TextDecoder();
 
@@ -78,7 +159,9 @@ export async function createGeneralChatResponseStream(
     streamReader.releaseLock();
     stream.cancel();
 
-    throw Error(`createGeneralChatResponseStream, timeout after ${STREAM_TIMEOUT_MS}ms`);
+    throw Error(
+      `createGeneralChatResponseStream, timeout after ${STREAM_TIMEOUT_MS}ms`,
+    );
   }
 
   let content = "";
@@ -108,6 +191,12 @@ export async function createGeneralChatResponseStream(
         return(): Promise<IteratorResult<string, string>> {
           console.log("createGeneralChatResponseStream, return");
           streamReader.releaseLock();
+          if (functionCallMessages?.length) {
+            console.log(
+              "createGeneralChatResponseStream, functionCallMessages:",
+              JSON.stringify(functionCallMessages, null, 2),
+            );
+          }
           return Promise.resolve({ value: content, done: true });
         },
       };
@@ -115,7 +204,9 @@ export async function createGeneralChatResponseStream(
   };
 }
 
-export async function createGeneralChatResponse(messages: ChatMessage[]): Promise<string> {
+export async function createGeneralChatResponse(
+  messages: ChatMessage[],
+): Promise<string> {
   const response = await openai
     .createChatCompletion({
       ...DEFAULT_CHAT_COMPLETION_REQUEST_CONFIG,
@@ -129,7 +220,12 @@ export async function createGeneralChatResponse(messages: ChatMessage[]): Promis
   console.log("generateScenarios, response", JSON.stringify(response, null, 2));
 
   if (!response.ok) {
-    console.error("generateScenarios error", response.status, response.statusText, response);
+    console.error(
+      "generateScenarios error",
+      response.status,
+      response.statusText,
+      response,
+    );
     console.error("error response text:", await response.text());
     throw Error("OpenAI request failed");
   }

@@ -12,11 +12,11 @@ import {
   Text,
 } from "@chakra-ui/react";
 import { useEffect, useRef } from "react";
-import Image from "next/image";
 import { useElement } from "../../../utils/client/hooks";
 import ChatMessage from "../../ChatMessage";
 import type { ScenarioChatViewProps } from "./ScenarioChat.container";
 import type { MessageRow } from "../../../types";
+import ChatImage from "../../ChatImage";
 
 export default function ChatPanel({
   selectedScenarioImageUrl,
@@ -51,7 +51,7 @@ export default function ChatPanel({
     >
       <Box position='relative' width='100%' minHeight='20rem'>
         {selectedScenarioImageUrl ? (
-          <Image src={selectedScenarioImageUrl} alt='Scenario image' fill objectFit='contain' />
+          <ChatImage src={selectedScenarioImageUrl} alt='Scenario image' />
         ) : (
           <VStack width='100%' marginTop={10} placeContent='center'>
             <Spinner />

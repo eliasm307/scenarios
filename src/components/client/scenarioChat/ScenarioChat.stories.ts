@@ -93,7 +93,13 @@ const meta = {
         author_role: "assistant",
         author_id: null,
         author_ai_model_id: "gpt-3",
-        content: "Ai response",
+        content: [
+          `Sure thing, ThatGuy Hotmail! Here's an image that represents the intimidating basketball coach we were just talking about. Take a look and let your imagination run wild!`,
+
+          `![Intimidating Basketball Coach](https://dmjwwnpltjvsevmfujec.supabase.co/storage/v1/object/public/images/session_chat_images/8352f8a3-4448-4ca3-abb6-601475f0ff37.jpeg "some title")`,
+
+          `Just remember, looks can be deceiving, and sometimes the toughest and most challenging experiences can lead to unexpected growth and success. It's all about finding the right balance between ambition and personal well-being.`,
+        ].join("\n"),
         inserted_at: "2021-08-03T18:00:00.000Z",
         updated_at: "2021-08-03T18:00:00.000Z",
         session_id: 1,

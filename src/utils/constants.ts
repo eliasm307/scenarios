@@ -24,8 +24,13 @@ export const DUMMY_MESSAGES: Message[] = [
   {
     id: "4",
     role: "assistant",
-    content:
-      "The wealthy collector has a rather eccentric personality and often engages in activities that most people don't understand. In this case, he believes that by purchasing and then destroying the art, he is in a way participating in its life cycle. He sees it as an act of creation in reverse, a way of returning the art back to its raw, unformed essence. This may seem confusing and contradictory to many people, including yourself, the artist. This is a peculiarity which complicates your choice. The satisfaction of having your financial struggles solved versus the heartbreaking fact of knowing your beloved artwork will be destroyed after the purchase.",
+    content: [
+      "The wealthy collector has a rather eccentric personality and often engages in activities that most people don't understand.",
+      "In this case, he believes that by purchasing and then destroying the art, he is in a way participating in its life cycle.",
+      "He sees it as an act of creation in reverse, a way of returning the art back to its raw, unformed essence.",
+      "This may seem confusing and contradictory to many people, including yourself, the artist.",
+      "This is a peculiarity which complicates your choice. The satisfaction of having your financial struggles solved versus the heartbreaking fact of knowing your beloved artwork will be destroyed after the purchase.",
+    ].join("\n"),
   },
   { id: "5", role: "user", content: "who is he?" },
   {

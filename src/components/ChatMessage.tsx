@@ -2,6 +2,7 @@ import { HStack, Avatar, Flex, Text, VStack } from "@chakra-ui/react";
 import type { MessageRow } from "../types";
 import ReadOutLoudButton from "./ReadOutLoudButton";
 import { AppLogoIcon } from "./Icons";
+import MarkdownRenderer from "./MarkdownRenderer";
 
 type Props = {
   authorName: string;
@@ -73,12 +74,12 @@ function ChatMessage({ authorName, messageRow }: Props) {
       alignItems={isUser ? "flex-end" : "flex-start"}
       textAlign={isUser ? "right" : "left"}
     >
-      <Flex flexDirection='column' width='inherit' gap={2} position='relative'>
+      <Flex flexDirection='column' width='inherit' gap={3} position='relative'>
         {messageRow.content
           .split("\n")
           .filter((sentence) => sentence.trim())
           .map((sentence) => (
-            <Text key={sentence}>{sentence}.</Text>
+            <MarkdownRenderer key={sentence} markdownContent={sentence} />
           ))}
       </Flex>
     </VStack>

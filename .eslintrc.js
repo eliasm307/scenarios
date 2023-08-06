@@ -17,6 +17,8 @@ module.exports = {
     "import/no-unresolved": "off",
     "@typescript-eslint/no-throw-literal": "off",
     "no-continue": "off",
+    "no-console": "warn", // todo remove logs when app is stable
+    "react/jsx-wrap-multilines": "off",
   },
   settings: {
     "functional-core": {

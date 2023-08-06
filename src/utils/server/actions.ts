@@ -170,6 +170,8 @@ export async function invokeGenerateNewScenarioOptions(
   console.log("generateNewScenarioOptions invoked");
   const supabase = getSupabaseServer(cookies);
 
+  // if all vote for new scenarios was unanimous then not taking this as every user saying they didnt like the given scenarios
+  // as there could be other reasons for this, e.g. they are good scenarios but too similar to something done recently etc
   const errorConfig = await saveSessionScenarioOptionRatings(sessionId);
   if (errorConfig) {
     return errorConfig;

@@ -64,7 +64,7 @@ export default function ScenarioSelector(props: ScenarioSelectorViewProps): Reac
     GENERATE_NEW_SCENARIOS_OPTION_ID,
   );
   return (
-    <VStack className='scenario-selector' as='section' pt={3} height='100%' width='100%'>
+    <VStack className='scenario-selector' as='section' pt={3} gap={0} height='100%' width='100%'>
       <VStack pb={1} px={5}>
         <Heading textAlign='center'>Vote for a Scenario to Play!</Heading>
         <HStack wrap='wrap'>
@@ -80,7 +80,7 @@ export default function ScenarioSelector(props: ScenarioSelectorViewProps): Reac
         )}
       </VStack>
       <Divider />
-      <VStack width='100%' maxWidth='100rem' overflow='auto' px={5} pb={10} flex={1} gap={4}>
+      <VStack width='100%' maxWidth='100rem' overflow='auto' px={5} pb={10} pt={1} flex={1} gap={4}>
         <ChoiceGrid
           choices={[
             ...scenarioOptions.map((text, optionId): ChoiceConfig => {

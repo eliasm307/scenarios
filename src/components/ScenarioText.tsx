@@ -10,7 +10,7 @@ export default function ScenarioText({ scenarioText }: { scenarioText: string })
         .filter((sentence) => sentence.trim())
         .map((sentence) => {
           return (
-            <Heading key={sentence} as='p' fontSize='xl'>
+            <Heading key={sentence} as='p' fontSize='xl' fontWeight={400}>
               {sentence}
             </Heading>
           );

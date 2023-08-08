@@ -119,8 +119,14 @@ export default function AuthForm() {
           appearance={{
             theme: ThemeSupa,
             style: {
-              label: { background: "white", color: "black", fontSize: "large" },
-              input: { background: "gray", color: "white", fontSize: "large" },
+              label: {
+                // background: "white", color: "black",
+                fontSize: "large",
+              },
+              input: {
+                // background: "gray", color: "white",
+                fontSize: "large",
+              },
             },
           }}
           theme='dark'

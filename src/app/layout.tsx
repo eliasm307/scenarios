@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { CommonProviders, UserProvider } from "./providers";
 import { getSupabaseServer } from "../utils/server/supabase";
+import PageLoading from "../components/client/PageLoading";
 
 export const metadata: Metadata = {
   title: "Scenarios",
@@ -57,7 +58,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     return (
       <CommonWrapper>
         <UserProvider user={user} initialProfile={profile}>
-          {children}
+          <PageLoading>{children}</PageLoading>
         </UserProvider>
       </CommonWrapper>
     );
@@ -65,7 +66,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 
   // this is only for /auth page
   console.warn("no user found");
-  return <CommonWrapper>{children}</CommonWrapper>;
+  return (
+    <CommonWrapper>
+      <PageLoading>{children}</PageLoading>
+    </CommonWrapper>
+  );
 }
 
 function CommonWrapper({ children }: { children: React.ReactNode }) {

@@ -6,14 +6,20 @@ import { Auth } from "@supabase/auth-ui-react";
 import type { ViewType } from "@supabase/auth-ui-shared";
 import { ThemeSupa } from "@supabase/auth-ui-shared";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
-import { Button, Center, Flex, Grid, Heading, Spinner, VStack } from "@chakra-ui/react";
+import { Button, Center, Divider, Flex, HStack, Heading, Spinner, VStack } from "@chakra-ui/react";
 import { useEffect, useMemo, useState } from "react";
 import { css } from "@emotion/react";
 import { useRouter } from "next/navigation";
 import type { Database } from "../../types/supabase";
+import EmailPasswordForm from "./EmailPasswordForm";
+import {
+  invokeMagicLinkAuthAction,
+  invokeSignInWithEmailAndPasswordAction,
+  invokeSignUpWithEmailAndPasswordAction,
+} from "../../utils/server/authActions";
 
 // see https://supabase.com/docs/guides/auth#redirect-urls-and-wildcards
-const getURL = () => {
+const getBaseURL = () => {
   let url =
     process?.env?.NEXT_PUBLIC_SITE_URL ?? // Set this to your site URL in production env.
     process?.env?.NEXT_PUBLIC_VERCEL_URL ?? // Automatically set by Vercel.
@@ -26,33 +32,51 @@ const getURL = () => {
   return url;
 };
 
-const viewTypes: ViewType[] = ["sign_in", "sign_up", "magic_link"];
+const viewTypes: ViewType[] = [
+  "sign_in",
+  "sign_up",
+  // this has issues, leaving it out for now
+  // "magic_link"
+];
 
 function getViewTypeDescription(viewType: ViewType) {
   switch (viewType) {
     case "sign_in":
-      return "Sign In Using Email and Password";
+      return "Sign In";
 
     case "sign_up":
-      return "Sign Up Using Email and Password";
-
-    case "forgotten_password":
-      return "Forgotten Password";
+      return "Sign Up";
 
     case "magic_link":
-      return "Sign In/Up Using Magic Link";
+      return "Create Magic Link";
 
-    case "update_password":
-      return "Update Password";
+    // case "forgotten_password":
+    // return "Forgotten Password";
+
+    // case "update_password":
+    //   return "Update Password";
 
     default:
       throw new Error(`Unknown view type: ${viewType}`);
   }
 }
 
+function getMagicLinkRedirectUrl() {
+  const redirectUrl = new URL("/auth/callback", getBaseURL());
+  // ! adding query params currently breaks the redirect so cant redirect users to their target page automatically
+  // const currentUrl = new URL(window.location.href);
+  // const nextPath = currentUrl.searchParams.get("next");
+  // if (nextPath) {
+  //   redirectUrl.searchParams.set("nextUrl", new URL(nextPath, getBaseURL()).href);
+  // }
+  const url = redirectUrl.href;
+  console.log("getMagicLinkRedirectUrl", url);
+  return url;
+}
+
 export default function AuthForm() {
   // eslint-disable-next-line no-console
-  console.log("AuthForm");
+  console.log("AuthForm render");
   const [currentViewType, setCurrentViewType] = useState<ViewType>("sign_in");
   const router = useRouter();
   const [isSignedIn, setIsSignedIn] = useState(false);
@@ -81,8 +105,6 @@ export default function AuthForm() {
     // router.refresh(); // using this means redirect doesnt update the url in browser for some reason
   }, [isSignedIn, router]);
 
-  const magicLinkRedirectUrl = useMemo(() => new URL("/auth/callback", getURL()).href, []);
-
   if (isSignedIn) {
     return (
       <Center height='100dvh' width='100%'>
@@ -92,66 +114,91 @@ export default function AuthForm() {
   }
 
   return (
-    <Grid
-      as='main'
-      height='100dvh'
-      width='100%'
-      overflow='hidden'
-      templateRows='1fr'
-      position='fixed'
-      inset={0}
-    >
-      <Flex
-        direction='column'
-        placeItems='center'
-        m='auto'
-        width='70%'
-        css={css`
-          & > :is(div, form) {
-            width: inherit;
-          }
-        `}
-        gap={3}
-      >
-        <Heading>{getViewTypeDescription(currentViewType)}</Heading>
-        <Auth
-          supabaseClient={supabase}
-          appearance={{
-            theme: ThemeSupa,
-            style: {
-              label: {
-                // background: "white", color: "black",
-                fontSize: "large",
-              },
-              input: {
-                // background: "gray", color: "white",
-                fontSize: "large",
-              },
-            },
-          }}
-          theme='dark'
-          view={currentViewType}
-          showLinks={false}
-          // see https://supabase.com/docs/guides/auth#providers
-          providers={[]}
-          redirectTo={magicLinkRedirectUrl}
+    <VStack as='main' width='100%' overflow='hidden' maxW='lg' m='auto'>
+      {currentViewType === "sign_in" && (
+        <EmailPasswordForm
+          submitButtonText='Sign In'
+          handleSubmit={invokeSignInWithEmailAndPasswordAction}
+          handleSignedIn={() => setIsSignedIn(true)}
         />
-        <Heading>Or</Heading>
-        <VStack width='inherit'>
-          {viewTypes
-            .filter((viewType) => viewType !== currentViewType)
-            .map((viewType) => (
-              <Button
-                key={viewType}
-                variant='outline'
-                width='100%'
-                onClick={() => setCurrentViewType(viewType)}
-              >
-                {getViewTypeDescription(viewType)}
-              </Button>
-            ))}
-        </VStack>
-      </Flex>
-    </Grid>
+      )}
+      {currentViewType === "sign_up" && (
+        <EmailPasswordForm
+          submitButtonText='Sign Up'
+          handleSubmit={invokeSignUpWithEmailAndPasswordAction}
+          handleSignedIn={() => setIsSignedIn(true)}
+        />
+      )}
+      {currentViewType === "magic_link" && (
+        <EmailPasswordForm
+          submitButtonText='Send Magic Link'
+          hidePasswordField
+          handleSubmit={(formData) =>
+            invokeMagicLinkAuthAction({ formData, redirectUrl: getMagicLinkRedirectUrl() })
+          }
+        />
+      )}
+
+      {false && (
+        <Flex
+          direction='column'
+          placeItems='center'
+          m='auto'
+          width='70%'
+          css={css`
+            & > :is(div, form) {
+              width: inherit;
+            }
+          `}
+          gap={3}
+        >
+          <Heading>{getViewTypeDescription(currentViewType)}</Heading>
+          <Auth
+            supabaseClient={supabase}
+            appearance={{
+              theme: ThemeSupa,
+              style: {
+                label: {
+                  // background: "white", color: "black",
+                  fontSize: "large",
+                },
+                input: {
+                  // background: "gray", color: "white",
+                  fontSize: "large",
+                },
+              },
+            }}
+            theme='dark'
+            view={currentViewType}
+            showLinks={false}
+            // see https://supabase.com/docs/guides/auth#providers
+            providers={[]}
+            redirectTo={getMagicLinkRedirectUrl()}
+          />
+        </Flex>
+      )}
+      <HStack width='100%' py={5}>
+        <Divider flex={1} />
+        <Heading as='h2' pb={1}>
+          Or
+        </Heading>
+        <Divider flex={1} />
+      </HStack>
+      <VStack width='inherit'>
+        {viewTypes
+          .filter((viewType) => viewType !== currentViewType)
+          .map((viewType) => (
+            <Button
+              key={viewType}
+              variant='outline'
+              width='100%'
+              onClick={() => setCurrentViewType(viewType)}
+            >
+              {getViewTypeDescription(viewType)}
+            </Button>
+          ))}
+        H
+      </VStack>
+    </VStack>
   );
 }

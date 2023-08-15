@@ -15,7 +15,7 @@ import {
   useDisclosure,
   Button,
 } from "./ChakraUI";
-import { AppLogoIcon, HamburgerIcon, SettingsIcon } from "../Icons";
+import { AppLogoIcon, DarkModeIcon, HamburgerIcon, LightModeIcon, SettingsIcon } from "../Icons";
 import UserProfileModal from "./UserProfileModal";
 import type { UserContext } from "../../app/providers";
 import { useUserContext } from "../../app/providers";
@@ -24,7 +24,7 @@ import { useIsLargeScreen } from "../../utils/client/hooks";
 
 type NavBarItemsProps = {
   onEditProfile?: () => void;
-  userContext: UserContext;
+  userContext: UserContext | null;
 };
 
 function SignOutMenuItem() {
@@ -36,6 +36,9 @@ function SignOutMenuItem() {
 }
 
 function UpdateProfileButton({ onEditProfile, userContext }: NavBarItemsProps) {
+  if (!userContext) {
+    return null;
+  }
   return (
     <Tooltip label='Click to Edit User Settings' aria-label='Click to Edit User Settings'>
       <Button leftIcon={<SettingsIcon />} onClick={onEditProfile} variant='outline'>
@@ -45,21 +48,36 @@ function UpdateProfileButton({ onEditProfile, userContext }: NavBarItemsProps) {
   );
 }
 
-function DesktopNavBarItems(config: NavBarItemsProps) {
+function ToggleColorModeButton() {
   const { colorMode, toggleColorMode } = useColorMode();
+  const isLightMode = colorMode === "light";
+  const label = isLightMode ? "Switch to Dark Mode" : "Switch to Light Mode";
+  return (
+    <Tooltip label={label}>
+      <IconButton
+        aria-label={label}
+        icon={isLightMode ? <DarkModeIcon /> : <LightModeIcon />}
+        onClick={toggleColorMode}
+      />
+    </Tooltip>
+  );
+}
 
+function DesktopNavBarItems(config: NavBarItemsProps) {
   return (
     <Menu>
       {({ isOpen }) => (
         <>
           <UpdateProfileButton {...config} />
-          <MenuButton as={IconButton} isActive={isOpen} icon={<HamburgerIcon />} />
-          <MenuList gap={2} px={2}>
-            <MenuItem onClick={toggleColorMode}>
-              {colorMode === "light" ? "Dark" : "Light"} Mode
-            </MenuItem>
-            <SignOutMenuItem />
-          </MenuList>
+          <ToggleColorModeButton />
+          {config.userContext && (
+            <>
+              <MenuButton as={IconButton} isActive={isOpen} icon={<HamburgerIcon />} />
+              <MenuList gap={2} px={2}>
+                <SignOutMenuItem />
+              </MenuList>
+            </>
+          )}
         </>
       )}
     </Menu>
@@ -68,6 +86,7 @@ function DesktopNavBarItems(config: NavBarItemsProps) {
 
 function MobileNavBarItems(config: NavBarItemsProps) {
   const { colorMode, toggleColorMode } = useColorMode();
+  const isLightMode = colorMode === "light";
 
   return (
     <Menu>
@@ -77,9 +96,9 @@ function MobileNavBarItems(config: NavBarItemsProps) {
           <MenuButton as={IconButton} isActive={isOpen} icon={<HamburgerIcon />} />
           <MenuList gap={2} px={2}>
             <MenuItem onClick={toggleColorMode}>
-              {colorMode === "light" ? "Dark" : "Light"} Mode
+              {isLightMode ? "Switch to Dark Mode" : "Switch to Light Mode"}
             </MenuItem>
-            <SignOutMenuItem />
+            {config.userContext && <SignOutMenuItem />}
           </MenuList>
         </>
       )}
@@ -89,7 +108,7 @@ function MobileNavBarItems(config: NavBarItemsProps) {
 
 export default function NavBar(flexProps: FlexProps) {
   const userProfileModalDisclosure = useDisclosure();
-  const user = useUserContext();
+  const user = useUserContext({ allowUnauthenticated: true });
   const isLargeScreen = useIsLargeScreen();
 
   return (

@@ -67,9 +67,11 @@ export function UserProvider({
   return <userContext.Provider value={value}>{children}</userContext.Provider>;
 }
 
-export function useUserContext() {
+export function useUserContext(config?: { allowUnauthenticated: false }): UserContext;
+export function useUserContext(config: { allowUnauthenticated: true }): UserContext | null;
+export function useUserContext(config?: { allowUnauthenticated: boolean }): UserContext | null {
   const context = useContext(userContext);
-  if (!context) {
+  if (!context && !config?.allowUnauthenticated) {
     throw new Error("useUserContext must be used within a UserProvider");
   }
   return context;

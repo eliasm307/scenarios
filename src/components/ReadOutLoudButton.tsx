@@ -9,7 +9,8 @@ function StartReadOutLoudButton({ onClick }: { onClick: () => void }) {
     <Tooltip label='Read out loud' aria-label='Read out loud'>
       <IconButton
         key='play'
-        variant='ghost'
+        colorScheme='blue'
+        variant='outline'
         icon={<SoundIcon />}
         aria-label='Read out loud'
         onClick={onClick}

@@ -1,7 +1,7 @@
 "use client";
 
 import { CacheProvider } from "@chakra-ui/next-js";
-import { ChakraProvider } from "@chakra-ui/react";
+import { ChakraProvider, ColorModeScript } from "@chakra-ui/react";
 import type { User } from "@supabase/auth-helpers-nextjs";
 import { createContext, useContext, useMemo, useState } from "react";
 import APIClient from "../utils/client/APIClient";
@@ -12,6 +12,7 @@ export function CommonProviders({ children }: { children: React.ReactNode }) {
   return (
     <CacheProvider>
       <ChakraProvider toastOptions={{ defaultOptions: { duration: 5000, isClosable: true } }}>
+        <ColorModeScript />
         {children}
       </ChakraProvider>
     </CacheProvider>

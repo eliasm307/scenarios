@@ -1,7 +1,8 @@
-import { Box, Spinner, Text, VStack } from "@chakra-ui/react";
+import { Box } from "@chakra-ui/react";
 import { css } from "@emotion/react";
 import NextImage from "next/image";
 import { useState, type ComponentProps } from "react";
+import Loading from "../Loading";
 
 type Props = ComponentProps<typeof NextImage>;
 
@@ -31,19 +32,14 @@ export default function ChatImage({ src, ...props }: Props) {
           onLoadingComplete={() => setIsLoaded(true)}
         />
         {!isLoaded && (
-          <VStack
+          <Loading
+            key='loading'
             position='absolute'
             inset={0}
             left={0}
             backgroundColor='rgba(0,0,0,0.1)'
-            // color='white'
-            display='flex'
-            alignItems='center'
-            justifyContent='center'
-          >
-            <Spinner />
-            <Text>Loading image...</Text>
-          </VStack>
+            text='Loading image...'
+          />
         )}
       </Box>
     </Box>

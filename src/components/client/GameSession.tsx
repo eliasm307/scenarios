@@ -7,7 +7,7 @@
 
 import React, { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import type { UseToastOptions } from "@chakra-ui/react";
-import { Center, Spinner, Text } from "@chakra-ui/react";
+import { Center, Text } from "@chakra-ui/react";
 import type { RealtimeChannel, RealtimeChannelSendResponse } from "@supabase/supabase-js";
 import { REALTIME_LISTEN_TYPES } from "@supabase/supabase-js";
 import ScenarioSelectorContainer from "./scenarioSelector/ScenarioSelector.container";
@@ -23,6 +23,7 @@ import OutcomesRevealContainer from "./OutcomesReveal.container";
 import { useCustomToast } from "../../utils/client/hooks";
 import ScenarioChatContainer from "./scenarioChat/ScenarioChat.container";
 import { pause } from "../../utils/general";
+import Loading from "./Loading";
 
 type State = {
   users: SessionUser[];
@@ -548,11 +549,7 @@ export default function GameSession(props: Props): React.ReactElement {
 
   if (!currentUserHasJoinedSession) {
     console.log("waiting for user to join session...");
-    return (
-      <Center key='waiting-for-user-to-join' as='section' height='100%'>
-        <Spinner />
-      </Center>
-    );
+    return <Loading key='waiting-for-user-to-join' />;
   }
 
   if (users.length < 2) {

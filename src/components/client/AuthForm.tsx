@@ -6,7 +6,7 @@ import { Auth } from "@supabase/auth-ui-react";
 import type { ViewType } from "@supabase/auth-ui-shared";
 import { ThemeSupa } from "@supabase/auth-ui-shared";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
-import { Button, Center, Divider, Flex, HStack, Heading, Spinner, VStack } from "@chakra-ui/react";
+import { Button, Divider, Flex, HStack, Heading, VStack } from "@chakra-ui/react";
 import { useEffect, useMemo, useState } from "react";
 import { css } from "@emotion/react";
 import { useRouter } from "next/navigation";
@@ -17,6 +17,7 @@ import {
   invokeSignInWithEmailAndPasswordAction,
   invokeSignUpWithEmailAndPasswordAction,
 } from "../../utils/server/authActions";
+import Loading from "./Loading";
 
 // see https://supabase.com/docs/guides/auth#redirect-urls-and-wildcards
 const getBaseURL = () => {
@@ -80,7 +81,6 @@ export default function AuthForm() {
   const [currentViewType, setCurrentViewType] = useState<ViewType>("sign_in");
   const router = useRouter();
   const [isSignedIn, setIsSignedIn] = useState(false);
-
   const supabase = useMemo(() => createClientComponentClient<Database>(), []);
 
   useEffect(() => {
@@ -102,15 +102,11 @@ export default function AuthForm() {
 
     // middleware will handle redirect
     window.location.reload();
-    // router.refresh(); // using this means redirect doesnt update the url in browser for some reason
+    // router.refresh(); // using this means redirect doesn't update the url in browser for some reason
   }, [isSignedIn, router]);
 
   if (isSignedIn) {
-    return (
-      <Center height='100dvh' width='100%'>
-        <Spinner />
-      </Center>
-    );
+    return <Loading height='100dvh' />;
   }
 
   return (

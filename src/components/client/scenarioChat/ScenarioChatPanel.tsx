@@ -1,22 +1,11 @@
-import {
-  Flex,
-  VStack,
-  Spinner,
-  Divider,
-  HStack,
-  Badge,
-  Textarea,
-  Button,
-  Grid,
-  Box,
-  Text,
-} from "@chakra-ui/react";
+import { Flex, Divider, HStack, Badge, Textarea, Button, Grid, Box } from "@chakra-ui/react";
 import { useEffect, useRef } from "react";
 import { useElement } from "../../../utils/client/hooks";
 import ChatMessage from "./ChatMessage";
 import type { ScenarioChatViewProps } from "./ScenarioChat.container";
 import type { MessageRow } from "../../../types";
 import ChatImage from "./ChatImage";
+import Loading from "../Loading";
 
 export default function ChatPanel({
   selectedScenarioImageUrl,
@@ -51,12 +40,9 @@ export default function ChatPanel({
     >
       <Box position='relative' width='100%' minHeight='20rem'>
         {selectedScenarioImageUrl ? (
-          <ChatImage src={selectedScenarioImageUrl} alt='Scenario image' />
+          <ChatImage key='image' src={selectedScenarioImageUrl} alt='Scenario image' />
         ) : (
-          <VStack width='100%' marginTop={10} placeContent='center'>
-            <Spinner />
-            <Text>Loading cover image...</Text>
-          </VStack>
+          <Loading key='loading' marginTop={10} text='Loading cover image...' />
         )}
       </Box>
       {messageRows.map((messageRow, i) => {
@@ -132,9 +118,9 @@ export default function ChatPanel({
                 type='button'
                 variant='ghost'
                 colorScheme='orange'
-                // leftIcon={<Spinner />}
                 // onClick={chat.stop} // todo can we make this work? what if the client can set the ai_is_typing to false and the server will stop the ai?
                 isLoading
+                isDisabled
               >
                 {/* Stop */}
               </Button>

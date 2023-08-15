@@ -4,10 +4,11 @@
 
 import { useRouter } from "next/navigation";
 import React, { useMemo, useState } from "react";
-import { Center, Spinner, Text, VStack } from "@chakra-ui/react";
+import { VStack } from "@chakra-ui/react";
 import type { ChoiceConfig } from "../ChoiceGrid.client";
 import ChoiceGrid from "../ChoiceGrid.client";
 import { invokeCreateSessionAction } from "../../utils/server/actions";
+import Loading from "./Loading";
 
 export default function HomeOptions(): React.ReactElement {
   const router = useRouter();
@@ -35,12 +36,7 @@ export default function HomeOptions(): React.ReactElement {
 
   if (state === "loading") {
     console.log("home options loading...");
-    return (
-      <Center as='section' height='100%' flexDirection='column' gap={3}>
-        <Spinner />
-        {loadingText && <Text fontSize='2xl'>{loadingText}</Text>}
-      </Center>
-    );
+    return <Loading key='loading' marginTop={10} text={loadingText} />;
   }
 
   return (

@@ -13,7 +13,6 @@ import {
   HStack,
   Heading,
   IconButton,
-  Spinner,
   Text,
   Tooltip,
   VStack,
@@ -37,6 +36,7 @@ import {
   ThumbsUpFilledIcon,
   ThumbsUpOutlineIcon,
 } from "../../Icons";
+import Loading from "../Loading";
 
 export default function ScenarioSelector(props: ScenarioSelectorViewProps): React.ReactElement {
   const {
@@ -51,12 +51,7 @@ export default function ScenarioSelector(props: ScenarioSelectorViewProps): Reac
 
   if (isLoading) {
     console.debug("ScenarioSelector loading render", { isLoading });
-    return (
-      <Center as='section' height='100%' display='flex' flexDirection='column' gap={3}>
-        <Spinner fontSize='2xl' />
-        <Heading>Loading...</Heading>
-      </Center>
-    );
+    return <Loading key='loading' />;
   }
 
   const votedForNewScenariosOption = hasUserSelectedOption(
@@ -98,17 +93,7 @@ export default function ScenarioSelector(props: ScenarioSelectorViewProps): Reac
                         text={text}
                       />
                     ) : (
-                      <Center
-                        key='loading'
-                        as='section'
-                        height='100%'
-                        display='flex'
-                        flexDirection='column'
-                        gap={3}
-                      >
-                        <Spinner />
-                        <Heading fontSize='xl'>Loading scenario...</Heading>
-                      </Center>
+                      <Loading key='loading' text='Loading scenario...' />
                     )}
                   </Box>
                 ),

@@ -2,13 +2,9 @@
 
 "use client";
 
-import { Auth } from "@supabase/auth-ui-react";
-import type { ViewType } from "@supabase/auth-ui-shared";
-import { ThemeSupa } from "@supabase/auth-ui-shared";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
-import { Button, Divider, Flex, HStack, Heading, VStack } from "@chakra-ui/react";
+import { Button, Divider, HStack, Heading, VStack } from "@chakra-ui/react";
 import { useEffect, useMemo, useState } from "react";
-import { css } from "@emotion/react";
 import { useRouter } from "next/navigation";
 import type { Database } from "../../types/supabase";
 import EmailPasswordForm from "./EmailPasswordForm";
@@ -32,6 +28,8 @@ const getBaseURL = () => {
 
   return url;
 };
+
+type ViewType = "sign_in" | "sign_up" | "magic_link";
 
 const viewTypes: ViewType[] = [
   "sign_in",
@@ -133,45 +131,6 @@ export default function AuthForm() {
             invokeMagicLinkAuthAction({ formData, redirectUrl: getMagicLinkRedirectUrl() })
           }
         />
-      )}
-
-      {false && (
-        <Flex
-          direction='column'
-          placeItems='center'
-          m='auto'
-          width='70%'
-          css={css`
-            & > :is(div, form) {
-              width: inherit;
-            }
-          `}
-          gap={3}
-        >
-          <Heading>{getViewTypeDescription(currentViewType)}</Heading>
-          <Auth
-            supabaseClient={supabase}
-            appearance={{
-              theme: ThemeSupa,
-              style: {
-                label: {
-                  // background: "white", color: "black",
-                  fontSize: "large",
-                },
-                input: {
-                  // background: "gray", color: "white",
-                  fontSize: "large",
-                },
-              },
-            }}
-            theme='dark'
-            view={currentViewType}
-            showLinks={false}
-            // see https://supabase.com/docs/guides/auth#providers
-            providers={[]}
-            redirectTo={getMagicLinkRedirectUrl()}
-          />
-        </Flex>
       )}
       <HStack width='100%' py={5}>
         <Divider flex={1} />

@@ -1,8 +1,9 @@
+/* eslint-disable no-console */
+
 "use server";
 
 import { cookies } from "next/headers";
 import type { UseToastOptions } from "@chakra-ui/react";
-import { NextResponse } from "next/server";
 // need to use this client for login to work
 import { createServerActionClient } from "@supabase/auth-helpers-nextjs";
 import { getSupabaseServer } from "./supabase";
@@ -118,8 +119,6 @@ export async function invokeMagicLinkAuthAction({
   console.log("invokeMagicLinkAuthAction invoked");
   const supabase = getSupabaseServer(cookies);
 
-  const response = NextResponse.next();
-
   const email = formData.get("email") as string;
 
   if (!email) {
@@ -129,8 +128,6 @@ export async function invokeMagicLinkAuthAction({
       description: "Email is required",
     };
   }
-
-  console.log("invokeMagicLinkAuthAction", { email, response, url: response.url });
 
   const { error } = await supabase.auth.signInWithOtp({
     email,

@@ -24,7 +24,7 @@ export const openai = new OpenAIApi(config);
 // ];
 
 export const DEFAULT_CHAT_COMPLETION_REQUEST_CONFIG = {
-  model: "gpt-4",
+  model: "gpt-4-1106-vision-preview",
   temperature: 1,
   frequency_penalty: 0.5,
   presence_penalty: 0.5,

@@ -23,7 +23,7 @@ require("dotenv").config({
 
 // const stream = await openAI.chat.completions.create({
 //   messages,
-//   model: "gpt-4",
+//   model: "gpt-4-1106-vision-preview",
 //   stream: true,
 // });
 
@@ -146,7 +146,7 @@ async function main() {
 
   function createChatCompletion(messages: (Message | CreateMessage)[]) {
     return openAI.createChatCompletion({
-      model: "gpt-3.5-turbo", // "gpt-4",
+      model: "gpt-3.5-turbo", // "gpt-4-1106-vision-preview",
       messages: messages.map(chatMessageToChatCompletionMessage),
       functions,
       // function_call: "auto",

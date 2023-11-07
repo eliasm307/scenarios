@@ -16,12 +16,6 @@ require("dotenv").config({
 
 // declare const availableFunctions: Record<string, (args: any) => any>;
 
-// const stream = await openAI.chat.completions.create({
-//   messages,
-//   model: "gpt-4",
-//   stream: true,
-// });
-
 // for await (const part of stream) {
 //   const responseMessage = part.choices[0].delta;
 //   if (responseMessage.function_call) {
@@ -87,8 +81,16 @@ async function main() {
   console.log("messages", messages);
   console.log("functions", functions);
 
+  const completion = await openAI.chat.completions.create({
+    messages: [],
+    model: "gpt-4-1106-vision-preview",
+    stream: false,
+  });
+
+  completion.choices[0].message;
+
   const stream = await openAI.chat.completions.create({
-    model: "gpt-4",
+    model: "gpt-4-1106-vision-preview",
     messages,
     functions,
     function_call: {

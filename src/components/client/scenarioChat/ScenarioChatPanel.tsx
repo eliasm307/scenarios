@@ -101,10 +101,7 @@ export default function ChatPanel({
             variant='outline'
             ref={textArea.ref}
             resize='none'
-            // dont disable as it prevents other users to keep typing while waiting for AI response
-            // isInvalid={chat.hasError}
-            // minHeight='unset'
-            // maxHeight='10rem'
+            // NOTE: dont disable as it prevents other users to keep typing while waiting for AI response
             spellCheck={false}
             // make sure inline grammarly popup is off, its annoying and not really needed here
             data-gramm='false'

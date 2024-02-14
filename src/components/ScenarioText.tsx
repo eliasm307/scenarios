@@ -6,6 +6,7 @@ export default function ScenarioText({ scenarioText }: { scenarioText: string })
   return (
     <Flex direction='column' gap={5}>
       {scenarioText
+        // show spacing between paragraphs
         .split("\n")
         .filter((sentence) => sentence.trim())
         .map((sentence) => {

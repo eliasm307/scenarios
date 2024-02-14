@@ -95,11 +95,9 @@ function DesktopScenarioChat({
   return (
     <Grid
       as='section'
-      // height='100dvh'
       width='100%'
       height='100%'
       overflow='hidden'
-      // templateRows='100%'
       templateColumns='1fr 1fr'
       position='absolute'
       inset={0}

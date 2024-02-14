@@ -33,7 +33,8 @@ function ChatMessage({ authorName, messageRow }: Props) {
       zIndex={1}
       position='sticky'
       // make sure there is no gap between the header and the sticky message
-      // funnily this is something also used in the official MDN example: https://developer.mozilla.org/en-US/docs/Web/CSS/position#sticky_positioning
+      // funnily this is something also used in the official MDN example:
+      // https://developer.mozilla.org/en-US/docs/Web/CSS/position#sticky_positioning
       top='-1px'
       // add faded border
       _after={{

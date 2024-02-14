@@ -14,9 +14,7 @@ async function signOut(req: NextRequest) {
     await supabase.auth.signOut();
   }
 
-  return NextResponse.redirect(new URL("/", req.url), {
-    status: 302,
-  });
+  return NextResponse.redirect(new URL("/", req.url), { status: 302 });
 }
 
 export const GET = signOut;

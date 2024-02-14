@@ -178,15 +178,6 @@ function useChatLogic({
     [isSubmitActionEvent, handleTypingEnd, handleUserMessageSubmit, handleNewTypingEvent],
   );
 
-  // todo remove this if there is no issue using messages directly from DB
-  // const sortedMessageRows = useMemo(() => {
-  //   return [...messageRows].sort((rowA, rowB) => {
-  //     const dateA = new Date(rowA.updated_at);
-  //     const dateB = new Date(rowB.updated_at);
-  //     return dateA.getTime() - dateB.getTime();
-  //   });
-  // }, [messageRows]);
-
   const selectedScenarioImageUrl = useMemo(() => {
     if (!selectedScenarioImagePath) {
       return null;

@@ -71,7 +71,7 @@ export async function invokeMoveSessionToOutcomeSelectionStageAction({
     .from("scenarios")
     .select("id, rating")
     .eq("text", scenarioText)
-    .single();
+    .maybeSingle(); // prevent error if scenario doesn't already exist
 
   if (existingScenarioResponse.error) {
     const title = "Error checking for existing scenario";

@@ -22,7 +22,7 @@ const config = new Configuration({
 
 const openai = new OpenAIApi(config);
 
-export const ACTIVE_OPENAI_MODEL = "gpt-4-1106-vision-preview"; // "gpt-3.5-turbo"
+export const ACTIVE_OPENAI_MODEL = "gpt-4-turbo-preview"; // "gpt-3.5-turbo"
 
 const DEFAULT_CHAT_COMPLETION_REQUEST_CONFIG = {
   model: ACTIVE_OPENAI_MODEL,

@@ -12,14 +12,8 @@
 // structuring: https://supabase.com/docs/guides/functions/quickstart#organizing-your-edge-functions
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import type {
-  ScenarioRow,
-  SessionRow,
-} from "../../../src/types/databaseRows.ts";
-import {
-  isRequestAuthorised,
-  supabaseAdminClient,
-} from "../_utils/supabase.ts";
+import type { ScenarioRow, SessionRow } from "../../../src/types/databaseRows.ts";
+import { isRequestAuthorised, supabaseAdminClient } from "../_utils/supabase.ts";
 import type { GenericWebhookPayload } from "../_utils/types.ts";
 import { createImageFromPrompt } from "../_utils/huggingFace.ts";
 import { createScenariosStream } from "../_utils/openai/createScenarios.ts";
@@ -31,10 +25,7 @@ import { mimeTypeToFileExtension } from "../_utils/pure.ts";
 serve(async (req) => {
   try {
     const payload: GenericWebhookPayload<SessionRow> = await req.json();
-    console.log(
-      "handling session event payload",
-      JSON.stringify(payload, null, 2),
-    );
+    console.log("handling session event payload", JSON.stringify(payload, null, 2));
 
     if (!isRequestAuthorised(req)) {
       console.log("unauthorized");
@@ -46,10 +37,7 @@ serve(async (req) => {
 
     const newSessionRow = payload.record;
     if (newSessionRow.stage === "scenario-selection") {
-      if (
-        !newSessionRow.scenario_options?.length &&
-        !newSessionRow.ai_is_responding
-      ) {
+      if (!newSessionRow.scenario_options?.length && !newSessionRow.ai_is_responding) {
         console.log(
           "no scenarios, generating new ones, current options:",
           JSON.stringify(newSessionRow.scenario_options, null, 2),
@@ -66,10 +54,7 @@ serve(async (req) => {
             .update({ ai_is_responding: false })
             .eq("id", newSessionRow.id);
         }
-      } else if (
-        !newSessionRow.scenario_options?.length &&
-        newSessionRow.ai_is_responding
-      ) {
+      } else if (!newSessionRow.scenario_options?.length && newSessionRow.ai_is_responding) {
         console.log(
           "no scenarios, however there is already an existing process generating new ones, skipping",
         );
@@ -97,10 +82,7 @@ serve(async (req) => {
       console.debug("nothing to do");
     }
 
-    console.log(
-      "done handling session event payload",
-      JSON.stringify(payload, null, 2),
-    );
+    console.log("done handling session event payload", JSON.stringify(payload, null, 2));
     return new Response(JSON.stringify({ message: "ok" }), {
       headers: { "Content-Type": "application/json" },
       status: 200,
@@ -191,52 +173,39 @@ function ratingNumberToText(rating: number) {
 }
 
 function scenarioRowToScenarioTextWithRating(scenarioRow: ScenarioRow) {
-  return `${scenarioRow.text}\n\n[RATING: ${scenarioRow.rating} which means it is ${
-    ratingNumberToText(scenarioRow.rating)
-  }]`;
+  return `${scenarioRow.text}\n\n[RATING: ${
+    scenarioRow.rating
+  } which means it is ${ratingNumberToText(scenarioRow.rating)}]`;
 }
 
 async function generateNewSessionScenarios(sessionId: number) {
   const [exampleGoodScenarioRows, exampleBadScenarioRows] = await Promise.all([
-    supabaseAdminClient.rpc("get_example_good_scenarios").then(
-      ({ error, data }) => {
-        if (error) {
-          console.error(
-            `Get example good scenarios error: ${error.message} (${error.code}) \nDetails: ${error.details} \nHint: ${error.hint}`,
-          );
-          throw error;
-        }
-        const exampleGoodScenarios = data.map(
-          scenarioRowToScenarioTextWithRating,
+    supabaseAdminClient.rpc("get_example_good_scenarios").then(({ error, data }) => {
+      if (error) {
+        console.error(
+          `Get example good scenarios error: ${error.message} (${error.code}) \nDetails: ${error.details} \nHint: ${error.hint}`,
         );
-        console.log(
-          "exampleGoodScenarios",
-          JSON.stringify(exampleGoodScenarios, null, 2),
+        throw error;
+      }
+      const exampleGoodScenarios = data.map(scenarioRowToScenarioTextWithRating);
+      console.log("exampleGoodScenarios", JSON.stringify(exampleGoodScenarios, null, 2));
+      return exampleGoodScenarios;
+    }),
+    supabaseAdminClient.rpc("get_example_bad_scenarios").then(({ error, data }) => {
+      if (error) {
+        console.error(
+          `Get example bad scenarios error: ${error.message} (${error.code}) \nDetails: ${error.details} \nHint: ${error.hint}`,
         );
-        return exampleGoodScenarios;
-      },
-    ),
-    supabaseAdminClient.rpc("get_example_bad_scenarios").then(
-      ({ error, data }) => {
-        if (error) {
-          console.error(
-            `Get example bad scenarios error: ${error.message} (${error.code}) \nDetails: ${error.details} \nHint: ${error.hint}`,
-          );
-          throw error;
-        }
-        const exampleBadScenarios = data.map(
-          scenarioRowToScenarioTextWithRating,
-        );
-        console.log(
-          "exampleBadScenarios",
-          JSON.stringify(exampleBadScenarios, null, 2),
-        );
-        return exampleBadScenarios;
-      },
-    ),
+        throw error;
+      }
+      const exampleBadScenarios = data.map(scenarioRowToScenarioTextWithRating);
+      console.log("exampleBadScenarios", JSON.stringify(exampleBadScenarios, null, 2));
+      return exampleBadScenarios;
+    }),
   ]);
 
   console.log("generating scenarios");
+  // todo allow users to define scenario preferences in their profile and add this to the scenario generation prompt for all users in the session
   const newScenariosStream = await createScenariosStream({
     goodScenarios: exampleGoodScenarioRows,
     badScenarios: exampleBadScenarioRows,
@@ -265,8 +234,7 @@ async function generateNewSessionScenarios(sessionId: number) {
     streamValueName: "new session scenario options",
     stream: newScenariosStream,
     persistLatestValue: (latestScenarios) =>
-      latestScenarios &&
-      updateSessionScenarioOptions({ sessionId, latestScenarios }),
+      latestScenarios && updateSessionScenarioOptions({ sessionId, latestScenarios }),
   });
 }
 

@@ -63,11 +63,6 @@ export default function UserProfileModal({ disclosure: { isOpen, onClose } }: Pr
     }
   }, [isOpen]);
 
-  const handleError = useCallback(() => {
-    setState("idle-initial");
-    onClose(); // ? why close on error?
-  }, [onClose]);
-
   const handleUserNameChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
     setUserName(e.target.value);
   }, []);
@@ -99,15 +94,20 @@ export default function UserProfileModal({ disclosure: { isOpen, onClose } }: Pr
         user_name: userName,
         preferred_reading_rate: tempReadingRate,
       });
+
       if (errorMessage) {
-        handleError();
-        onClose();
-        return;
+        toast({
+          status: "error",
+          title: "Profile update failed, please try again later.",
+          description: errorMessage,
+        });
+        setState("idle-initial");
+        return; // don't close modal, let user try again
       }
 
       toast({
-        title: "Profile updated",
         status: "success",
+        title: "Profile updated",
       });
       onClose();
     },
@@ -119,7 +119,6 @@ export default function UserProfileModal({ disclosure: { isOpen, onClose } }: Pr
       tempReadingRate,
       toast,
       onClose,
-      handleError,
     ],
   );
 

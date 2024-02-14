@@ -107,6 +107,7 @@ export default function ChatPanel({
             data-gramm='false'
             data-gramm_editor='false'
             data-enable-grammarly='false'
+            maxLength={1000} // todo add limit to backend
           />
           <Flex gap='inherit' width={{ base: "100%", md: "unset" }} justifyContent='space-evenly'>
             {chat.isLoading ? (

@@ -134,7 +134,13 @@ export default function UserProfileModal({ disclosure: { isOpen, onClose } }: Pr
         <ModalBody display='flex' flexDirection='column' gap={5}>
           <FormControl height='100%' isInvalid={!!userNameValidationMessage} isRequired>
             <FormLabel>Display Name</FormLabel>
-            <Input type='text' onChange={handleUserNameChange} value={userName} />
+            <Input
+              type='text'
+              onChange={handleUserNameChange}
+              value={userName}
+              maxLength={100}
+            />{" "}
+            // todo add limit to backend
             {userNameValidationMessage && (
               <FormErrorMessage>{userNameValidationMessage}</FormErrorMessage>
             )}

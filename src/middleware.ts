@@ -30,14 +30,16 @@ export async function middleware(req: NextRequest) {
     console.log("middleware authenticated", "redirecting to", targetUrl.toString());
 
     // todo investigate this doesn't change the url in the browser
-    return NextResponse.redirect(targetUrl, { url: targetUrl.toString(), status: 302 });
+    return NextResponse.redirect(targetUrl, { url: targetUrl.toString() });
   }
 
-  // todo allow this to redirect to the initial page the user was trying to access
   // if user is not signed in and the current path is not / redirect the user to /
   if (!session?.user && req.nextUrl.pathname !== "/auth") {
     const targetUrl = new URL("/auth", req.url);
-    targetUrl.searchParams.set(REDIRECT_AFTER_AUTH_QUERY_PARAM_NAME, req.nextUrl.pathname);
+    if (req.nextUrl.pathname !== "/") {
+      // if the user is trying to access a page other than the home page save the target so we can redirect them back after they sign in
+      targetUrl.searchParams.set(REDIRECT_AFTER_AUTH_QUERY_PARAM_NAME, req.nextUrl.pathname);
+    }
     console.log("middleware not authenticated", "redirecting to:", targetUrl.toString());
     return NextResponse.redirect(targetUrl);
   }

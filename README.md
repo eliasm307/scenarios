@@ -4,7 +4,7 @@
 
 Scenarios is a game where you try to guess what your friends would do in different AI generated situations.
 
-The aim of the game is to learn more about how your friends think and have fun!
+The aim of the game is to learn more about how your friends think and have fun answering the question "What would you do?".
 
 **Note:** This game is still in development, contributions are welcome!
 

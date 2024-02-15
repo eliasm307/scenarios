@@ -16,6 +16,7 @@ export const metadata: Metadata = {
 // todo determine why this is needed
 export const dynamic = "force-dynamic";
 
+// todo add "Powered by Supabase and Next.js" to the footer with their logos
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   console.log("RootLayout render");
   const supabase = getSupabaseServer(cookies);

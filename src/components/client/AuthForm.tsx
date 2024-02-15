@@ -3,7 +3,7 @@
 "use client";
 
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
-import { Button, Divider, HStack, Heading, VStack } from "@chakra-ui/react";
+import { Button, Divider, HStack, Heading, Text, VStack } from "@chakra-ui/react";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Database } from "../../types/supabase";
@@ -116,13 +116,21 @@ export default function AuthForm() {
           handleSignedIn={() => setIsSignedIn(true)}
         />
       )}
-      {currentViewType === "sign_up" && (
+      {
+        currentViewType === "sign_up" && (
+          <Text>App still in development so sign up is not available currently</Text>
+        )
+        // todo enable sign up
+        /*
+        (
         <EmailPasswordForm
           submitButtonText='Sign Up'
           handleSubmit={invokeSignUpWithEmailAndPasswordAction}
           handleSignedIn={() => setIsSignedIn(true)}
         />
-      )}
+      )
+      */
+      }
       {currentViewType === "magic_link" && (
         <EmailPasswordForm
           submitButtonText='Send Magic Link'
@@ -134,25 +142,30 @@ export default function AuthForm() {
       )}
       <HStack width='100%' py={5}>
         <Divider flex={1} />
-        <Heading as='h2' pb={1}>
+        {/* <Heading as='h2' pb={1}>
           Or
         </Heading>
-        <Divider flex={1} />
+        <Divider flex={1} /> */}
       </HStack>
       <VStack width='inherit'>
         {viewTypes
           .filter((viewType) => viewType !== currentViewType)
-          .map((viewType) => (
-            <Button
-              key={viewType}
-              variant='outline'
-              width='100%'
-              onClick={() => setCurrentViewType(viewType)}
-            >
-              {getViewTypeDescription(viewType)}
-            </Button>
-          ))}
-        H
+          .map((viewType) => {
+            if (viewType === "sign_up") {
+              // todo enable sign up
+              return <Text>App still in development so sign up is not available currently</Text>;
+            }
+            return (
+              <Button
+                key={viewType}
+                variant='outline'
+                width='100%'
+                onClick={() => setCurrentViewType(viewType)}
+              >
+                {getViewTypeDescription(viewType)}
+              </Button>
+            );
+          })}
       </VStack>
     </VStack>
   );

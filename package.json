@@ -1,5 +1,5 @@
 {
-  "name": "electric-sheep",
+  "name": "scenarios",
   "description": "Scenarios is a game where you try to guess what your friends would do in different AI generated situations. It's a fun way to get to know your friends better and see how they think.",
   "version": "0.1.0",
   "private": true,

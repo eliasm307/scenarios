@@ -37,6 +37,14 @@ Example generated scenario 2:
 >
 > Do you proceed with adopting a child who needs a home or focus on your unexpected pregnancy?
 
+Example generated scenario 3:
+
+> You are a successful writer who has just completed your latest novel. It's a gripping story that explores complex moral dilemmas and challenges societal norms. However, upon reviewing the final manuscript, you realize that one of the central characters closely resembles a real person from your past.
+>
+> This person, who had a significant impact on your life, is now leading a quiet and private existence. If you publish the novel as it is, their identity could potentially be exposed to the world, bringing both praise and criticism. On the other hand, if you change the character's backstory and personality, it may compromise the authenticity and depth of the story.
+>
+> Do you prioritize your artistic integrity by keeping the character as is, risking consequences for this person's privacy? Or do you alter their portrayal to protect their identity, even if it means compromising the overall quality of your work?
+
 ### Scenario selection
 
 Each user can then vote on the scenario they want to play. If there is a tie or the majority of players vote to skip, the AI generates a new set of scenarios to choose from. When there is a scenario with a majority of votes then the game begins.

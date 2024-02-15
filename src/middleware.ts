@@ -56,6 +56,8 @@ export const config = {
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
      * - auth/callback (auth callback route)
+     *
+     * @remark This is to allow those paths to be accessed without being authenticated
      */
     "/((?!api|_next/static|_next/image|favicon.ico|icon.svg|auth/callback).*)",
   ],

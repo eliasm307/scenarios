@@ -57,6 +57,6 @@ export const config = {
      * - favicon.ico (favicon file)
      * - auth/callback (auth callback route)
      */
-    "/((?!api|_next/static|_next/image|favicon.ico|auth/callback).*)",
+    "/((?!api|_next/static|_next/image|favicon.ico|icon.svg|auth/callback).*)",
   ],
 };

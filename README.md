@@ -27,17 +27,13 @@ After creating an account and logging in you can create a new session which open
 
 Example generated scenarios:
 
-```text
-You're an accomplished musician known for your dedication to classical music. However, recently, your teenage child reveals their aspiration to become a rock musician. They have shown talent but are struggling with self-confidence. They ask for your guidance and support to form their first band, which would require not only financial investment but also accepting music styles that contrast sharply with what you've dedicated your life to.
+> You're an accomplished musician known for your dedication to classical music. However, recently, your teenage child reveals their aspiration to become a rock musician. They have shown talent but are struggling with self-confidence. They ask for your guidance and support to form their first band, which would require not only financial investment but also accepting music styles that contrast sharply with what you've dedicated your life to.
+>
+> Do you encourage them by investing in their musical journey despite personal reservations about their choice of genre? Or do you persuade them to pursue something more aligned with what you consider as 'real' music?
 
-Do you encourage them by investing in their musical journey despite personal reservations about their choice of genre? Or do you persuade them to pursue something more aligned with what you consider as 'real' music?
-```
-
-```text
-After years of struggling with fertility issues, you and your partner finally have the opportunity to adopt a child. However, on the same day you are matched with a potential child for adoption, you discover that you are pregnant. The adoption agency's policy requires you to proceed immediately or lose your chance at adoption forever.
-
-Do you proceed with adopting a child who needs a home or focus on your unexpected pregnancy?
-```
+> After years of struggling with fertility issues, you and your partner finally have the opportunity to adopt a child. However, on the same day you are matched with a potential child for adoption, you discover that you are pregnant. The adoption agency's policy requires you to proceed immediately or lose your chance at adoption forever.
+>
+> Do you proceed with adopting a child who needs a home or focus on your unexpected pregnancy?
 
 ### Scenario selection
 

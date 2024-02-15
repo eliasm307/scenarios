@@ -25,11 +25,13 @@ After creating an account and logging in you can create a new session which open
 - Example represents you on the left and your friend on the right, who can be on a different device somewhere else.
 - When the session is created, the AI starts generating scenario options to choose from.
 
-Example generated scenarios:
+Example generated scenario 1:
 
 > You're an accomplished musician known for your dedication to classical music. However, recently, your teenage child reveals their aspiration to become a rock musician. They have shown talent but are struggling with self-confidence. They ask for your guidance and support to form their first band, which would require not only financial investment but also accepting music styles that contrast sharply with what you've dedicated your life to.
 >
 > Do you encourage them by investing in their musical journey despite personal reservations about their choice of genre? Or do you persuade them to pursue something more aligned with what you consider as 'real' music?
+
+Example generated scenario 2:
 
 > After years of struggling with fertility issues, you and your partner finally have the opportunity to adopt a child. However, on the same day you are matched with a potential child for adoption, you discover that you are pregnant. The adoption agency's policy requires you to proceed immediately or lose your chance at adoption forever.
 >
